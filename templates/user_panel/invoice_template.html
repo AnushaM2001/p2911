@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* General styling */
+        body {
+            font-family: 'Helvetica', sans-serif;
+            padding: 40px;
+            font-size: 14px;
+            color: #333;
+            margin: 0;
+            background-color: #f9f9f9;
+        }
+
+        h2 {
+            color: #a20042;
+            margin-bottom: 10px;
+        }
+
+        /* Header Section */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header img {
+            width: 150px;
+            margin-bottom: 10px;
+        }
+
+        /* Invoice Details */
+        .invoice-details {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        .invoice-details p {
+            margin: 5px 0;
+        }
+
+        .invoice-details strong {
+            font-weight: bold;
+        }
+
+        /* Shipping Address Section */
+        .address-block {
+            margin-bottom: 30px;
+        }
+
+        /* Table for Order Items */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #fbeef2;
+        }
+
+        td {
+            font-size: 14px;
+        }
+
+        /* Total Price */
+        .total {
+            text-align: right;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section (Logo and Title) -->
+    <!-- <div class="header">
+        <img src="https://yourdomain.com/static/images/perfume-valley-logo.png" alt="Perfume Valley">
+        <h2>Invoice</h2>
+    </div> -->
+
+    <!-- Invoice Details Section -->
+    <div class="invoice-details">
+        <p><strong>Order ID:</strong> {{ order.id }}</p>
+        <p><strong>Date:</strong> {{ order.created_at|date:"d M Y" }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+    </div>
+
+    <!-- Shipping Address Section (Optional) -->
+    <!-- Uncomment if address details are needed -->
+    <!-- 
+    <div class="address-block">
+        <h4>Shipping Address</h4>
+        <p>{{ address.full_name }}</p>
+        <p>{{ address.street }}</p>
+        <p>{{ address.city }}, {{ address.state }} - {{ address.pincode }}</p>
+        <p>Phone: {{ address.phone }}</p>
+    </div> 
+    -->
+
+    <!-- Order Items Table -->
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order_items %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>₹{{ item.price }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Total Price -->
+    <p class="total">Total: ₹{{ order.total_amount }}</p>
+
+    <!-- Footer Section -->
+    <div class="footer">
+        <p>Thank you for shopping with Perfume Valley. We appreciate your business!</p>
+    </div>
+
+</body>
+</html>

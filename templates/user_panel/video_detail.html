@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ video.title }}</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      max-width: 1000px;
+      margin: 30px auto;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .video-section {
+      flex: 1;
+      min-width: 350px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .video-section video {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+
+    .video-section h2 {
+      font-size: 20px;
+      margin: 10px 0 5px;
+      color: #333;
+    }
+
+    .video-section p {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .products-section {
+      flex: 1;
+      min-width: 350px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .products-section h3 {
+      font-size: 20px;
+      margin-bottom: 16px;
+      color: #222;
+    }
+
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .product {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 12px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .product:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+
+    .product img {
+      width: 100%;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .product h4 {
+      font-size: 15px;
+      margin: 6px 0 4px;
+      color: #333;
+    }
+
+    .product p {
+      font-size: 14px;
+      margin: 2px 0;
+      color: #555;
+    }
+
+    .view-product-in-video-btn {
+      background-color: #6D3F0B;
+      color: white;
+      padding: 8px 14px;
+      margin-top: 8px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .view-product-in-video-btn:hover {
+      background-color: #5a3310;
+    }
+   
+.video-card {
+  position: relative;
+  padding-top: 40px; /* add top padding for button space */
+}
+
+
+
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .products-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Left: Video -->
+    <div class="video-section">
+
+      <video controls>
+        <source src="{{ video.video.url }}" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+      <h2>{{ video.title }}</h2>
+      <p>{{ video.description }}</p>
+    </div>
+
+    <!-- Right: Products Grid -->
+    <div class="products-section">
+
+      <h3>Products seen in the video</h3>
+      <div class="products-grid">
+        {% for product in related_products %}
+          <div class="product" data-video-url="{{ video.video.url }}">
+            {% if product.image1 %}
+              <img src="{{ product.image1.url }}" alt="{{ product.name }}" loading="lazy" decoding="async">
+            {% endif %}
+            <h4>{{ product.name }}</h4>
+            <p>Rs. {{ product.original_price }}</p>
+            <button
+              type="button"
+              class="view-product-in-video-btn"
+              data-url="{% url 'product_detail' product.id %}?from_video={{ video.id }}">
+              View Details
+            </button>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

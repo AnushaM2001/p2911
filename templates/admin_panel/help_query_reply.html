@@ -1,0 +1,16 @@
+{% extends 'admin_panel/base.html' %}
+{% block content %}
+<h2>Reply to Query</h2>
+
+<p><b>User:</b> {{ query.user.username }}</p>
+<p><b>Subject:</b> {{ query.subject }}</p>
+<p><b>Message:</b> {{ query.message|linebreaks }}</p>
+<p><b>Status:</b> {{ query.status }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    <textarea name="response" rows="4" style="width:100%;" placeholder="Type your reply here..."></textarea>
+    <br>
+    <button type="submit">Send Reply</button>
+</form>
+{% endblock %}

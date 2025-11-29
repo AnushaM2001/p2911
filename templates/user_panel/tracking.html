@@ -1,0 +1,163 @@
+{% extends 'layouts/main.html' %}
+{% block content %}
+<div class="container my-5">
+    <h2 class="mb-4">Track Your Order</h2>
+
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% else %}
+    <!-- <pre>{{ order.shiprocket_tracking_info }}</pre> -->
+<pre>{{ tracking|safe }}</pre>
+
+        <!-- Shipment Info -->
+        <div class="card shadow p-4 mb-4">
+            <h5 class="mb-3">Shipment Details</h5>
+            <p><strong>Courier:</strong> {{ courier }}</p>
+            <p><strong>AWB Code:</strong> {{ awb_code }}</p>
+            <p><strong>Status:</strong> {{ current_status }}</p>
+            <p><strong>From:</strong> {{ origin }} → <strong>To:</strong> {{ destination }}</p>
+            <p><strong>Estimated Delivery:</strong> {{ est_delivery }}</p>
+            <a href="{{ track_url }}" target="_blank" class="btn btn-outline-primary">Track on Shiprocket</a>
+            <a href="{% url 'download_invoice' order.id %}" target="_blank" class="btn btn-outline-secondary">Download Invoice</a>
+        </div>
+
+        <!-- Progress Tracker -->
+       <div class="card p-4 shadow mb-4">
+    <h5 class="mb-3">Live Order Progress</h5>
+   <div class="progress-tracker mb-4">
+    {% for stage in tracking_stages %}
+        <div class="step {% if forloop.counter0 <= current_stage_index %}active{% endif %}">
+            <div class="circle">
+                {% if forloop.counter0 < current_stage_index %}
+                    <i class="bi bi-check-lg text-white"></i>
+                {% elif forloop.counter0 == current_stage_index %}
+                    <div class="dot"></div>
+                {% endif %}
+            </div>
+            <small>{{ stage }}</small>
+        </div>
+    {% endfor %}
+</div>
+
+</div>
+
+
+
+        <!-- Timeline -->
+<div class="card p-4 shadow mb-4">
+  <h5 class="mb-3">Tracking History</h5>
+
+  {% if shipment_activities %}
+    <div class="timeline-container position-relative">
+      {% for activity in shipment_activities %}
+        <div class="timeline-entry mb-4">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <strong>{{ activity.activity }}</strong><br>
+            <small class="text-muted">{{ activity.location }}</small><br>
+            <small class="text-secondary">{{ activity.date|date:"d M Y" }} {{ activity.date|time:"h:i A" }}</small>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No tracking history available yet.</p>
+  {% endif %}
+</div>
+
+    {% endif %}
+</div>
+
+<!-- CSS -->
+<style>
+.progress-tracker {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    margin: 40px 0;
+    padding: 0 20px;
+}
+
+.progress-tracker::before {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #dee2e6;
+    z-index: 0;
+}
+
+.step {
+    text-align: center;
+    flex: 1;
+    position: relative;
+    z-index: 1;
+}
+
+.step .circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    position: relative;
+}
+
+.step.active .circle {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.step .circle .dot {
+    width: 12px;
+    height: 12px;
+    background-color: white;
+    border-radius: 50%;
+}
+
+.step.active .dot {
+    background-color: #0d6efd;
+}
+
+.step small {
+    font-size: 13px;
+    display: block;
+    color: #6c757d;
+}
+
+.step.active small {
+    color: #0d6efd;
+    font-weight: 600;
+}
+.timeline-container {
+  position: relative;
+  border-left: 2px solid #0d6efd;
+  padding-left: 20px;
+}
+
+.timeline-entry {
+  position: relative;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: -9px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  background-color: #0d6efd;
+  border-radius: 50%;
+}
+
+.timeline-content {
+  margin-left: 15px;
+}
+
+</style>
+
+{% endblock %}

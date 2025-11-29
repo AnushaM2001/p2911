@@ -1,0 +1,38 @@
+
+{% load crispy_forms_tags %}
+{% load static %}
+<form id="editratingForm" enctype="multipart/form-data">
+  {% csrf_token %}
+{{ form | crispy}}
+  <!-- Category Dropdown -->
+    <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-maroon">Update rating</button>
+  </div>
+</form>
+
+<script>
+document.getElementById('editratingForm')?.addEventListener('submit', function(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  const ratingId = '{{ rating.id }}';
+
+  fetch(`/admin-panel/reviews/${ratingId}/update/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Failed to update rating.');
+    }
+  })
+  .catch(() => alert('Something went wrong!'));
+});
+</script>

@@ -1,0 +1,137 @@
+<!-- order_success.html -->
+<html>
+<head>
+    <title>Order Success</title>
+
+    <!-- Load confetti library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Google Font for styling -->
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0f7fa, #ffffff);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .thank-you-box {
+            text-align: center;
+            background: #ffffff;
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            animation: popIn 0.8s ease;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .thank-you-box h1 {
+            font-family: 'Pacifico', cursive;
+            font-size: 48px;
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+
+        .thank-you-box p {
+            font-size: 20px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        /* .thank-you-box img {
+            width: 80%;
+            max-width: 300px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        } */
+
+        .button-container {
+            margin-top: 20px;
+        }
+
+        .button-container a {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            color: #fff;
+            background-color: #4CAF50;
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        .button-container a:hover {
+            background-color: #45a049;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="thank-you-box">
+        <!-- <img src="https://example.com/path/to/your-image.jpg" alt="Order Image"> Replace with your image URL -->
+        <h1>🎉 Thank You!</h1>
+        <p>Your order has been placed successfully. ✨</p>
+
+        <div class="button-container">
+            <a href="{% url 'home' %}" class="continue-shopping">Continue Shopping</a>
+            <a href="{% url 'user_profile' %}" class="track-order">Track Order</a>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function launchConfetti() {
+                var duration = 6 * 1000;
+                var animationEnd = Date.now() + duration;
+                var defaults = { startVelocity: 40, spread: 360, ticks: 60, zIndex: 1000 };
+
+                function randomInRange(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+
+                var interval = setInterval(function() {
+                    var timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    var particleCount = 50 * (timeLeft / duration);
+
+                    // 🎨 Multiple colors and from different sides
+                    confetti(Object.assign({}, defaults, {
+                        particleCount,
+                        origin: { x: randomInRange(0, 0.2), y: Math.random() - 0.2 },
+                        colors: ['#bb0000', '#ffffff', '#00C853', '#2962FF']
+                    }));
+
+                    confetti(Object.assign({}, defaults, {
+                        particleCount,
+                        origin: { x: randomInRange(0.8, 1), y: Math.random() - 0.2 },
+                        colors: ['#FFD600', '#D500F9', '#00C853', '#2962FF']
+                    }));
+                }, 200);
+            }
+
+            // 🚀 Start confetti
+            launchConfetti();
+        });
+    </script>
+
+</body>
+</html>

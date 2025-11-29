@@ -1,0 +1,120 @@
+
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% block title %}
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .btn-maroon {
+      background-color: #8b1538;
+      color: white;
+    }
+
+    .btn-maroon:hover {
+      background-color: #6e102c;
+      color: white;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f0f0f0;
+      border-color: transparent;
+    }
+
+    .badge-instock {
+      background-color: #28a745;
+    }
+
+    .badge-lowstock {
+      background-color: #fd7e14;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    .gear-icon {
+      cursor: pointer;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .toast-body{
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      font-size: 20px;
+      padding: 10px !important;
+    }
+  </style>
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <h3><strong>Subscriptio Details</strong></h3>
+    <p class="text-muted">Manage your Subscriptions</p>
+
+    <!-- Search & Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+
+  {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>      
+    </div>
+
+    <!-- Table -->
+    <div class="dashboard-card">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Mobile Number</th>
+            <th>Country</th>
+            <th>State</th>
+            <th>City</th>
+            <th>Pincode</th>
+            <th>location</th>
+            <th>Building</th>
+            <th>Landmark</th>
+            <th>Created_at</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for contact in page_obj %}
+          <tr data-contact-id="{{ contact.id }}">
+            <td>{{ contact.Name }}</td>
+            <td>{{ contact.Email }}</td>
+            <td>{{ contact.MobileNumber }}</td>
+            <td>{{ contact.Country }}</td>
+            <td>{{ contact.State }}</td>
+            <td>{{ contact.City }}</td>
+            <td>{{ contact.Pincode }}</td>
+            <td>{{ contact.location }}</td>
+            <td>{{ contact.Building }}</td>
+            <td>{{ contact.Landmark }}</td>
+            <td>{{ contact.created_at|date:"D M j, g:iA" }}</td>
+            <!-- <td><span class="badge badge-instock">In stock</span></td> -->
+
+
+          {% endfor %}
+         
+          
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Add Category Modal -->
+
+{% endblock content %}

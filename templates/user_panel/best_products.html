@@ -1,0 +1,508 @@
+{% extends 'layouts/main.html' %}
+{% load static %}
+{% block title %}
+<title>Shopping Page</title>
+{% endblock title %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<style>
+  .custom-grid {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 1rem;
+  }
+
+  @media (min-width: 480px) {
+    .custom-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .custom-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (min-width: 992px) {
+    .custom-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  .product-card-wrapper {
+    display: flex;
+    justify-content: center;
+  }
+
+  .product-card {
+    width: 100%;
+    max-width: 300px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #FBF0EF;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+    position: relative;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .product-card:hover {
+    transform: translateY(-5px) scale(1.05);
+    cursor: pointer;
+    z-index: 3;
+  }
+
+  .product-img-container {
+    height: 300px;
+    overflow: hidden;
+    border-radius: 10px 10px 0 0;
+    position: relative;
+    background: #fff;
+  }
+
+  @media (min-width: 480px) {
+    .product-img-container {
+      height: 200px;
+    }
+  }
+  @media (min-width: 768px) {
+    .product-img-container {
+      height: 340px;
+    }
+  }
+  @media (min-width: 992px) {
+    .product-img-container {
+      height: 340px;
+    }
+  }
+  @media (min-width: 1200px) {
+    .product-img-container {
+      height: 400px;
+    }
+  }
+
+  .product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.4s ease;
+    border-radius: 6px;
+  }
+
+  .addcart {
+    display: none;
+    position: absolute;
+    top: 70%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #6D3F0BF2;
+    color: white;
+    height: 55px;
+    width: calc(100% - 3px);
+    justify-content: center;
+    gap: 12px;
+    align-items: center;
+    z-index: 2;
+    font-size: 18px;
+    font-family: Jomolhari;
+    text-transform: capitalize;
+    border-radius: 8px;
+  }
+
+  .product-card:hover .favorite,
+  .product-card:hover .addcart {
+    display: flex;
+  }
+
+  .addcart a {
+    text-decoration: none;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .product-info {
+    padding: 15px;
+    background: #FBF0EF;
+    display: flex;
+    justify-content: start;
+    flex-direction: column;
+    border-radius: 0 0 10px 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Responsive Banner Styling */
+  .top-banner img {
+    width: 100%;
+    height: 30vh;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  @media (min-width: 768px) {
+    .top-banner img {
+      height: 40vh;
+    }
+  }
+
+  @media (min-width: 992px) {
+    .top-banner img {
+      height: 50vh;
+    }
+  }
+
+  .banner-title-overlay h1 {
+    font-size: 2rem;
+  }
+
+  @media (min-width: 768px) {
+    .banner-title-overlay h1 {
+      font-size: 3rem;
+    }
+  }
+
+  .badge-rating {
+    position: absolute;
+    right: 10px;
+    background-color: #ecebe7;
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    z-index: -2;
+    font-weight: 600;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .product-card.out-of-stock {
+    pointer-events: none;
+    opacity: 0.6;
+    position: relative;
+  }
+
+  .blur-image {
+    filter: blur(2px);
+  }
+
+  .stock-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 5px 10px;
+    color: white;
+    font-weight: bold;
+    border-radius: 4px;
+    z-index: 10;
+  }
+
+  .stock-badge.out {
+    background-color: red;
+  }
+
+  .stock-badge.low {
+    background-color: orange;
+  }
+
+  .blink {
+    animation: blink-animation 1s steps(2, start) infinite;
+  }
+
+  @keyframes blink-animation {
+    to {
+      visibility: hidden;
+    }
+  }
+
+  /* BADGES: Always visible */
+  .badge-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .badge.badge-trending {
+    background: #981945;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+  .badge.badge-best_seller {
+    background: #981945;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+  .badge.badge-new {
+    background: #981945;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+
+  /* FAVORITE ICON */
+  .favorite {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #FFF;
+    border-radius: 50%;
+    top: 22px;
+    right: 15px;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2;
+    background: rgba(255,255,255,0.85);
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+
+  .product-card:hover .favorite {
+    display: flex;
+  }
+
+  .favorite .bi-heart,
+  .favorite .bi-heart-fill {
+    font-size: 1.4rem;
+    color: #bbb;
+    transition: color 0.2s;
+  }
+  .favorite.active .bi-heart,
+  .favorite.active .bi-heart-fill {
+    color: #e74c3c;
+  }
+  .favorite:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+  .favorite:hover .bi-heart,
+  .favorite:hover .bi-heart-fill {
+    color: #e74c3c;
+  }
+
+  /* Responsive tweaks for mobile */
+
+
+
+  @media (max-width: 480px) {
+    .custom-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.7rem;
+    }
+    .product-card {
+      width: 175px;
+      margin: 16px auto;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .product-img-container {
+      position: relative;
+      height: 232px;
+      overflow: hidden;
+    }
+    .addcart {
+      width: calc(100% - -7px);
+      height: 45px;
+      font-size: 16px;
+      top:59%;
+    }
+    .badge-rating {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+    }
+    .product-info {
+      padding: 8px;
+    }
+    .favorite {
+      width: 32px;
+      height: 31px;
+      top: 10px;
+      right: 8px;
+    }
+    .favorite .bi-heart,
+    .favorite .bi-heart-fill {
+      font-size: 1rem;
+    }
+    .badge.badge-trending,
+    .badge.badge-best_seller,
+    .badge.badge-new {
+      font-size: 0.7rem;
+      padding: 3px 7px;
+    }
+    .stock-badge {
+      font-size: 0.8rem;
+      padding: 3px 7px;
+    }
+  }
+
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+</style>
+{% endblock extra_css %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-3">
+  {% if banner %}
+    <div class="top-banner mb-4 position-relative">
+      <img src="{{ banner.banner_image.url }}" alt="{{ banner.title }}" loading="lazy" decoding="async">
+      <div class="banner-title-overlay position-absolute top-50 start-50 translate-middle text-white text-center">
+        <h1 class="display-4 fw-bold" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.7);">{{ title }}</h1>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="custom-grid mb-4">
+  {% for entry in combined_items %}
+    <div class="product-card-wrapper">
+      <div class="product-card {% if entry.product.stock_status == 'Out of Stock' %}out-of-stock{% endif %} position-relative">
+
+        <!-- BADGES: Always visible -->
+        <div class="badge-container position-absolute">
+          {% if entry.product.is_trending %}
+            <span class="badge badge-trending">⚡Trending</span>
+          {% endif %}
+          {% if entry.product.is_best_seller %}
+            <span class="badge badge-best_seller">⚡Bestseller</span>
+          {% endif %}
+          {% if entry.product.is_new_arrival %}
+            <span class="badge badge-new">⚡New Arrivals</span>
+          {% endif %}
+        </div>
+
+        <!-- Out of Stock Overlay -->
+        {% if entry.product.stock_status == 'Out of Stock' %}
+        <div class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center" style="z-index: 5; top: 0; left: 0; background-color: rgba(255,255,255,0.5);">
+          <span style="background-color: rgba(222, 26, 26, 0.7); color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;">Out of Stock</span>
+        </div>
+        {% elif entry.product.stock_status == 'Low Stock' %}
+        <!-- Low Stock Badge -->
+        <div class="stock-badge low blink position-absolute">Low Stock</div>
+        {% endif %}
+
+        <!-- Favorite Icon -->
+        {% if entry.product.stock_status != 'Out of Stock' %}
+          <div class="favorite {% if entry.product.id in wishlist_product_ids %}active{% endif %}" 
+               data-product-id="{{ entry.product.id }}">
+            {% if entry.product.id in wishlist_product_ids %}
+              <i class="bi bi-heart-fill"></i>
+            {% else %}
+              <i class="bi bi-heart"></i>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <!-- Product Image -->
+        <div class="product-img-container {% if entry.product.stock_status == 'Out of Stock' %}blur-image{% endif %}">
+          {% if entry.product.image1 %}
+            <img src="{{ entry.product.image1.url }}" 
+                 class="product-img" 
+                 alt="{{ entry.product.name }}"
+                 loading="lazy"
+                 decoding="async"
+                 style="object-fit:cover;"
+                 {% if entry.product.image2 and entry.product.stock_status != 'Out of Stock' %}
+                 onmouseover="this.src='{{ entry.product.image2.url }}'"
+                 onmouseout="this.src='{{ entry.product.image1.url }}'"
+                 {% endif %}>
+          {% endif %}
+        </div>
+
+        <!-- Add to Cart -->
+        {% if entry.product.stock_status != 'Out of Stock' %}
+        <div class="addcart">
+          <a href="{% url 'product_detail' entry.product.id %}" class="d-flex align-items-center" style="text-decoration: none; color: inherit;">
+            <div class="cart">
+              <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart" width="24" loading="lazy" decoding="async">
+            </div>
+            <div>Add to Cart</div>
+          </a>
+        </div>
+        {% endif %}
+
+        <!-- Product Info -->
+        <div class="product-info">
+          <div class="product-name mb-2" style="font-family: Jomolhari;">{{ entry.product.name }}</div>
+          <div class="product-price text-start text-muted">
+            ₹{{ entry.min_price }}
+            {% if entry.min_price != entry.max_price %}
+              - ₹{{ entry.max_price }}
+            {% endif %}
+          </div>
+          <span class="badge-rating">
+            <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
+            {{ entry.average_rating|default:"0.0"|floatformat:1 }} | {{ entry.review_count|default:0 }}
+          </span>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Favorite icon click handler
+  document.querySelectorAll('.favorite').forEach(icon => {
+    icon.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const productId = this.dataset.productId;
+      const isActive = this.classList.contains('active');
+      const iconElem = this;
+
+      try {
+        const response = await fetch(
+          isActive ? '{% url "remove_from_wishlist" %}' : '{% url "add_to_wishlist" %}', 
+          {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': '{{ csrf_token }}',
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `product_id=${productId}`
+          }
+        );
+        
+        const data = await response.json();
+        if (data.success) {
+          // Toggle icon and color
+          if (isActive) {
+            iconElem.classList.remove('active');
+            iconElem.innerHTML = '<i class="bi bi-heart"></i>';
+          } else {
+            iconElem.classList.add('active');
+            iconElem.innerHTML = '<i class="bi bi-heart-fill"></i>';
+          }
+          // Optional: Show toast notification
+          if (typeof showToast === 'function') showToast(data.message);
+        } else if (data.login_required) {
+          window.location.href = '{% url "email_login" %}?next=' + encodeURIComponent(window.location.pathname);
+        }
+      } catch (error) {
+        console.error('Wishlist error:', error);
+      }
+    });
+  });
+});
+</script>
+
+{% endblock content %}

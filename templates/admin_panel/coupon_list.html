@@ -1,0 +1,339 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% block title %}
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .btn-maroon {
+      background-color: #8b1538;
+      color: white;
+    }
+
+    .btn-maroon:hover {
+      background-color: #6e102c;
+      color: white;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f0f0f0;
+      border-color: transparent;
+    }
+
+    .badge-instock {
+      background-color: #28a745;
+    }
+
+    .badge-lowstock {
+      background-color: #fd7e14;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    .gear-icon {
+      cursor: pointer;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .toast-body{
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      font-size: 20px;
+      padding: 10px !important;
+    }
+  </style>
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <h3><strong>Coupons</strong></h3>
+    <p class="text-muted">Manage your Coupons</p>
+
+    <!-- Tabs -->
+    <!-- <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link active" href="#">Categories</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Products</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Brands</a>
+      </li>
+    </ul> -->
+
+    <!-- Search & Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+ {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>      <div>
+<button class="btn btn-maroon me-2" data-bs-toggle="modal" data-bs-target="#addcouponModal">+ Add Coupon</button>        <!-- <button class="btn btn-maroon">+ Add Products</button> -->
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="dashboard-card">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Coupon Code</th>
+            <th>Required Amount</th>
+              <th>Discount Amount</th>
+              <th>Created_at</td>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for coupon in page_obj %}
+          <tr data-coupon-id="{{ coupon.id }}">
+            <td>{{ coupon.code }}</td>
+            <td>{{ coupon.required_amount }}</td>
+            <td>{{ coupon.discount }}</td>
+
+            <td>{{ coupon.created_at|date:"D M j, g:iA" }}</td>
+            <!-- <td><span class="badge badge-instock">In stock</span></td> -->
+<td>
+  <div class="dropdown">
+    <img src="{% static 'images2/settings.png' %}" 
+         class="dropdown-toggle"
+         data-bs-toggle="dropdown"
+         aria-expanded="false"
+         style="cursor: pointer; width: 20px;">
+         
+    <ul class="dropdown-menu">
+      <li>
+        <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editcouponModal-{{ coupon.id }}" onclick="openEditcouponModal({{ coupon.id }})">
+          ✏️ Update
+        </a>
+      </li>
+      <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deletecouponModal-{{ coupon.id }}">
+    🗑️ Delete
+  </button>
+</li>
+
+    </ul>
+  </div>
+</td>
+
+          {% endfor %}
+         
+          
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Add Category Modal -->
+<div class="modal fade" id="addcouponModal" tabindex="-1" aria-labelledby="addcouponModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="addcouponForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addcouponModalLabel">Add coupon</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="couponcode" class="form-label">coupon Code</label>
+            <input type="text" class="form-control" id="couponcode" name="code">
+          </div>
+          <div class="mb-3">
+            <label for="couponreqamount" class="form-label">Required Amount</label>
+            <input type="Number" class="form-control" id="couponreqamount" name="required_amount">
+          </div>
+          <div class="mb-3">
+            <label for="coupondiscount" class="form-label">Discount Amount</label>
+            <input type="Number" class="form-control" id="coupondiscount" name="discount">
+          </div>
+          
+         
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-maroon">Add Discount</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% for coupon in coupons %}
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editcouponModal-{{ coupon.id }}" tabindex="-1" aria-labelledby="editcouponModalLabel-{{ coupon.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editcouponModalLabel-{{ coupon.id }}">Edit coupon</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="editcouponFormContainer-{{ coupon.id }}">
+        <!-- Form will be loaded here via AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deletecouponModal-{{ coupon.id }}" tabindex="-1" aria-labelledby="deletecouponModalLabel-{{ coupon.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deletecouponModalLabel-{{ coupon.id }}">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the coupon <strong>{{ coupon.code }}</strong>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger delete-coupon-btn" data-coupon-id="{{ coupon.id }}">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+<!-- Toast Container -->
+<div class="position-fixed top-0 end-0 p-5" style="z-index: 9999">
+  <div id="couponToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="couponToastBody">
+        <!-- Message will be set by JS -->
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+<script>
+function showcouponToast(message, callback) {
+  const toastBody = document.getElementById('couponToastBody');
+  toastBody.textContent = message;
+  const toastEl = document.getElementById('couponToast');
+  const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+  toast.show();
+  if (callback) {
+    toastEl.addEventListener('hidden.bs.toast', function handler() {
+      callback();
+      toastEl.removeEventListener('hidden.bs.toast', handler);
+    });
+  }
+}
+// Add Category AJAX
+const addcouponForm = document.getElementById('addcouponForm');
+if (addcouponForm) {
+  addcouponForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var formData = new FormData(form);
+    fetch("{% url 'add_coupon' %}", {
+      method: "POST",
+      headers: {
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Dynamically add the new row to the table without reload
+                // Close modal
+        var modal = bootstrap.Modal.getInstance(document.getElementById('addcouponModal'));
+        modal.hide();
+         setTimeout(() => location.reload(), 1000); // reload after a short delay
+
+        form.reset();
+        showcouponToast('coupon added successfully!');
+      } else {
+        alert(data.error || "Failed to add coupon.");
+      }
+    })
+    .catch(() => alert("Something went wrong!"));
+  });
+}
+
+// Edit coupon AJAX
+window.openEditcouponModal = function(couponId) {
+  fetch(`/admin-panel/coupons/${couponId}/update/`)
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById(`editcouponFormContainer-${couponId}`).innerHTML = html;
+      // Attach submit event
+      const form = document.getElementById('editcouponForm');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var formData = new FormData(form);
+          fetch(`/admin-panel/coupons/${couponId}/update/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Optionally update the row in the table dynamically
+              showcouponToast('Coupon updated successfully!', function() {
+  location.reload();// reload after a short delay
+              });
+            } else {
+              alert('Failed to update Copun.');
+            }
+          })
+          .catch(() => alert('Something went wrong!'));
+        });
+      }
+    });
+}
+
+// Delete Category AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.delete-coupon-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const couponId = btn.getAttribute('data-coupon-id');
+      btn.disabled = true;
+      fetch(`/admin-panel/coupons/${couponId}/delete/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove the row from the table
+          const modal = btn.closest('.modal');
+          const row = document.querySelector(`tr[data-coupon-id='${couponId}']`);
+          if (row) row.remove();
+          // Hide the modal
+          if (modal) bootstrap.Modal.getInstance(modal).hide();
+          showcouponToast('coupon deleted successfully!');
+        } else {
+          alert(data.error || 'Failed to delete coupon.');
+          btn.disabled = false;
+        }
+      })
+      .catch(() => {
+        alert('Something went wrong!');
+        btn.disabled = false;
+      });
+    });
+  });
+});
+</script>
+{% endblock content %}

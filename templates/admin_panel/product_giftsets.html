@@ -1,0 +1,61 @@
+{% extends 'admin_panel/base.html' %}
+{% block title %}
+<style>
+  .btn-maroon,.btn-maroon:hover{
+    background-color: maroon;
+    color: white;
+
+  }
+</style>
+{% endblock title %}
+{% block content %}
+<div class="container mt-4">
+
+  <h2>All Giftsets</h2>
+   <form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control w-25" placeholder="🔍 Search..." />
+  
+  {% if query %}
+    <a href="?page={{ page_obj.number }}" class="btn btn-maroon btn-sm">Clear Filters</a>
+  {% else %}
+    <button type="submit" class="btn btn-maroon">Filter</button>
+  {% endif %}
+</form>
+  {% if giftsets %}
+    <table class="table table-bordered mt-3">
+      <thead class="thead-dark">
+        <tr>
+          <th>Product Name</th>
+          <th>Giftset Name</th>
+          <th>Price</th>
+          <th>Stock</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for gift in page_obj %}
+        <tr>
+          <td>{{ gift.product.name }}</td>
+          <td>{{ gift.set_name }}</td>
+ 
+          <td>₹{{ gift.price }}</td>
+          <td>{{ gift.stock }}</td>
+          <td>
+            {% if gift.stock > 10 %}
+              <span class="badge bg-success">In Stock</span>
+            {% elif gift.stock > 0 %}
+              <span class="badge bg-warning text-dark">Low Stock</span>
+            {% else %}
+              <span class="badge bg-danger">Out of Stock</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No giftsets available.</p>
+  {% endif %}
+
+</div>
+{% endblock %}

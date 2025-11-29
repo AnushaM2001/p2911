@@ -1,0 +1,353 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% block title %}
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .btn-maroon {
+      background-color: #8b1538;
+      color: white;
+    }
+
+    .btn-maroon:hover {
+      background-color: #6e102c;
+      color: white;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f0f0f0;
+      border-color: transparent;
+    }
+
+    .badge-instock {
+      background-color: #28a745;
+    }
+
+    .badge-lowstock {
+      background-color: #fd7e14;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    .gear-icon {
+      cursor: pointer;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .toast-body{
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      font-size: 20px;
+      padding: 10px !important;
+    }
+  </style>
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <h3><strong>Flavours</strong></h3>
+    <p class="text-muted">Manage your Flavours</p>
+
+    <!-- Tabs -->
+    <!-- <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link active" href="#">Categories</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Products</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Brands</a>
+      </li>
+    </ul> -->
+
+    <!-- Search & Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+ {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>      <div>
+<button class="btn btn-maroon me-2" data-bs-toggle="modal" data-bs-target="#addflavorModal">+ Add Flavour</button>        <!-- <button class="btn btn-maroon">+ Add Products</button> -->
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="dashboard-card">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Flavour Name</th>
+            <th>GiF/Image</th>
+              <th>Created_at</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for flavor in page_obj %}
+          <tr data-flavor-id="{{ flavor.id }}">
+            <td>{{ flavor.name }}</td>
+            
+            {% if flavor.image %}
+            <td><img src="{{ flavor.image.url }}" alt="no image" height="100px" width="100px"></td>
+            {% endif %}
+            <td>{{ flavor.created_at|date:"D M j, g:iA" }}</td>
+            <!-- <td><span class="badge badge-instock">In stock</span></td> -->
+<td>
+  <div class="dropdown">
+    <img src="{% static 'images2/settings.png' %}" 
+         class="dropdown-toggle"
+         data-bs-toggle="dropdown"
+         aria-expanded="false"
+         style="cursor: pointer; width: 20px;">
+         
+    <ul class="dropdown-menu">
+      <li>
+        <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editflavorModal-{{ flavor.id }}" onclick="openEditFlavorModal({{ flavor.id }})">
+          ✏️ Update
+        </a>
+      </li>
+      <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteflavorModal-{{ flavor.id }}">
+    🗑️ Delete
+  </button>
+</li>
+
+    </ul>
+  </div>
+</td>
+
+          {% endfor %}
+         
+          
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Add Category Modal -->
+<div class="modal fade" id="addflavorModal" tabindex="-1" aria-labelledby="addflavorModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="addflavorForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addflavorModalLabel">Add Flavor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="flavorName" class="form-label">flavor Name</label>
+            <input type="text" class="form-control" id="flavorName" name="name" required>
+          </div>
+          
+          <div class="mb-3">
+            <label for="flavorGif" class="form-label">GIF/Image</label>
+            <input type="file" class="form-control" id="flavorGif" name="image">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-maroon">Add Flavour</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% for flavor in flavors %}
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editflavorModal-{{ flavor.id }}" tabindex="-1" aria-labelledby="editflavorModalLabel-{{ flavor.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editflavorModalLabel-{{ flavor.id }}">Edit flavor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="editflavorFormContainer-{{ flavor.id }}">
+        <!-- Form will be loaded here via AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteflavorModal-{{ flavor.id }}" tabindex="-1" aria-labelledby="deleteflavorModalLabel-{{ flavor.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteflavorModalLabel-{{ flavor.id }}">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the flavor <strong>{{ flavor.name }}</strong>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger delete-flavor-btn" data-flavor-id="{{ flavor.id }}">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+<!-- Toast Container -->
+<div class="position-fixed top-0 end-0 p-5" style="z-index: 9999">
+  <div id="flavorToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="flavorToastBody">
+        <!-- Message will be set by JS -->
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+<script>
+function showflavorToast(message, callback) {
+  const toastBody = document.getElementById('flavorToastBody');
+  toastBody.textContent = message;
+  const toastEl = document.getElementById('flavorToast');
+  const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+  toast.show();
+  if (callback) {
+    toastEl.addEventListener('hidden.bs.toast', function handler() {
+      callback();
+      toastEl.removeEventListener('hidden.bs.toast', handler);
+    });
+  }
+}
+// Add Category AJAX
+const addflavorForm = document.getElementById('addflavorForm');
+if (addflavorForm) {
+  addflavorForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var formData = new FormData(form);
+    fetch("{% url 'add_flavor' %}", {
+      method: "POST",
+      headers: {
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Dynamically add the new row to the table without reload
+        const tbody = document.querySelector('table tbody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${data.name}</td>
+          <td>${data.image ? `<img src="${data.image}" alt="no image" height="100px" width="100px">` : ''}</td>
+          <td>${data.created_at}</td>
+          <td>
+            <div class="dropdown">
+              <img src="{% static 'images2/settings.png' %}" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer; width: 20px;">
+              <ul class="dropdown-menu">
+                <li>
+                  <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editflavorModal-${data.id}" onclick="openEditFlavorModal(${data.id}); return false;">✏️ Update</a>
+                </li>
+                <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteflavorModal-${data.id}">🗑️ Delete</button>
+</li>
+              </ul>
+            </div>
+          </td>
+        `;
+        tbody.prepend(row);
+        // Close modal
+        var modal = bootstrap.Modal.getInstance(document.getElementById('addflavorModal'));
+        modal.hide();
+        form.reset();
+        showflavorToast('flavor added successfully!');
+      } else {
+        alert(data.error || "Failed to add flavor.");
+      }
+    })
+    .catch(() => alert("Something went wrong!"));
+  });
+}
+
+// Edit flavor AJAX
+window.openEditFlavorModal = function(flavorId) {
+  fetch(`/admin-panel/flavors/${flavorId}/update/`)
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById(`editflavorFormContainer-${flavorId}`).innerHTML = html;
+      // Attach submit event
+      const form = document.getElementById('editflavorForm');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var formData = new FormData(form);
+          fetch(`/admin-panel/flavors/${flavorId}/update/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Optionally update the row in the table dynamically
+              showflavorToast('Flavour updated successfully!', function() {
+                location.reload();
+              });
+            } else {
+              alert('Failed to update Flavour.');
+            }
+          })
+          .catch(() => alert('Something went wrong!'));
+        });
+      }
+    });
+}
+
+// Delete Category AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.delete-flavor-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const flavorId = btn.getAttribute('data-flavor-id');
+      btn.disabled = true;
+      fetch(`/admin-panel/flavors/${flavorId}/delete/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove the row from the table
+          const modal = btn.closest('.modal');
+          const row = document.querySelector(`tr[data-flavor-id='${flavorId}']`);
+          if (row) row.remove();
+          // Hide the modal
+          if (modal) bootstrap.Modal.getInstance(modal).hide();
+          showflavorToast('flavor deleted successfully!');
+        } else {
+          alert(data.error || 'Failed to delete flavor.');
+          btn.disabled = false;
+        }
+      })
+      .catch(() => {
+        alert('Something went wrong!');
+        btn.disabled = false;
+      });
+    });
+  });
+});
+</script>
+{% endblock content %}

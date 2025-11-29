@@ -1,0 +1,36 @@
+ <!-- admin_panel/category_form.html -->
+{% load crispy_forms_tags %}
+
+<form id="editvideoForm" enctype="multipart/form-data">
+  {% csrf_token %}
+   {{ form | crispy}}
+  
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-maroon">Update video</button>
+  </div>
+</form>
+<!-- <script>
+document.getElementById('editvideoForm')?.addEventListener('submit', function(e) {
+  e.preventDefault();
+  var form = e.target;
+  var formData = new FormData(form);
+  var videoId = '{{ video.id }}';
+  fetch(`/admin-panel/videos/${videoId}/update/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Failed to update video.');
+    }
+  })
+  .catch(() => alert('Something went wrong!'));
+});
+</script> -->

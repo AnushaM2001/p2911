@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h2>WebSocket Status:</h2>
+    <pre id="output">Connecting...</pre>
+
+    <script>
+        const socket = new WebSocket("ws://127.0.0.1:8000/ws/dashboard/");
+
+        socket.onopen = function () {
+            document.getElementById("output").innerText = "✅ Connected to WebSocket.";
+            socket.send(JSON.stringify({ test: "Hello from client" }));
+        };
+
+        socket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+        };
+
+        socket.onclose = function () {
+            document.getElementById("output").innerText = "❌ WebSocket disconnected.";
+        };
+
+        socket.onerror = function (error) {
+            console.error("WebSocket error:", error);
+            document.getElementById("output").innerText = "⚠️ WebSocket error occurred.";
+        };
+    </script>
+</body>
+</html>

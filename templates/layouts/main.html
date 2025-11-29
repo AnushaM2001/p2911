@@ -1,0 +1,545 @@
+{% load static %}
+{% load compress %}
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- ✅ COMPRESS ONLY LOCAL STATIC FILES -->
+{% compress css %}
+<link rel="stylesheet" href="{% static 'css/header.css' %}">
+<link rel="stylesheet" href="{% static 'css/footer.css' %}">
+{% endcompress %}
+
+
+<!-- ✅ SITE FAVICON -->
+<link rel="icon" type="image/png" href="{% static 'images2/hi1.png' %}" alt="jj">
+
+<!-- ✅ LOTTIE PLAYER (deferred) -->
+<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js" defer></script>
+
+
+    {% block extra_css %}{% endblock extra_css %}
+    <style>
+.whatsapp-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+.whatsapp-float img {
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+  animation: whatsapp-blink 1.2s infinite;
+}
+.whatsapp-float img:hover {
+  transform: scale(1.1);
+  animation: none; /* Stop blinking on hover */
+}
+@keyframes whatsapp-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+    </style>
+</head>
+<body>
+    <!-- Page Loader -->
+    <div id="loader" 
+     style="display:flex; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center;">
+    
+    <img src="{% static 'images2/PerfumeBottle.gif' %}" 
+         alt="Loading..."  loading="lazy"
+         style="width:100px; height:100px;" />
+</div>
+
+
+    {% include 'inc/header.html' %}
+
+    <!-- Perfume animation (autoplay on refresh) -->
+    <!-- <div id="animation-overlay">
+      <div id="animation-container">
+        <video autoplay muted loop playsinline>
+          <source src="{% static 'images2/PerfumeBottle.mp4' %}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div> -->
+    
+    {% block content %}
+    <!-- Your page content here -->
+    {% endblock content %}
+    
+  
+    <!-- 🔹 Purchase Popup -->
+<!-- 🔹 Purchase Popup -->
+<div id="purchase-popup" 
+     class="p-2 bg-white border rounded shadow d-flex align-items-center"
+     style="width:380px; display:none; z-index:9999;">
+  
+  <!-- Product Image -->
+  <img id="popup-image" src="https://via.placeholder.com/60" 
+       alt="Product" class="rounded me-2" 
+       style="width:60px; height:60px; object-fit:cover;">
+
+  <div style="flex:1">
+    <!-- Stars -->
+    <div class="mb-1" style="color:gold; font-size:14px;">★★★★★</div>
+    
+    <!-- Text with link -->
+    <p class="m-0 text-dark fw-semibold product-title">
+      <span id="popup-user"></span> from <span id="popup-location"></span> just purchased 
+      <a id="popup-link" href="#" class="text-decoration-none fw-bold text-primary"></a>
+    </p>
+
+    <!-- Prices -->
+    <div>
+      <span id="popup-price" class="badge bg-danger"></span>
+      <span id="popup-original" class="text-muted text-decoration-line-through ms-1"></span>
+    </div>
+
+    <small class="text-muted">Just now</small>
+  </div>
+</div>
+
+<style>
+#purchase-popup {
+  position: fixed;
+  bottom: 20px;
+  right: 20px; /* ✅ Now pinned to right corner */
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  display: none;
+  opacity: 0;
+  transform: translateX(120%); /* start off-screen on right */
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+#purchase-popup.show {
+  display: flex;
+  opacity: 1;
+  transform: translateX(0); /* slide into view */
+}
+
+/* ✅ Product name clamp */
+.product-title a {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;       /* max 2 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.3em;
+  max-height: 2.6em; /* match 2 lines */
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  #purchase-popup {
+    width: 70%!important;
+    right: 5%;
+    height:auto;
+    display : flex;
+    justify-content:start;
+  }
+}
+</style>
+
+
+<!-- 🔹 Discount Wheel Button -->
+<div id="discount-wheel">
+  <!-- Rotating wheel background -->
+  <div class="wheel-background"></div>
+  
+  <!-- Static tag image that bounces on click -->
+  <img src="{% static 'images2/tag.png' %}" class="tag" alt="Wheel" id="discount-tag" loading="lazy">
+  
+  <!-- Static tooltip that pops out -->
+  <span class="wheel-tooltip" id="discount-tooltip">Get Discount!</span>
+</div>
+
+<!-- 🔹 Discount Popup Form -->
+<div id="discount-form" class="d-none">
+  <div class="discount-form-content">
+    <span id="close-discount">&times;</span>
+    <h4 class="text-center mb-3">🎉 Get Your Discount</h4>
+
+    <!-- Success/Error message -->
+    <div id="discount-message" class="mb-3"></div>
+
+    <form id="discountForm" action="{% url 'sub_add' %}" method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-control" name="name" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" name="email" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Phone</label>
+        <input type="tel" class="form-control" name="phone_number" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Get Discount</button>
+    </form>
+  </div>
+</div>
+
+<style>
+/* ✅ Floating Wheel Container */
+#discount-wheel {
+  position: fixed;
+  bottom: 100px;
+  left: 20px;
+  width: 105px;
+  height: 106px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1025;
+}
+
+/* ✅ Rotating Wheel Background - ONLY THIS ROTATES */
+.wheel-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("{% static 'images2/wheel.jpg' %}");
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  animation: rotateWheel 3s linear infinite;
+  z-index: 1;
+}
+
+/* ✅ Static Tag Image - STAYS STILL */
+.tag {
+  width: 65px;
+  height: 60px;
+  position: relative;
+  z-index: 3;
+  
+}
+
+/* ✅ Tag Bounce Animation on Click */
+.tag:hover {
+  animation: tagBounce 0.6s ease;
+}
+
+/* ✅ Static Tooltip - STAYS STILL */
+.wheel-tooltip {
+  position: absolute;
+  left: 85px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  transform-origin: left center;
+  background: #007bff !important;
+  color: rgb(247, 246, 246) !important;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'Jomolhari' !important;
+  font-size: 20px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 2;
+}
+
+/* ✅ Tooltip Pop-out Animation - Triggered on HOVER */
+#discount-wheel:hover .wheel-tooltip {
+  opacity: 1;
+  animation: tooltipPopOut 0.8s ease forwards;
+}
+
+/* ✅ ANIMATIONS */
+
+/* Wheel rotation - continuous */
+@keyframes rotateWheel {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Tag bounce - on click */
+@keyframes tagBounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.3) rotate(-10deg); }
+  50% { transform: scale(1.1) rotate(5deg); }
+  70% { transform: scale(1.2) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Tooltip pop-out - on click */
+@keyframes tooltipPopOut {
+  0% { 
+    transform: translateY(-50%) scale(0) translateX(-10px);
+    opacity: 0;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+  30% { 
+    transform: translateY(-55%) scale(1.2) translateX(0);
+    opacity: 1;
+    box-shadow: 0 0 15px rgba(0,123,255,0.8);
+  }
+  50% { 
+    transform: translateY(-45%) scale(0.9) translateX(5px);
+    box-shadow: 0 0 20px rgba(0,123,255,0.9);
+  }
+  70% { 
+    transform: translateY(-52%) scale(1.1) translateX(-2px);
+    box-shadow: 0 0 18px rgba(0,123,255,0.7);
+  }
+  100% { 
+    transform: translateY(-50%) scale(1) translateX(0);
+    opacity: 1;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.5);
+  }
+}
+
+/* ✅ Responsive Styles */
+
+/* Small phones */
+@media (max-width: 480px) {
+  #discount-wheel {
+    width: 50px !important;
+    height: 50px !important;
+    bottom: 70px;
+    left: 15px;
+  }
+  .tag {
+    width: 20px;
+    height: 20px;
+  }
+  .wheel-tooltip {
+    left: 60px;
+    font-size: 16px;
+    padding: 4px 8px;
+  }
+}
+
+/* Tablets / small screens */
+@media (max-width: 768px) {
+  #discount-wheel {
+    width: 60px;
+    height: 60px;
+    bottom: 80px;
+    left: 18px;
+  }
+  .tag {
+    width: 24px;
+    height: 24px;
+  }
+  .wheel-tooltip {
+    left: 70px;
+    font-size: 18px;
+    padding: 5px 10px;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1200px) {
+  .wheel-tooltip {
+    left: 100px;
+  }
+}
+
+/* ✅ Popup Overlay */
+#discount-form {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+}
+
+.discount-form-content {
+  background: white;
+  color: #000;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  animation: popupShow 0.3s ease forwards;
+  position: relative;
+}
+
+#close-discount {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+@keyframes popupShow {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  let wheel = document.getElementById("discount-wheel");
+  let popup = document.getElementById("discount-form");
+  let closeBtn = document.getElementById("close-discount");
+  let tag = document.getElementById("discount-tag");
+  let form = document.getElementById("discountForm");
+  let messageDiv = document.getElementById("discount-message");
+
+  // Show popup on wheel click
+  wheel.addEventListener("click", function() {
+    tag.classList.add("bounce");
+    popup.classList.remove("d-none");
+    setTimeout(() => tag.classList.remove("bounce"), 600);
+  });
+
+  // Close popup
+  closeBtn.addEventListener("click", () => popup.classList.add("d-none"));
+  popup.addEventListener("click", e => { if (e.target === popup) popup.classList.add("d-none"); });
+
+  // AJAX form submission
+  form.addEventListener("submit", function(e) {
+    e.preventDefault();
+    let formData = new FormData(form);
+    let csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch("{% url 'sub_add' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+        form.reset();  // clear fields
+      } else {
+        messageDiv.innerHTML = `<div class="alert alert-danger">${data.error || 'Please check the form fields.'}</div>`;
+      }
+    })
+    .catch(err => {
+      messageDiv.innerHTML = `<div class="alert alert-danger">Something went wrong. Please try again.</div>`;
+      console.error("AJAX error:", err);
+    });
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    let reviews = [
+        {% for purchase in latest_purchases %}
+          {
+            name: "{{ purchase.product_name|escapejs }}",
+            price: "{{ purchase.product_price|escapejs }}",
+            original: "{{ purchase.product_original_price|escapejs }}",
+            image: "{{ purchase.product_image|escapejs }}",
+            location: "{{ purchase.location|escapejs }}",
+            user: "{{ purchase.user_name|escapejs }}",
+            url: "{{ purchase.product_url|escapejs }}"
+          },
+        {% endfor %}
+    ];
+
+    let popup = document.getElementById("purchase-popup");
+    let popupImage = document.getElementById("popup-image");
+    let popupUser = document.getElementById("popup-user");
+    let popupLocation = document.getElementById("popup-location");
+    let popupLink = document.getElementById("popup-link");
+    let popupPrice = document.getElementById("popup-price");
+    let popupOriginal = document.getElementById("popup-original");
+
+    let index = 0;
+
+    function showPopup() {
+        if (reviews.length === 0) return;
+
+        let review = reviews[index];
+
+        popupImage.src = review.image || "https://via.placeholder.com/60";
+        popupUser.innerText = review.user;
+        popupLocation.innerText = review.location;
+        popupLink.innerText = review.name;
+        popupLink.href = review.url;
+        popupPrice.innerText = "₹" + review.price;
+        popupOriginal.innerText = review.original ? "₹" + review.original : "";
+
+        // show popup
+        popup.classList.add("show");
+
+        // hide after 40s
+        setTimeout(() => {
+            popup.classList.remove("show");
+            index = (index + 1) % reviews.length;
+            setTimeout(showPopup, 35000);
+        }, 4000);
+    }
+
+    setTimeout(showPopup, 2000);
+});
+</script>
+
+
+    <!-- <script>
+      // Hide the animation overlay after the page is fully loaded
+      window.addEventListener('load', function() {
+        document.getElementById("animation-overlay").style.display = "none"; 
+      });
+    
+      // Hide the overlay after 3 seconds
+      setTimeout(() => {
+        document.getElementById("animation-overlay").style.display = "none";
+      }, 3000);
+    </script> -->
+
+<script>
+      // Hide loader when page is fully loaded
+      window.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('loader').style.display = 'none';
+      });
+    </script>
+  
+  
+    
+   
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" defer></script>
+
+
+    <!-- WhatsApp Floating Icon -->
+<a href="https://wa.me/9059069188" target="_blank" class="whatsapp-float">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" width="70" height="70">
+</a>
+
+
+
+  {% include 'inc/footer.html' %}
+
+</body>
+</html>

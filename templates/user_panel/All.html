@@ -1,0 +1,141 @@
+{% extends 'layouts/main.html' %}
+{% block title %}Products A-Z{% endblock %}
+
+{% block content %}
+<h2 style="text-align: center; margin: 20px 0; background-color:#6D3F0B; color: white; padding: 20px;">All Products</h2>
+
+<!-- Letter buttons -->
+<div class="letter-header">
+    <button type="button" onclick="showAll(this)">All</button>
+    {% for i in letters %}
+        <button type="button" onclick="filterLetter('{{ i }}', this)">{{ i }}</button>
+    {% endfor %}
+</div>
+
+<!-- Product Sections -->
+<div class="letter-section-wrapper">
+    {% for section in letter_sections %}
+    <div class="letter-section" data-letter="{{ section.letter }}">
+        <h3 class="letter-title">{{ section.letter }}</h3>
+        <ul>
+            {% for product in section.products %}
+                <li>
+                    {% if product.subcategory %}
+                        <a href="{% url 'products_list' %}?subcategory={{ product.subcategory.id }}">
+                            {{ product.name }}
+                        </a>
+                    {% else %}
+                        <a href="{% url 'products_list' %}?category={{ product.category.id }}">
+                            {{ product.name }}
+                        </a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- CSS -->
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #FAEBEA;
+    }
+    .letter-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 20px;
+        gap: 6px;
+    }
+    .letter-header button {
+        padding: 8px 14px;
+        border: 1px solid #ccc;
+        background: white;
+        cursor: pointer;
+        border-radius: 4px;
+        font-weight: bold;
+        transition: 0.2s;
+    }
+    .letter-header button.active,
+    .letter-header button:hover {
+        background: maroon;
+        color: white;
+        border-color: maroon;
+    }
+
+    .letter-section-wrapper {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    .letter-section {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 15px;
+    }
+    .letter-title {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: maroon;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 5px;
+    }
+    .letter-section ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .letter-section li {
+        margin: 6px 0;
+    }
+    .letter-section li a {
+        text-decoration: none;
+        color: #444;
+        font-size: 16px;
+        transition: 0.2s;
+    }
+    .letter-section li a:hover {
+        color: maroon;
+        font-weight: bold;
+    }
+</style>
+
+<!-- JS -->
+<script>
+    function filterLetter(letter, btn) {
+        // highlight active button
+        document.querySelectorAll('.letter-header button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // show only selected letter
+        document.querySelectorAll('.letter-section').forEach(section => {
+            if (section.getAttribute('data-letter') === letter) {
+                section.style.display = "block";
+            } else {
+                section.style.display = "none";
+            }
+        });
+    }
+
+    function showAll(btn) {
+        // highlight active button
+        document.querySelectorAll('.letter-header button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // show all
+        document.querySelectorAll('.letter-section').forEach(section => {
+            section.style.display = "block";
+        });
+    }
+
+    // Default: show All
+    document.addEventListener("DOMContentLoaded", function () {
+        showAll(document.querySelector(".letter-header button"));
+    });
+</script>
+
+{% endblock %}

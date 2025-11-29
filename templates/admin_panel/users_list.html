@@ -1,0 +1,249 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% block title %}
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .btn-maroon {
+      background-color: #8b1538;
+      color: white;
+    }
+
+    .btn-maroon:hover {
+      background-color: #6e102c;
+      color: white;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f0f0f0;
+      border-color: transparent;
+    }
+
+    .badge-instock {
+      background-color: #28a745;
+    }
+
+    .badge-lowstock {
+      background-color: #fd7e14;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    .gear-icon {
+      cursor: pointer;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .toast-body{
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      font-size: 20px;
+      padding: 10px !important;
+    }
+  </style>
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <h3><strong>Users</strong></h3>
+    <p class="text-muted">Manage your Users</p>
+
+    <!-- Tabs -->
+    <!-- <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link active" href="#">Categories</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Products</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Brands</a>
+      </li>
+    </ul> -->
+
+    <!-- Search & Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+ {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>      
+<a href="{% url 'export-user-summary' %}" class="btn btn-success">
+    Export Excel
+</a>
+    </div>
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+      {{ message }}
+    </div>
+  {% endfor %}
+{% endif %}
+
+    <!-- Table -->
+   <div class="dashboard-card">
+  <table class="table align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <!-- <th>Gender</th> -->
+        <th>Total Orders</th>
+
+        <th>Total Spent</th>
+        <th>Last Purchase</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for profile in page_obj %}
+      <tr data-profile-id="{{ profile.id }}">
+         <td>
+    {{ profile.Name|default:"-" }}
+    {% if not profile.user.is_active %}  {# or profile.is_blocked if custom field #}
+      <span class="badge bg-danger ms-2">Blocked</span>
+    {% endif %}
+  </td>
+        <td>{{ profile.user.username|default:"-"  }}</td>
+          <td>{{ profile.MobileNumber|default:"-"  }}</td>
+          <!-- <td>{{ profile.gender|default:"-" }}</td> -->
+         <td>
+          {{ profile.total_orders }}
+        </td>
+        
+      <td>{{ profile.total_spent }}</td>
+      <td>{{ profile.last_purchase|date:"Y-m-d" }}</td>
+
+ <td>
+  <div class="dropdown">
+    <img src="{% static 'images2/settings.png' %}" 
+         class="dropdown-toggle"
+         data-bs-toggle="dropdown"
+         aria-expanded="false"
+         style="cursor: pointer; width: 20px;">
+         
+    <ul class="dropdown-menu">
+    <li>
+  <button class="dropdown-item text-primary" data-bs-toggle="modal" data-bs-target="#viewprofileModal-{{ profile.id }}">
+    👁️ View Details
+  </button>
+</li>
+      <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteprofileModal-{{ profile.id }}">
+    🗑️ Block
+  </button>
+</li>
+
+    </ul>
+  </div>
+</td>
+               
+      </tr>
+       <div class="modal fade" id="viewprofileModal-{{ profile.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog" style="max-width: 336px;">
+    <div class="modal-content rounded-4 shadow-lg border-0">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">User Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body pt-0">
+        <!-- Customer Details -->
+        <div class="mb-3">
+          <h6 class="fw-semibold text-muted">Customer Details</h6>
+          <div class="d-flex flex-column gap-2">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Name:</span>
+              <span class="fw-medium">{{ profile.Name|default:"-"  }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Email:</span>
+              <span class="fw-medium">{{ profile.user.username|default:"-"  }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Phone:</span>
+              <span class="fw-medium">{{ profile.MobileNumber|default:"-"  }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Gender:</span>
+              <span class="fw-medium">{{ profile.gender|default:"-"  }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Purchase History -->
+        <div class="bg-light rounded-3 p-3">
+          <h6 class="fw-semibold text-muted mb-3">Purchase History</h6>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Total Orders</span>
+            <span class="fw-semibold">{{ profile.total_orders }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Total Spent</span>
+            <span class="fw-semibold">₹{{ profile.total_spent }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Last Purchase</span>
+            <span class="fw-semibold">{{ profile.last_purchase|date:"Y-m-d" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Block User Modal -->
+<div class="modal fade" id="deleteprofileModal-{{ profile.id }}" tabindex="-1" aria-labelledby="blockUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-danger">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger" id="blockUserModalLabel">Confirm Block</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to block this user?
+      </div>
+      <div class="modal-footer">
+        <form method="POST" action="{% url 'block_user' profile.user.id %}">
+          {% csrf_token %}
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Block</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+      {% endfor %}
+    
+
+ 
+
+         
+          
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+ 
+
+ 
+
+  <!-- Add Category Modal -->
+{% endblock content %}
