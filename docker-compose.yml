@@ -5,6 +5,8 @@ services:
     ports:
       - "6379:6379"
     restart: always
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -59,7 +61,6 @@ services:
       - DJANGO_SETTINGS_MODULE=PerfumeValley.settings
     restart: always
 
-# Define the volume
 volumes:
   static_volume:
-
+  redis_data:
