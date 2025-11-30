@@ -2475,7 +2475,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="product-info ">
         
                 <div class="product-name mb-2">{{ product.name }}</div>
-		<div class="product-price text-start">₹{{ product.min_price }} - ₹{{ product.max_price }}<span style="text-decoration: line-through; margin-right:5px;">₹{{ product.s_price }} - ₹{{ product.e_price }}</span></div>
+		<div class="product-price text-start"><span style="color: #DC3545;">₹{{ product.min_price }} - ₹{{ product.max_price }}</span><span style="text-decoration: line-through; margin-right:5px;">₹{{ product.s_price }} - ₹{{ product.e_price }}</span></div>
 
                 <span class="badge-rating">
                     <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>

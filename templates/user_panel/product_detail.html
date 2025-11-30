@@ -2239,37 +2239,33 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
     });</script>
-   
 <script>
-   // Function to update image1 when a bottle type is selected
-   function updateImage1(bottleType) {
-       // Find the selected bottle option button based on bottle type
-       const selectedButton = document.querySelector(`[data-bottle="${bottleType}"]`);
-       
-       if (selectedButton) {
-           // Retrieve the corresponding image URLs from data attributes
-           let imageUrl = '';
-           if (bottleType === 'Plastic_Bottle') {
-               imageUrl = selectedButton.dataset.plasticImage;
-           } else if (bottleType === 'Glass_Bottle') {
-               imageUrl = selectedButton.dataset.glassImage;
-           }
-   
-           // Update the product image displayed
-           if (imageUrl) {
-               document.querySelector('.main-image img').src = imageUrl;
-           }
-       }
-   }
-   
-   // Handle bottle selection clicks
-   document.querySelectorAll('.bottle-btn').forEach(btn => {
-       btn.addEventListener('click', () => {
-           const selectedBottle = btn.dataset.bottle;
-           updateImage1(selectedBottle);
-       });
-   });
-</script>   
+function updateImage1(bottleType) {
+    const selectedButton = document.querySelector(`[data-bottle="${bottleType}"]`);
+
+    if (selectedButton) {
+        let imageUrl = '';
+
+        if (bottleType === 'Plastic_Bottle') {
+            imageUrl = selectedButton.dataset.plasticImage;
+        } else if (bottleType === 'Glass_Bottle') {
+            imageUrl = selectedButton.dataset.glassImage;
+        }
+
+        if (imageUrl) {
+            document.getElementById('mainProductImage').src = imageUrl;
+        }
+    }
+}
+
+document.querySelectorAll('.bottle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const selectedBottle = btn.dataset.bottle;
+        updateImage1(selectedBottle);
+    });
+});
+</script>
+
 <!-----------------gift sets section start-->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
