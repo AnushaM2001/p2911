@@ -10,7 +10,8 @@ urlpatterns = [
     # path('subcategory/<int:subcategory_id>/', views.products, name='products'),
     path('product/<int:product_id>/', views.product_detail, name='product_detail'),
     path('add-to-cart/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
-   
+    path('sync-redis-cart/', views.sync_redis_cart, name='sync_redis_cart'),
+
 
     path('order/success/', views.order_success, name='order_success'),
     path('toggle-gift-wrap/', views.toggle_gift_wrap, name='toggle_gift_wrap'),

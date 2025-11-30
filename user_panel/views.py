@@ -193,6 +193,8 @@ def home1(request):
     best_selling = Product.objects.filter(is_best_seller=True).annotate(
     min_price=Min('variants__price'),
     max_price=Max('variants__price'),
+    s_price=Min('variants__original_price'),
+    e_price=Max('variants__original_price'),
     average_rating=Avg('reviews__rating'),      # 👈 avg rating
     review_count=Count('reviews')               # 👈 number of reviews
       ).order_by('-created_at')[:12]
@@ -200,12 +202,16 @@ def home1(request):
     new_arrival = Product.objects.filter(is_new_arrival=True).annotate(
         min_price=Min('variants__price'),
         max_price=Max('variants__price'),
+        s_price=Min('variants__original_price'),
+        e_price=Max('variants__original_price'),
         average_rating=Avg('reviews__rating'),      # 👈 avg rating
     review_count=Count('reviews') 
     ).order_by('-created_at')[:12]
     trending = Product.objects.filter(is_trending=True).annotate(
         min_price=Min('variants__price'),
         max_price=Max('variants__price'),
+        s_price=Min('variants__original_price'),
+        e_price=Max('variants__original_price'),
         average_rating=Avg('reviews__rating'),      # 👈 avg rating
     review_count=Count('reviews') 
     ).order_by('-created_at')[:12]
@@ -383,6 +389,8 @@ def toggle_wishlist(request):
 
     return JsonResponse({"error": "Invalid request"}, status=400)
 
+from django.db.models import Min, Max, FloatField
+from django.db.models.functions import Cast
 from django.core.paginator import Paginator
 def ajax_filter_products(request):
     page = int(request.GET.get('page', 1))
@@ -393,6 +401,7 @@ def ajax_filter_products(request):
     sizes = request.GET.getlist('size[]')
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
+   
 
     try:
         min_price = float(min_price) if min_price else None
@@ -449,6 +458,12 @@ def ajax_filter_products(request):
             gift_price_range = giftsets.filter(product=gs.product).aggregate(
                 min_price=Min('price'), max_price=Max('price')
             )
+            original_range = giftsets.annotate(
+                    original_float=Cast('original_price', FloatField())
+                  ).aggregate(
+    min_original=Min('original_float'),
+    max_original=Max('original_float')
+)
 
             product_data.append({
                 'id': gs.product.id,
@@ -457,6 +472,8 @@ def ajax_filter_products(request):
                 'price': float(gs.price),
                 'min_price': float(gift_price_range['min_price']) if gift_price_range['min_price'] else None,
                 'max_price': float(gift_price_range['max_price']) if gift_price_range['max_price'] else None,
+                'min_original_price': float(original_range['min_original']) if original_range['min_original'] else None,
+                'max_original_price': float(original_range['max_original']) if original_range['max_original'] else None,
                 'discounted_price': float(discounted_price) if discounted_price else None,
                 'offer_code': offer_applied.code if offer_applied else None,
                 'offer_start_time': offer_applied.start_date if offer_applied else None,
@@ -507,6 +524,12 @@ def ajax_filter_products(request):
 
             product_variants = ProductVariant.objects.filter(product=var.product)
             price_range = product_variants.aggregate(min_price=Min('price'), max_price=Max('price'))
+            original_range = product_variants.annotate(
+                     original_float=Cast('original_price', FloatField())
+                    ).aggregate(
+                min_original=Min('original_float'),
+                max_original=Max('original_float')
+              )
 
             product_data.append({
                 'id': var.product.id,
@@ -515,6 +538,8 @@ def ajax_filter_products(request):
                 'price': float(var.price),
                 'min_price': float(price_range['min_price']) if price_range['min_price'] else None,
                 'max_price': float(price_range['max_price']) if price_range['max_price'] else None,
+                'min_original_price': float(original_range['min_original']) if original_range['min_original'] else None,
+                'max_original_price': float(original_range['max_original']) if original_range['max_original'] else None,
                 'discounted_price': float(final_discounted_price) if final_discounted_price else None,
                 'offer_code': final_offer.code if final_offer else None,
                 'offer_start_time': final_offer.start_date if final_offer else None,
@@ -676,12 +701,16 @@ def product_detail(request, product_id):
     for p in related_products:
         variant_prices = p.variants.aggregate(
         min_variant_price=Min('price'),
-        max_variant_price=Max('price')
+        max_variant_price=Max('price'),
+        min_original_price=Min('original_price'),
+        max_original_price=Max('original_price')
         )
             # Get min/max price from giftsets
         giftset_prices = p.gift_sets.aggregate(
         min_gift_price=Min('price'),
-        max_gift_price=Max('price')
+        max_gift_price=Max('price'),
+        min_original_price=Min('original_price'),
+        max_original_price=Max('original_price')
         ) 
         # Combine all prices
         all_prices = [price for price in [
@@ -700,9 +729,26 @@ def product_detail(request, product_id):
               price_display = f"₹{min_price} - ₹{max_price}"
         else:
             price_display = "Price not available"
+
+        all_original_prices = [
+        variant_prices['min_original_price'],
+        variant_prices['max_original_price'],
+        giftset_prices['min_original_price'],
+        giftset_prices['max_original_price'],
+    ]
+        all_original_prices = [x for x in all_original_prices if x is not None]
+        if all_original_prices:
+            min_original_price = min(all_original_prices)
+            max_original_price = max(all_original_prices)
+           
+        else:
+            min_original_price = None
+            max_original_price = None
         related_products_with_price.append({
         'product': p,
         'price_display': price_display,
+        'min_original_price': min_original_price,
+        'max_original_price': max_original_price,
     })
     # Best Selling Products
     
@@ -741,86 +787,129 @@ def add_to_cart(request, product_id):
         variant_id = request.POST.get('variant_id')
         gift_set_id = request.POST.get('gift_set_id')
         selected_price = request.POST.get('selected_price')
-        selected_flavours = request.POST.get('selected_flavours')  # No []
+        selected_flavours = request.POST.get('selected-flavours', '')
 
-        # Redis cart key
+        if quantity < 1:
+            raise ValueError("Quantity must be at least 1")
+        if not variant_id and not gift_set_id:
+            raise ValueError("Please select a product variant or gift set")
+
         cart_key = f"cart:{request.user.id}"
 
-        # Determine item type and price
         if gift_set_id:
             item_key = f"giftset:{gift_set_id}"
-            gift_set = GiftSet.objects.get(id=gift_set_id)
+            gift_set = get_object_or_404(GiftSet, id=gift_set_id)
             price = float(selected_price) if selected_price else float(gift_set.price)
         elif variant_id:
             item_key = f"variant:{variant_id}"
-            variant = ProductVariant.objects.get(id=variant_id)
+            variant = get_object_or_404(ProductVariant, id=variant_id)
             price = float(variant.price)
         else:
             item_key = f"product:{product_id}"
             price = float(product.price)
 
-        # --- Database update ---
         cart_filter = {
             'user': request.user,
             'product': product,
             'product_variant_id': variant_id if variant_id else None,
             'gift_set_id': gift_set_id if gift_set_id else None
         }
+
         if selected_flavours:
             cart_filter['selected_flavours'] = selected_flavours
 
-        cart_item, created = Cart.objects.get_or_create(
-            defaults={'quantity': quantity, 'price': price, 'selected_flavours': selected_flavours},
-            **cart_filter
-        )
+        cart_item = Cart.objects.filter(**cart_filter).first()
 
-        if not created:
-            # If already exists, increment quantity
+        if cart_item:
             cart_item.quantity += quantity
             cart_item.price = price
-            cart_item.selected_flavours = selected_flavours
+            if selected_flavours:
+                cart_item.selected_flavours = selected_flavours
             cart_item.save()
+        else:
+            cart_item = Cart.objects.create(
+                user=request.user,
+                product=product,
+                product_variant_id=variant_id if variant_id else None,
+                gift_set_id=gift_set_id if gift_set_id else None,
+                quantity=quantity,
+                price=price,
+                selected_flavours=selected_flavours or ''
+            )
 
-        # --- Redis update ---
         current_item = r.hget(cart_key, item_key)
         current_quantity = json.loads(current_item)['quantity'] if current_item else 0
         new_quantity = current_quantity + quantity
+
         item_data = {
             'product_id': product_id,
             'variant_id': variant_id,
             'gift_set_id': gift_set_id,
             'quantity': new_quantity,
             'price': price,
-            'selected_flavours': selected_flavours,
+            'selected_flavours': selected_flavours or '',
             'updated_at': time.time()
         }
-        r.hset(cart_key, item_key, json.dumps(item_data))
-        r.publish(f"cart_updates:{request.user.id}", json.dumps({
-            'action': 'update',
-            'item_key': item_key,
-            'quantity': new_quantity,
-            'cart_count': r.hlen(cart_key)
-        }))
 
-        # ✅ Return response
+        r.hset(cart_key, item_key, json.dumps(item_data))
+        r.publish(
+            f"cart_updates:{request.user.id}",
+            json.dumps({
+                'action': 'update',
+                'item_key': item_key,
+                'quantity': new_quantity,
+                'cart_count': r.hlen(cart_key)
+            })
+        )
+
+        # 🟩 NEW — Build complete sidebar data
+        cart_items_db = Cart.objects.filter(user=request.user)
+
+        cart_items_list = []
+        subtotal = 0
+
+        for item in cart_items_db:
+            item_total = item.price * item.quantity
+            subtotal += item_total
+
+            cart_items_list.append({
+                "id": item.id,
+                "name": item.product.name,
+                "price": float(item.price),
+                "quantity": item.quantity,
+                "image": item.product.image1.url if item.product.image1 else "",
+                "offer": f"{item.product.offer.percentage}% Off" if hasattr(item.product, "offer") else ""
+            })
+
+        delivery_charge = item.product.delivery_charges if subtotal > 0 else 0
+        platform_fee = item.product.platform_fee if subtotal > 0 else 0
+        total = subtotal + delivery_charge + platform_fee
+
+        # 🟩 NEW — Return full JSON needed for sidebar
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'status': 'success',
                 'message': 'Item added to cart successfully!',
                 'cart_count': r.hlen(cart_key),
-                'item_id': item_key,
-                'selected_flavours': selected_flavours,
-                'redirect_url': reverse('view_cart')
+
+                'cart_items': cart_items_list,
+                'order_summary': {
+                    "subtotal": subtotal,
+                    "delivery": delivery_charge,
+                    "platform_fee": platform_fee,
+                    "total": total
+                }
             })
 
         return redirect('view_cart')
 
     except Exception as e:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-        messages.error(request, str(e))
-        return redirect('product_detail', product_id=product_id)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
+
+    
+from decimal import Decimal
+from django.db.models import Sum
 
 @require_POST
 @login_required
@@ -903,11 +992,74 @@ def update_cart_item(request, item_id):
             'message': str(e)
         }, status=400)
 
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import redis, json
+from decimal import Decimal
+
+@login_required
+def sync_redis_cart(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST only allowed"}, status=405)
+
+    try:
+        r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB)
+        redis_key = f"cart:{request.user.id}"
+        body = json.loads(request.body)
+
+        item_key = body.get("key")
+        new_qty = int(body.get("quantity", 1))
+
+        existing = r.hget(redis_key, item_key)
+        if existing:
+            data = json.loads(existing)
+            data["quantity"] = new_qty
+            r.hset(redis_key, item_key, json.dumps(data))
+        else:
+            # if item missing create minimal entry
+            r.hset(redis_key, item_key, json.dumps({"quantity": new_qty, "product_id": item_key}))
+        
+        # ✅ Forces Redis to respond updated values so removed items don't affect total
+        r.save()
+
+        # ✅ Return updated totals so UI summary is accurate and doesn't flash original values
+        cart_items = Cart.objects.filter(user=request.user)
+        subtotal = sum(Decimal(i.price) * i.quantity for i in cart_items)
+        delivery = sum(Decimal(i.product.delivery_charges or 0) for i in cart_items)
+        platform_fee = sum(Decimal(i.product.platform_fee or 0) for i in cart_items)
+        total_items = cart_items.aggregate(total=Sum('quantity'))['total'] or 0
+
+        return JsonResponse({
+            "status": "success",
+            "cart_items": list(cart_items.values()),
+            "order_summary": {
+                "subtotal": float(subtotal),
+                "delivery": float(delivery),
+                "platform_fee": float(platform_fee),
+                "total": float(subtotal + delivery + platform_fee)
+            },
+            "cart_count": total_items,
+            "item_count": total_items
+        })
+
+    except Exception as e:
+        return JsonResponse({"status":"error","message":str(e)}, status=400)
+
+
+
+
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+import redis
+import json
+
+
 import logging
 
 logger = logging.getLogger(__name__)
-
-
 
 @require_POST
 @login_required
@@ -2344,4 +2496,5 @@ def write_review(request, product_id):
         'form': form,
         'product': product,
     })
+
 

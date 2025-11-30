@@ -343,7 +343,7 @@ html, body {
         {% endif %}
         {% else %}
             <span class="price-text">₹{{ item.product_variant.price }}</span>
-            <span class="ms-2 strike">₹{{ item.original_price }}</span>
+            <span class="ms-2 strike">₹{{ item.product_variant.original_price }}</span>
             <span class="ms-2 discount">{{ item.product.offer }}</span>
           {% endif %}
         

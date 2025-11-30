@@ -924,7 +924,12 @@
     <!-- Breadcrumb -->
     <div class="custom-breadcrumb">
         <span class="text-muted">Home</span> >
-        <span class="text-muted">Arabic Perfume</span> >
+        {% if product.category.name %}
+        <span class="text-muted">{{ product.category.name }}</span> >
+        {% endif %}
+        {% if product.subcategory.name %}
+<span class="text-muted">{{ product.subcategory.name }}</span> >
+        {% endif %}
         <span class="text-muted">{{ product.name }}</span>
     </div>
 
@@ -1006,7 +1011,8 @@
     {% else %}
     <div class="selection-group">
         <h5>Select Size</h5>
-        <div class="options-container" id="size-buttons" data-category="{{ product.category.name|lower }}">
+            <div class="d-flex flex-wrap gap-2" id="size-buttons" data-category="{{ product.category.name|lower }}" data-subcategory="{{ product.subcategory.name|lower }}">
+
             {% for variant in variants %}
             <div class="size-option"
                  data-size="{{ variant.size }}"
@@ -1038,11 +1044,12 @@
     </div>
     {% else %}
     <div class="selection-group">
-        {% if product.category.name|lower not in "incense,attars" %}
+       {% if product.category.name|lower not in "incense, attars" and "attar" not in product.subcategory.name|lower %}
+
         <h5 class="bottle-heading">Select Bottle Type</h5>
         <div class="options-container" id="bottle-buttons">
             {% for variant in unique_bottle_variants %}
-            <div class="bottle-option bottle-btn {% if not variant.in_stock %}disabled{% endif %}" 
+            <div class="bottle-option bottle-btn {% if variant.stock <= 0 %}disabled{% endif %}" 
                  data-bottle="{{ variant.bottle_type }}" 
                  {% if variant.product.plastic_image %}data-plastic-image="{{ variant.product.plastic_image.url }}"{% endif %}
                  {% if variant.product.glass_image %}data-glass-image="{{ variant.product.glass_image.url }}"{% endif %}>
@@ -1792,7 +1799,7 @@ function recalcCartSummaryFromDOM() {
         <div class="product-info">
           <div class="product-name mb-2">{{ x.product.name }}</div>
           {% if x.price_display %}
-          <div class="product-price">{{ x.price_display }}</div>
+          <div class="product-price">{{ x.price_display }}<span style="text-decoration: line-through;">{{ x.min_original_price}}-{{max_original_price}}</span></div>
           {% endif %}
           <span class="badge-rating">
             <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
@@ -2031,137 +2038,78 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+    {{ variants|json_script:"variantData" }}
 
    <script>
 document.addEventListener("DOMContentLoaded", function () {
-        
-
     const variants = JSON.parse(document.getElementById("variantData").textContent);
-    const oriprice=document.getElementById('normal-price')
     const bottleBtns = document.querySelectorAll('.bottle-btn');
     const sizeContainer = document.getElementById('size-buttons');
-    const priceDisplay = document.getElementById('variant-price');
     const variantIdInput = document.getElementById('variant-id');
     const quantityInput = document.getElementById("quantity");
-    console.log("VARIANTS DATA:", variants);
+
     let selectedBottle = null;
     let selectedSize = null;
     let currentVariant = null;
 
     function updatePrice() {
-        if (currentVariant) {
-            const priceEl = document.getElementById("variant-price");
-            const originalPriceEl = document.getElementById("original-price");
-            const discountEl = document.getElementById("discount-percentage");
-            const savingsEl = document.getElementById("you-save");
-            const realpriceEl = document.getElementById("normal-price");
+        if (!currentVariant) return;
 
-            const original = parseFloat(currentVariant.price);
-            const discounted = parseFloat(currentVariant.discounted_price);
-            const real= parseFloat(currentVariant.original_price);
-            // CASE 1: Discount exists
-            if (discounted && discounted < original) {
-                priceEl.innerText = `₹${discounted}`;
+        const priceEl = document.getElementById("variant-price");
+        const originalPriceEl = document.getElementById("original-price");
+        const discountEl = document.getElementById("discount-percentage");
+        const savingsEl = document.getElementById("you-save");
+        const realpriceEl = document.getElementById("normal-price");
+
+        const original = parseFloat(currentVariant.price);
+        const discounted = parseFloat(currentVariant.discounted_price);
+        const real = parseFloat(currentVariant.original_price);
+
+        // CASE 1: Discount exists
+        if (discounted && discounted < original) {
+            if (priceEl) priceEl.innerText = `₹${discounted}`;
+            if (originalPriceEl) {
                 originalPriceEl.innerText = `₹${original}`;
                 originalPriceEl.style.display = "inline-block";
-
-                const discountAmount = original - discounted;
-                // savingsEl.innerText = `save: ₹${discountAmount.toFixed(2)}`;
-                // savingsEl.style.display = "inline-block";
-
-                if (currentVariant.offer && currentVariant.offer.percentage > 0) {
-                   
-                    const percent = parseInt(currentVariant.offer.percentage, 10);
-                    discountEl.innerText = `(${percent}% OFF)`;
-                    discountEl.style.display = "inline-block";
-                    realpriceEl.innerText = "";
-                    realpriceEl.style.display = "none";
-
-                } else {
-                    discountEl.innerText = "";
-                    discountEl.style.display = "none";
-                }
-
-            // CASE 2: No discount
-            } else {
-                priceEl.innerText = `₹${original}`;
-                originalPriceEl.innerText = "";// Clear strikethrough price
-                originalPriceEl.style.display = "";
-                // oriprice.style.display = "inline-block"; // show normal price
-
+            }
+            if (discountEl && currentVariant.offer && currentVariant.offer.percentage > 0) {
+                discountEl.innerText = `(${currentVariant.offer.percentage}% OFF)`;
+                discountEl.style.display = "inline-block";
+            } else if (discountEl) {
                 discountEl.innerText = "";
                 discountEl.style.display = "none";
-                realpriceEl.innerText = `₹${real}`;  // Show normal price
+            }
+            if (realpriceEl) {
+                realpriceEl.innerText = "";
+                realpriceEl.style.display = "none";
+            }
+            if (savingsEl) {
+                savingsEl.innerText = "";
+                savingsEl.style.display = "none";
+            }
+        } else { // CASE 2: No discount
+            if (priceEl) priceEl.innerText = `₹${original}`;
+            if (originalPriceEl) {
+                originalPriceEl.innerText = "";
+                originalPriceEl.style.display = "none";
+            }
+            if (discountEl) {
+                discountEl.innerText = "";
+                discountEl.style.display = "none";
+            }
+            if (realpriceEl) {
+                realpriceEl.innerText = `₹${real}`;
                 realpriceEl.style.display = "block";
-
+            }
+            if (savingsEl) {
                 savingsEl.innerText = "";
                 savingsEl.style.display = "none";
             }
         }
     }
 
-    function renderSizeButtons() {
-        sizeContainer.innerHTML = '';
-        const category = sizeContainer.dataset.category?.replace(/\s+/g, '').toLowerCase();
-        const subcategoryName = sizeContainer.dataset.subcategory?.toLowerCase() || "";
-        const isAttar = subcategoryName.includes("attar") || category === 'attars';        
-        let filtered = [];
-
-        if (category === 'incense' || isAttar ) {
-            // Ignore bottle type for incense
-            filtered = variants;
-            // Optionally, hide bottle buttons
-            bottleBtns.forEach(btn => btn.style.display = 'none');
-            const bottleheading=document.querySelector('.bottle-heading');
-            if (bottleheading) {
-                bottleheading.style.display = 'none'; // Hide the bottle heading
-            }
-        } else {
-            // Show bottle buttons and filter by selected bottle
-            bottleBtns.forEach(btn => btn.style.display = 'inline-block');
-            filtered = variants.filter(v => v.bottle_type === selectedBottle);
-        }
-
-        const uniqueSizes = [...new Map(filtered.map(item => [item.size, item])).values()];
-
-        uniqueSizes.forEach(variant => {
-            const btn = document.createElement('div');
-            btn.className = 'size-option';
-            btn.innerText = `${variant.size}`;
-           if (!variant.in_stock) {
-                // Mark as disabled if out of stock
-                btn.classList.add('disabled');
-                btn.style.pointerEvents = 'none';
-                btn.style.opacity = '0.5';
-            } else {
-                btn.onclick = () => {
-                    selectedSize = variant.size;
-                    currentVariant = variant;
-                    variantIdInput.value = variant.id;
-                    updatePrice();
-                    highlightActiveSize(variant.size);
-                    setCurrentVariant(variant);
-
-                };
-            }
-         
-
-            
-            sizeContainer.appendChild(btn);
-           
-        });
-
-        if (uniqueSizes.length > 0) {
-    // Find first variant that has an offer
-    let variantToSelect = uniqueSizes.find(v => v.discounted_price) || uniqueSizes[0];
-
-    selectedSize = variantToSelect.size;
-    currentVariant = variantToSelect;
-    variantIdInput.value = variantToSelect.id;
-    updatePrice();
-    highlightActiveSize(variantToSelect.size);
-}
-
+    function normalizeBottle(name) {
+        return name.replace(/[_\s]/g, "").toLowerCase();
     }
 
     function highlightActiveBottle() {
@@ -2171,20 +2119,74 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function highlightActiveSize(size) {
-        const sizeBtns = document.querySelectorAll('.size-option');
-        sizeBtns.forEach(btn => {
-            const btnSize = btn.innerText.trim(); // Extract "100ml" or "100grms"
-            btn.classList.toggle('active', btnSize === size);
+        document.querySelectorAll('.size-option').forEach(btn => {
+            if (!btn.dataset.size) return;
+            btn.classList.toggle('active', btn.dataset.size.trim().toLowerCase() === size.trim().toLowerCase());
         });
     }
 
-    // Only listen to bottle button clicks if not incense or attars
+    function renderSizeButtons() {
+        sizeContainer.innerHTML = '';
+
+        const category = sizeContainer.dataset.category?.replace(/\s+/g, '').toLowerCase();
+        const subcategoryName = sizeContainer.dataset.subcategory?.toLowerCase() || "";
+        const isAttar = subcategoryName.includes("attar") || category === 'attars';
+
+        let filtered = [];
+
+        if (category === 'incense' || isAttar) {
+            filtered = variants;
+            bottleBtns.forEach(btn => btn.style.display = 'none');
+        } else {
+            bottleBtns.forEach(btn => btn.style.display = 'inline-block');
+            filtered = variants.filter(v =>
+                normalizeBottle(v.bottle_type) === normalizeBottle(selectedBottle)
+            );
+        }
+
+        const uniqueSizes = [...new Map(filtered.map(item => [item.size, item])).values()];
+
+        uniqueSizes.forEach(variant => {
+            const btn = document.createElement('div');
+            btn.className = 'size-option';
+            btn.innerText = variant.size;
+            btn.dataset.size = variant.size;
+
+            if (!variant.in_stock) {
+                btn.classList.add('disabled');
+                btn.style.pointerEvents = 'none';
+                btn.style.opacity = '0.5';
+            } else {
+                btn.addEventListener('click', () => {
+                    selectedSize = variant.size;
+                    currentVariant = variant;
+                    variantIdInput.value = variant.id;
+                    updatePrice();
+                    highlightActiveSize(variant.size);
+                });
+            }
+
+            sizeContainer.appendChild(btn);
+        });
+
+        // Select first available size by default
+        if (uniqueSizes.length > 0) {
+            const firstVariant = uniqueSizes[0];
+            selectedSize = firstVariant.size;
+            currentVariant = firstVariant;
+            variantIdInput.value = firstVariant.id;
+            updatePrice();
+            highlightActiveSize(firstVariant.size);
+        }
+    }
+
+    // Bottle button click
     bottleBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const category = sizeContainer.dataset.category?.replace(/\s+/g, '').toLowerCase();
             const subcategoryName = sizeContainer.dataset.subcategory?.toLowerCase() || "";
             const isAttar = subcategoryName.includes("attar") || category === 'attars';
-            if (category === 'incense' || isAttar ) return;
+            if (category === 'incense' || isAttar) return;
 
             selectedBottle = btn.dataset.bottle.toString();
             highlightActiveBottle();
@@ -2192,19 +2194,20 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    document.getElementById("increase").addEventListener("click", () => {
+    // Quantity buttons
+    document.getElementById("increase")?.addEventListener("click", () => {
         quantityInput.value = parseInt(quantityInput.value) + 1;
         updatePrice();
     });
 
-    document.getElementById("decrease").addEventListener("click", () => {
+    document.getElementById("decrease")?.addEventListener("click", () => {
         if (parseInt(quantityInput.value) > 1) {
             quantityInput.value = parseInt(quantityInput.value) - 1;
             updatePrice();
         }
     });
 
-    quantityInput.addEventListener("input", updatePrice);
+    quantityInput?.addEventListener("input", updatePrice);
 
     // Initialize first load
     if (bottleBtns.length > 0) {
@@ -2363,89 +2366,127 @@ document.addEventListener('DOMContentLoaded', function () {
 
 </script>
 <script>
-document.getElementById('add-to-cart-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    const selectedFlavours = Array.from(document.querySelectorAll('.gift-option.active'))
-        .map(opt => opt.getAttribute('data-flavour-id'));
-    document.getElementById('selected-flavours').value = selectedFlavours.join(',');
-    const form = e.target;
-    const formData = new FormData(form);
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById('add-to-cart-form');
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    const quantityInput = document.getElementById("quantity");
 
-    fetch("{% url 'add_to_cart' product.id %}", {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: formData
-    })
-        .then(response => response.json())
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        // Gather selected flavours
+        const selectedFlavours = Array.from(document.querySelectorAll('.gift-option.active'))
+            .map(opt => opt.getAttribute('data-flavour-id'));
+        document.getElementById('selected-flavours').value = selectedFlavours.join(',');
+
+        // CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        // Form data
+        const formData = new FormData(form);
+
+        console.log("Submitting Add to Cart Form:");
+        for (let [key, value] of formData.entries()) {
+            console.log(key, value);
+        }
+
+        // URL from Django template
+        const addToCartUrl = "{% url 'add_to_cart' product.id %}";
+
+        fetch(addToCartUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                console.error("Server returned non-200 response:", response.status);
+                throw new Error("Server error");
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log("Add to Cart Response:", data);
+
             const notification = document.getElementById('cart-notification');
-            const messageSpan = notification.querySelector('.notification-message');
-            const productInfo = notification.querySelector('.product-info');
-            const progressBar = notification.querySelector('.progress-bar');
+            const messageSpan = notification?.querySelector('.notification-message');
+            const productInfo = notification?.querySelector('.product-info');
+            const progressBar = notification?.querySelector('.progress-bar');
 
             if (data.status === 'success') {
-                // Set message and product info
-                messageSpan.textContent = data.message || 'Added to Cart';
-                if (data.product_name) {
+                // Show success message
+                if (messageSpan) messageSpan.textContent = data.message || 'Added to Cart';
+                if (productInfo && data.cart_items?.length > 0) {
+                    const firstItem = data.cart_items[0];
                     productInfo.innerHTML = `
-                        <img src="${data.product_image || ''}" alt="${data.product_name}" class="product-image" style="width: 50px; height: 50px; object-fit: cover; margin-right: 10px;">
-                        <div style="text-align: left;">
-                            <div class="product-name">${data.product_name}</div>
-                            ${data.product_price ? `<div class="product-price">${data.product_price}</div>` : ''}
+                        <img src="${firstItem.image || ''}" alt="${firstItem.name}" style="width:50px;height:50px;object-fit:cover;margin-right:10px;">
+                        <div style="text-align:left;">
+                            <div class="product-name">${firstItem.name}</div>
+                            <div class="product-price">₹${firstItem.price}</div>
                         </div>
                     `;
                 }
 
-                // Reset and start progress bar animation
-                progressBar.style.transition = 'none';
-                progressBar.style.width = '100%';
-                void progressBar.offsetWidth; // Trigger reflow
-                progressBar.style.transition = 'width 4s linear';
-                progressBar.style.width = '0%';
+                // Progress bar animation
+                if (progressBar) {
+                    progressBar.style.transition = 'none';
+                    progressBar.style.width = '100%';
+                    void progressBar.offsetWidth; // trigger reflow
+                    progressBar.style.transition = 'width 4s linear';
+                    progressBar.style.width = '0%';
+                }
 
                 // Show notification
-                notification.classList.remove('d-none');
-                notification.style.display = 'flex';
-                setTimeout(() => {
-                    notification.classList.add('show');
-                }, 10);
+                if (notification) {
+                    notification.classList.remove('d-none');
+                    notification.style.display = 'flex';
+                    setTimeout(() => notification.classList.add('show'), 10);
 
-                // Hide notification after 4s
-                setTimeout(() => {
-                    notification.classList.remove('show');
                     setTimeout(() => {
-                        notification.classList.add('d-none');
-                        notification.style.display = 'none';
-                        // Reset progress bar
-                        progressBar.style.transition = 'none';
-                        progressBar.style.width = '100%';
-                    }, 300);
-                }, 4000);
+                        notification.classList.remove('show');
+                        setTimeout(() => {
+                            notification.classList.add('d-none');
+                            notification.style.display = 'none';
+                            if (progressBar) {
+                                progressBar.style.transition = 'none';
+                                progressBar.style.width = '100%';
+                            }
+                        }, 300);
+                    }, 4000);
+                }
 
                 // Update cart count badge
-               const cartCount = document.getElementById('cart-count');
-            if (cartCount) {
-                cartCount.textContent = data.cart_count;
+                const cartCount = document.getElementById('cart-count');
+                if (cartCount) cartCount.textContent = data.cart_count;
+
+            } else if (data.review_required) {
+                let modal = new bootstrap.Modal(document.getElementById("reviewModal"));
+                modal.show();
+            } else {
+                console.error("Add to cart failed:", data.message);
+                alert(data.message || "Failed to add item to cart.");
             }
+        })
+        .catch(error => {
+            console.error("Add to Cart Error:", error);
+            alert("Failed to add item to cart. Check console for details.");
+        });
+    });
 
-        } else if (data.review_required) {
-            // 🚀 open modal
-            let modal = new bootstrap.Modal(document.getElementById("reviewModal"));
-            modal.show();
-
-        } else {
-            alert(data.message || "Something went wrong");
+    // Quantity buttons
+    document.getElementById("increase")?.addEventListener("click", () => {
+        quantityInput.value = parseInt(quantityInput.value || 1) + 1;
+    });
+    document.getElementById("decrease")?.addEventListener("click", () => {
+        if (parseInt(quantityInput.value) > 1) {
+            quantityInput.value = parseInt(quantityInput.value) - 1;
         }
-    })
-    .catch(error => {
-        console.error('Add to cart failed:', error);
-        alert("Failed to add item to cart. Please try again.");
     });
 });
 </script>
-
  
 
 

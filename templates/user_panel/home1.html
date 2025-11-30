@@ -2475,7 +2475,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="product-info ">
         
                 <div class="product-name mb-2">{{ product.name }}</div>
-                <div class="product-price text-start ">₹{{ product.min_price }} - ₹{{ product.max_price }}</div>
+		<div class="product-price text-start">₹{{ product.min_price }} - ₹{{ product.max_price }}<span style="text-decoration: line-through; margin-right:5px;">₹{{ product.s_price }} - ₹{{ product.e_price }}</span></div>
+
                 <span class="badge-rating">
                     <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
                     {{ product.average_rating|default:"0.0"|floatformat:1 }} | {{ product.review_count|default:0 }}
@@ -2722,7 +2723,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="product-info ">
                 
                         <div class="product-name mb-2">{{ i.name }}</div>
-                        <div class="product-price text-start ">₹{{ i.min_price }} - ₹{{ i.max_price }}</div>
+			<div class="product-price text-start ">₹{{ i.min_price }} - ₹{{ i.max_price }}<span style="text-decoration: line-through; margin-right:5px;">₹{{ i.s_price }} - ₹{{ i.e_price }}</span></div>
                          <span class="badge-rating">
                             <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
                             {{ i.average_rating|default:"0.0"|floatformat:1 }} | {{ i.review_count|default:0 }}
@@ -2988,7 +2989,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="product-info ">
                 
                         <div class="product-name mb-2">{{ trend.name }}</div>
-                        <div class="product-price text-start ">₹{{ trend.min_price }} - ₹{{ trend.max_price }}</div>
+			<div class="product-price text-start ">₹{{ trend.min_price }} - ₹{{ trend.max_price }}<span style="text-decoration: line-through; margin-right:8px;">₹{{ trend.s_price }} - ₹{{ trend.e_price }}</span></div>
                          <span class="badge-rating">
                             <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
                             {{ trend.average_rating|default:"0.0"|floatformat:1 }} | {{ trend.review_count|default:0 }}

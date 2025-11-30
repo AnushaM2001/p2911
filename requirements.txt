@@ -22,3 +22,5 @@ reportlab==3.6.12
 whitenoise==6.9.0
 mysqlclient
 django-compressor
+openpyxl
+

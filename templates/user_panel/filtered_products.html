@@ -606,6 +606,19 @@ html, body {
     padding:10px;
     background-color:#FBF0EF ;
 }
+.loader {
+  border: 6px solid #f3f3f3;
+  border-top: 6px solid #FF6B6B; /* spinner color */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  margin: auto;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
 </style>
 {% endblock extra_css %}
@@ -768,11 +781,8 @@ html, body {
                     <div class="container-fluid px-0">
                         <div class="row g-4 mb-5 mt-2" id="productGrid">   
     </div>
-   <div id="infiniteLoader" style="display:none; text-align:center; margin:20px 0;">
-    <img 
-        src="data:image/gif;base64,R0lGODlhEAAQAPIAAP///wAAAMLCwkJCQv///wAAACH5BAAAAAAALAAAAAAQABAAAAM6CLrc/jDKSau9OOvNu/9gKI5kaZ5oqq5s677/f8AAOw==" 
-        width="60" 
-        alt="Loading...">
+    <div id="infiniteLoader" style="display:none; text-align:center; margin:20px 0;">
+    <div class="loader"></div>
 </div>
 
 
@@ -962,7 +972,8 @@ function renderProduct(prod) {
               <span class="discount-percentage">${discountPercentage}% OFF</span>
             </div>` : `
             <div class="d-flex align-items-center mb-2">
-              <p class="filter-text fw-bold text-danger">₹${prod.min_price} - ₹${prod.max_price}</p>
+                           <p class="filter-text fw-bold text-danger">₹${prod.min_price} - ₹${prod.max_price}<span style="text-decoration:line-through;color: #777; margin-left: 5px;">₹${prod.min_original_price} - ₹${prod.max_original_price}</span></p>
+
             </div>`}
         </div>
       </div>
