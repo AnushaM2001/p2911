@@ -13,8 +13,8 @@ import os
 from pathlib import Path
 
 
-SHIPROCKET_EMAIL="anu525495@gmail.com"
-SHIPROCKET_PASSWORD="tiYTExSq1C9o$EJ@"
+SHIPROCKET_EMAIL="maqdummohammed@gmail.com"
+SHIPROCKET_PASSWORD="1XcVWz2K7K!eB14*wJPwH@3VyRwmKcz^"
 # Celery Settings
 CELERY_BROKER_URL = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']

@@ -34,6 +34,15 @@ def safe_save(instance, update_fields=None, max_retries=5, delay=1):
             else:
                 raise
     raise OperationalError(f"Could not save {instance} after {max_retries} attempts")
+@shared_task
+def schedule_pending_shiprocket_orders():
+    pending_orders = Order.objects.filter(
+        status="Completed",
+        shiprocket_order_id__isnull=True
+    )
+
+    for order in pending_orders:
+        process_order_with_shiprocket.delay(order.id)
 
 
 # Step 1: Create Shiprocket Order

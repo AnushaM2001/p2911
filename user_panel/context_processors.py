@@ -1,6 +1,7 @@
 from .models import Category
 from admin_panel.models import PremiumFestiveOffer
 from django.utils import timezone
+from django.db.models import Prefetch, Min, Max, Avg, Q
 
 from user_panel.models import Wishlist
 
@@ -104,29 +105,46 @@ def festival_offer_context(request):
 
 # user_panel/context_processors.py
 from django.urls import reverse
-from admin_panel.models import Order
-
+from admin_panel.models import Order,OrderItem
 def latest_purchases_orders(request):
+    purchases = []
+
     try:
-        orders = Order.objects.prefetch_related("items__product").select_related("user", "address").order_by("-created_at")[:10]
-        purchases = []
+        orders = Order.objects.prefetch_related(
+            Prefetch("items", queryset=OrderItem.objects.select_related("product"))
+        ).select_related("user", "address").order_by("-created_at")[:10]
+
+        print(f"Fetched {len(orders)} orders")  # ✅ Debugging
+
         for order in orders:
             item = order.items.first()
-            if not item:
+            if not item or not item.product:
                 continue
+
             product = item.product
+            print(f"Processing product: {product.name}")  # ✅ Debugging
+
+            price_display = f"₹{item.price}" if item.price else "Price not available"
+            original_price_display = f"₹{item.original_price}" if getattr(item, "original_price", None) else ""
+
             purchases.append({
-                "product_name": product.name,
-                "product_price": str(item.price),
-                "product_original_price": str(product.original_price) if hasattr(product, "original_price") else "",
+                "product_name": product.name or "Unknown Product",
+                "product_price": price_display,
+                "product_original_price": original_price_display,
                 "product_image": product.image1.url if getattr(product, "image1", None) else "",
-                "location": order.address.City if order.address else "India",
-                "user_name": order.address.Name if order.address else "Customer",
+                "location": getattr(order.address, "City", "India"),
+                "user_name": getattr(order.address, "Name", "Customer"),
                 "product_url": reverse("product_detail", args=[product.id]),
             })
+
+        print(f"Final purchases list: {purchases}")  # ✅ Debugging
+
     except Exception as e:
+        print(f"Error fetching latest purchases: {e}")  # ✅ Debugging
         purchases = []
+
     return {"latest_purchases": purchases}
+
 
 def wishlist_count(request):
     if request.user.is_authenticated:
@@ -141,3 +159,4 @@ def wishlist_count(request):
 #         if email:
 #             Subscription.objects.get_or_create(email=email)
 #     return {}
+

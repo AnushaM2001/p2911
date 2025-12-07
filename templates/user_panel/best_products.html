@@ -10,25 +10,31 @@
 <style>
   .custom-grid {
     display: grid;
-    grid-template-columns: repeat(1, 1fr);
+    grid-template-columns: repeat(5, 1fr) !important ;
     gap: 1rem;
   }
 
   @media (min-width: 480px) {
     .custom-grid {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, 1fr) !important ;
     }
   }
 
   @media (min-width: 768px) {
     .custom-grid {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, 1fr) !important ;
     }
   }
 
   @media (min-width: 992px) {
     .custom-grid {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, 1fr) !important;
+    }
+  }
+
+  @media (min-width: 1080px) {
+    .custom-grid {
+      grid-template-columns: repeat(5, 1fr) !important;
     }
   }
 
@@ -55,6 +61,26 @@
     transform: translateY(-5px) scale(1.05);
     cursor: pointer;
     z-index: 3;
+  } 
+
+  .product-name {
+     display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limit to 2 lines */
+    line-clamp: 2; /* Standard property for compatibility */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #4D4D4D;
+    font-size: 16px;
+    font-family: Jomolhari;
+    font-weight: 400;
+    text-transform: capitalize;
+
+    word-wrap: break-word;
+    margin: 0;
+    max-width: 100%;
+    margin-top: 30px;
+    line-height: 22px;
   }
 
   .product-img-container {
@@ -67,22 +93,22 @@
 
   @media (min-width: 480px) {
     .product-img-container {
-      height: 200px;
+      height: auto;
     }
   }
   @media (min-width: 768px) {
     .product-img-container {
-      height: 340px;
+      height: auto;
     }
   }
   @media (min-width: 992px) {
     .product-img-container {
-      height: 340px;
+      height: auto;
     }
   }
   @media (min-width: 1200px) {
     .product-img-container {
-      height: 400px;
+      height: auto;
     }
   }
 
@@ -98,7 +124,7 @@
   .addcart {
     display: none;
     position: absolute;
-    top: 70%;
+    top: 73%;
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: #6D3F0BF2;
@@ -108,7 +134,7 @@
     justify-content: center;
     gap: 12px;
     align-items: center;
-    z-index: 2;
+    
     font-size: 18px;
     font-family: Jomolhari;
     text-transform: capitalize;
@@ -130,15 +156,30 @@
   }
 
   .product-info {
-    padding: 15px;
-    background: #FBF0EF;
-    display: flex;
-    justify-content: start;
-    flex-direction: column;
-    border-radius: 0 0 10px 10px;
-    position: relative;
-    z-index: 1;
-  }
+        padding: 15px;
+        background: #FBF0EF;
+        display: flex;
+        justify-content:start;
+        flex-direction: column;
+        border-radius: 0 0 10px 10px;
+        position: relative;
+        /* Needed for z-index stacking */
+        z-index: 1;
+    }
+
+     .product-price {
+        color: #4D4D4D;
+        font-size: 16px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        text-transform: capitalize;
+        line-height: 18px;
+        word-wrap: break-word;
+        margin: 0;
+        /* Remove default margins */
+        white-space: nowrap;
+        /* Prevent price from wrapping */
+    }
 
   /* Responsive Banner Styling */
   .top-banner img {
@@ -170,18 +211,19 @@
     }
   }
 
-  .badge-rating {
-    position: absolute;
-    right: 10px;
-    background-color: #ecebe7;
-    color: #333;
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    z-index: -2;
-    font-weight: 600;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
-  }
+    .badge-rating {
+        position: absolute;
+    
+        right: 10px;
+        background-color: #ecebe7;
+        color: #333;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+     
+        font-weight: 600;
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+    }
 
   .product-card.out-of-stock {
     pointer-events: none;
@@ -301,7 +343,7 @@
 
   @media (max-width: 480px) {
     .custom-grid {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, 1fr) !important;
       gap: 0.7rem;
     }
     .product-card {
@@ -315,7 +357,7 @@
     }
     .product-img-container {
       position: relative;
-      height: 232px;
+     
       overflow: hidden;
     }
     .addcart {
@@ -441,14 +483,14 @@
 
         <!-- Product Info -->
         <div class="product-info">
-          <div class="product-name mb-2" style="font-family: Jomolhari;">{{ entry.product.name }}</div>
+          <div class="product-name mb-2 mt-4" style="font-family: Jomolhari;margin-top: 2.4rem;">{{ entry.product.name }}</div>
           <div class="product-price text-start text-muted">
-            ₹{{ entry.min_price }}
+           <span style="color: #DC3545;">₹{{ entry.min_price }}
             {% if entry.min_price != entry.max_price %}
               - ₹{{ entry.max_price }}
-            {% endif %}
+            {% endif %}</span><span class="ms-2 text-decoration-line-through" style="color: #6c757d;">₹{{ entry.min_original_price}} - ₹{{ entry.max_original_price}}</span>
           </div>
-          <span class="badge-rating">
+          <span class="badge-rating ">
             <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
             {{ entry.average_rating|default:"0.0"|floatformat:1 }} | {{ entry.review_count|default:0 }}
           </span>

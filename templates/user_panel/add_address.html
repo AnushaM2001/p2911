@@ -227,9 +227,11 @@
             <h6 class="mb-3">Address Info</h6>
             <div class="row g-2">
                 <div class="col-md-6 col-12 mb-3">
-                    <label class="form-label">Pincode</label>
-                    {{ form.Pincode }}
-                </div>
+    <label class="form-label">Pincode</label>
+    {{ form.Pincode }}
+    <small id="pincodeError" class="text-danger" style="display:none;"></small>
+</div>
+
                 <div class="col-md-6 col-12 mb-3">
                     <label class="form-label">City</label>
                     {{ form.City }}
@@ -292,6 +294,51 @@
     validateMobile("id_MobileNumber", "mobileError");           // Django auto-IDs inputs as "id_<fieldname>"
     validateMobile("id_Alternate_MobileNumber", "altMobileError");
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const pincode = document.getElementById("id_Pincode");
+    const errorMsg = document.getElementById("pincodeError");
+
+    pincode.addEventListener("input", function () {
+        let value = pincode.value;
+
+        // Allow only digits
+        value = value.replace(/[^0-9]/g, '');
+
+        // Block more than 6 digits
+        if (value.length > 6) {
+            value = value.slice(0, 6);
+        }
+
+        pincode.value = value;
+
+        // Live error messages
+        if (value.length === 0) {
+            showError("Pincode is required");
+        }
+        else if (value.length < 6) {
+            showError("Pincode must be exactly 6 digits");
+        }
+        else {
+            hideError();
+        }
+    });
+
+    function showError(msg) {
+        errorMsg.innerText = msg;
+        errorMsg.style.display = "block";
+        pincode.classList.add("is-invalid");
+    }
+
+    function hideError() {
+        errorMsg.style.display = "none";
+        pincode.classList.remove("is-invalid");
+    }
+});
+</script>
+
+
 
 </body>
 </html>
+

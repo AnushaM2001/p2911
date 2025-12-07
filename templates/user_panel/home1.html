@@ -25,8 +25,7 @@
             font-size: 1rem;
         }
     }
-
-    cards .custom-container {
+ .custom-container {
         width: auto;
         margin: auto;
         padding: 20px;
@@ -2315,6 +2314,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <h1 class="products-section-subtitle">Best Selling of</h1>
         <h1 class="products-section-title" style="font-family: 'Brush Script MT', cursive;">Perfume Valley</h1>
     </div>
+<div class="products-wrapper">
     <div class="position-relative">
         <!-- Navigation Buttons: Only visible on hover or scroll/edge interaction -->
         <div class="products-arrow products-arrow-left">&#10094;</div>
@@ -2376,26 +2376,38 @@ document.addEventListener('DOMContentLoaded', function() {
       <script>
         function initProductCarousel(scrollRowId, containerSelector) {
         const scrollRow = document.getElementById(scrollRowId);
+        if (!scrollRow) return; // guard if row not present
+
         const container = scrollRow.closest(containerSelector);
+        if (!container) return; // guard if container not found
+
         const leftArrow = container.querySelector(".products-arrow-left");
         const rightArrow = container.querySelector(".products-arrow-right");
+        // if arrows are missing, bail out gracefully
+        if (!leftArrow && !rightArrow) return;
 
         function updateArrows() {
             const maxScrollLeft = scrollRow.scrollWidth - scrollRow.clientWidth;
-            leftArrow.classList.toggle("show", scrollRow.scrollLeft > 0);
-            rightArrow.classList.toggle("show", scrollRow.scrollLeft < maxScrollLeft - 2);
+            if (leftArrow) leftArrow.classList.toggle("show", scrollRow.scrollLeft > 0);
+            if (rightArrow) rightArrow.classList.toggle("show", scrollRow.scrollLeft < Math.max(0, maxScrollLeft - 2));
         }
 
-        leftArrow.addEventListener("click", () => {
-            scrollRow.scrollBy({ left: -300, behavior: "smooth" });
-        });
-        rightArrow.addEventListener("click", () => {
-            scrollRow.scrollBy({ left: 300, behavior: "smooth" });
-        });
+        if (leftArrow) {
+            leftArrow.addEventListener("click", () => {
+                scrollRow.scrollBy({ left: -300, behavior: "smooth" });
+            });
+        }
+        if (rightArrow) {
+            rightArrow.addEventListener("click", () => {
+                scrollRow.scrollBy({ left: 300, behavior: "smooth" });
+            });
+        }
 
+        // Only attach listeners if scrollRow exists (already guarded) and updateArrows will safely handle missing arrows
         scrollRow.addEventListener("scroll", updateArrows);
         window.addEventListener("resize", updateArrows);
 
+        // ensure arrows reflect initial state
         updateArrows();
         }
 
@@ -2408,7 +2420,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-  <div class="products-wrapper">
+  
     <div class="products-scroll-row" id="bestSellingScrollRow" style="scroll-behavior:smooth;">
         {% for product in best_selling %}
         <div class="product-card position-relative">
@@ -2723,7 +2735,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="product-info ">
                 
                         <div class="product-name mb-2">{{ i.name }}</div>
-			<div class="product-price text-start ">₹{{ i.min_price }} - ₹{{ i.max_price }}<span style="text-decoration: line-through; margin-right:5px;">₹{{ i.s_price }} - ₹{{ i.e_price }}</span></div>
+			<div class="product-price text-start"><span style="color: #DC3545;">₹{{ i.min_price }} - ₹{{ i.max_price }}</span><span style="text-decoration: line-through; margin-right:5px;">₹{{ i.s_price }} - ₹{{ i.e_price }}</span></div>
                          <span class="badge-rating">
                             <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
                             {{ i.average_rating|default:"0.0"|floatformat:1 }} | {{ i.review_count|default:0 }}
@@ -2989,7 +3001,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="product-info ">
                 
                         <div class="product-name mb-2">{{ trend.name }}</div>
-			<div class="product-price text-start ">₹{{ trend.min_price }} - ₹{{ trend.max_price }}<span style="text-decoration: line-through; margin-right:8px;">₹{{ trend.s_price }} - ₹{{ trend.e_price }}</span></div>
+			<div class="product-price text-start "><span style="color: #DC3545;">₹{{ trend.min_price }} - ₹{{ trend.max_price }}</span><span style="text-decoration: line-through; margin-right:8px;">₹{{ trend.s_price }} - ₹{{ trend.e_price }}</span></div>
                          <span class="badge-rating">
                             <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
                             {{ trend.average_rating|default:"0.0"|floatformat:1 }} | {{ trend.review_count|default:0 }}
@@ -3763,7 +3775,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
-</script
+</script>
 
 
 {% endblock content %}
+

@@ -493,7 +493,7 @@
         }
 
         .off {
-            background: #4A9B4D;
+            /* background: #4A9B4D; */
             color: white;
             padding: 4px 12px;
             border-radius: 4px;
@@ -976,6 +976,8 @@
     <h3 class="mb-0" id="gift-variant-price">₹--</h3>
     <h3 class="mb-0 text-muted text-decoration-line-through" id="gift-original-price"></h3>
     <h3 id="nor-price" class="mb-0 text-decoration-line-through" style="display:none;"></h3>
+    <!-- <span class="mb-0 text-success" id="nor-percent"></span>  -->
+
     <h3 class="mb-0 text-success" id="gift-offer-discount"></h3>
 </div>
 
@@ -984,7 +986,7 @@
     <h3 class="mb-0" id="variant-price" style="font-family: 'Jomolhari';font-size:1.6rem;">₹0</h3>
     <h3 class="mb-0 text-muted text-decoration-line-through" id="original-price" style="display:none;font-size:1.1rem;font-family: 'Jomolhari'; font-size: 30px;"></h3>
     <h3 id="normal-price" class="mb-0 text-decoration-line-through" style="font-family: 'Jomolhari'; font-size: 20px;"></h3>
-    <!-- <span class="mb-0 text-success off" id="you-save" style="margin-left: 3px;margin-right: -13rem; "></span> -->
+    <span class="mb-0 text-success off" id="you-save"></span> 
     <span class="mb-0 text-success off" id="discount-percentage" style="font-size: 25px;"></span>
 </div>
 
@@ -1000,6 +1002,7 @@
             <div class="size-option selected-size {% if forloop.first %}active{% endif %}" 
                  data-price="{{ set.price }}" 
                  data-id="{{ set.id }}" 
+                 data-normal-price="{{ set.original_price|default:'' }}"
                  data-flavour-limit="{{ set.giftset.set_name }}" 
                  data-discounted-price="{{ set.discounted_price|default:'' }}"
                  {% if set.offer %}data-offer-percentage="{{ set.offer.percentage }}"{% else %}data-offer-percentage=""{% endif %}>
@@ -1395,65 +1398,7 @@ document.getElementById("closeCart").addEventListener("click", () => {
 
 
 
-/* UPDATE CART SIDEBAR UI */
-function updateCartSidebar(items, summary) {
-    const container = document.getElementById("cartItemsContainer");
-    container.innerHTML = "";
 
-    items.forEach(item => {
-        container.innerHTML += `
-            <div class="cart-item"
-                id="cart-item-${item.id}"
-                data-delivery="${item.delivery || 0}"
-                data-platform="${item.platform_fee || 0}">
-
-                <img src="${item.image}">
-                <div style="flex:1">
-                    <h6>${item.name}</h6>
-                    <p>₹${item.price}  <span class="text-success">${item.offer || ""}</span></p>
-
-                    <div class="qty-box">
-                        <button onclick="updateQty(${item.id}, 'decrease')">−</button>
-                        <span id="qty-${item.id}">${item.quantity}</span>
-                        <button onclick="updateQty(${item.id}, 'increase')">+</button>
-                    </div>
-                </div>
-
-                <i class="bi bi-trash delete-item" onclick="removeItem(${item.id})"></i>
-            </div>
-        `;
-    });
-
-    // ORDER SUMMARY
-    document.getElementById("orderSubtotal").textContent = `₹${summary.subtotal}`;
-    document.getElementById("orderDelivery").textContent = `₹${summary.delivery}`;
-    document.getElementById("orderPlatform").textContent = `₹${summary.platform_fee}`;
-    document.getElementById("orderTotal").textContent = `₹${summary.total}`;
-}
-
-
-/* LISTEN FOR ADD-TO-CART (IN YOUR EXISTING SCRIPT) */
-document.getElementById('add-to-cart-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-
-    fetch("{% url 'add_to_cart' product.id %}", {
-        method: "POST",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === "success") {
-            updateCartSidebar(data.cart_items, data.order_summary);
-            openCartSidebar(); // 👈 animation trigger
-
-            // update icon count if exists
-            const cartCount = document.getElementById("cart-count");
-            if (cartCount) cartCount.textContent = data.cart_count;
-        }
-    });
-});
 
 // ====== CSRF Helper (keep this if you're using POST anywhere else too) ======
 function getCSRFToken() {
@@ -1614,6 +1559,177 @@ function recalcCartSummaryFromDOM() {
 
 </script>
 
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById('add-to-cart-form');
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    const quantityInput = document.getElementById("quantity");
+    const notification = document.getElementById('cart-notification');
+
+    /* ✅ Single listener only (duplicate removed) */
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        /* ✅ prevent double submit */
+        if (addToCartBtn.disabled) return;
+        addToCartBtn.disabled = true;
+        addToCartBtn.style.pointerEvents = "none";
+
+        /* Gather selected flavours */
+        const selectedFlavours = Array.from(document.querySelectorAll('.gift-option.active'))
+            .map(opt => opt.getAttribute('data-flavour-id'));
+        document.getElementById('selected-flavours').value = selectedFlavours.join(',');
+
+        /* CSRF Token */
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        /* Form data */
+        const formData = new FormData(form);
+
+        console.log("Submitting Add to Cart Form:");
+        for (let [key, value] of formData.entries()) {
+            console.log(key, value);
+        }
+
+        /* Django URL */
+        const addToCartUrl = "{% url 'add_to_cart' product.id %}";
+
+        fetch(addToCartUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Server error");
+            return response.json();
+        })
+        .then(data => {
+            console.log("Add to Cart Response:", data);
+
+            const messageSpan = notification?.querySelector('.notification-message');
+            const productInfo = notification?.querySelector('.product-info');
+            const progressBar = notification?.querySelector('.progress-bar');
+            const cartCount = document.getElementById('cart-count');
+
+            if (data.status === 'success') {
+                /* Update badge */
+                if (cartCount) cartCount.textContent = data.cart_count;
+
+                /* Update sidebar items */
+                if (data.cart_items && data.order_summary) {
+                    updateCartSidebar(data.cart_items, data.order_summary);
+                }
+
+                /* ✅ NOW OPEN SIDEBAR (your required feature) */
+                if (typeof openCartSidebar === "function") {
+                    openCartSidebar();  // sidebar animation trigger
+                } else {
+                    document.getElementById("cartSidebar").classList.add("open");
+                }
+
+                /* Notification UI */
+                if (messageSpan) messageSpan.textContent = data.message || 'Added to Cart';
+                if (productInfo && data.cart_items?.length > 0) {
+                    const firstItem = data.cart_items[0];
+                    productInfo.innerHTML = `
+                        <img src="${firstItem.image || ''}" alt="${firstItem.name}" 
+                        style="width:50px;height:50px;object-fit:cover;margin-right:10px;">
+                        <div style="text-align:left;">
+                            <div class="product-name">${firstItem.name}</div>
+                            <div class="product-price">₹${firstItem.price}</div>
+                        </div>
+                    `;
+                }
+
+                if (progressBar) {
+                    progressBar.style.transition = 'none';
+                    progressBar.style.width = '100%';
+                    void progressBar.offsetWidth;
+                    progressBar.style.transition = 'width 4s linear';
+                    progressBar.style.width = '0%';
+                }
+
+                if (notification) {
+                    notification.classList.remove('d-none');
+                    notification.style.display = 'flex';
+                    setTimeout(() => notification.classList.add('show'), 10);
+                    setTimeout(() => {
+                        notification.classList.remove('show');
+                        setTimeout(() => notification.classList.add('d-none'), 300);
+                    }, 4000);
+                }
+            } else if (data.review_required) {
+                let modal = new bootstrap.Modal(document.getElementById("reviewModal"));
+                modal.show();
+            } else {
+                alert(data.message || "Failed to add item to cart.");
+            }
+        })
+        .catch(error => {
+            console.error("Add to Cart Error:", error);
+            alert("Failed to add item to cart.");
+        })
+        .finally(() => {
+            /* ✅ Re-enable button */
+            addToCartBtn.disabled = false;
+            addToCartBtn.style.pointerEvents = "auto";
+        });
+    });
+
+    /* Sidebar open/close functions (Already exists, don't remove) */
+    window.openCartSidebar = function () {
+        document.getElementById("cartSidebar").classList.add("open");
+    };
+
+    document.getElementById("closeCart")?.addEventListener("click", () => {
+        document.getElementById("cartSidebar").classList.remove("open");
+    });
+
+    /* Quantity buttons */
+    document.getElementById("increase")?.addEventListener("click", () => {
+        quantityInput.value = parseInt(quantityInput.value || 1) + 1;
+    });
+
+    document.getElementById("decrease")?.addEventListener("click", () => {
+        if (parseInt(quantityInput.value) > 1) {
+            quantityInput.value = parseInt(quantityInput.value) - 1;
+        }
+    });
+});
+
+/* ✅ Sidebar UI update function (Unchanged, works normally) */
+function updateCartSidebar(items, summary) {
+    const container = document.getElementById("cartItemsContainer");
+    container.innerHTML = "";
+
+    items.forEach(item => {
+        container.innerHTML += `
+            <div class="cart-item" id="cart-item-${item.id}">
+                <img src="${item.image}">
+                <div style="flex:1">
+                    <h6>${item.name}</h6>
+                    <p>₹${item.price}  <span class="text-success">${item.offer || ""}</span></p>
+                    <div class="qty-box">
+                        <button onclick="updateQty(${item.id}, 'decrease')">−</button>
+                        <span id="qty-${item.id}">${item.quantity}</span>
+                        <button onclick="updateQty(${item.id}, 'increase')">+</button>
+                    </div>
+                </div>
+                <i class="bi bi-trash delete-item" onclick="removeItem(${item.id})"></i>
+            </div>
+        `;
+    });
+
+    document.getElementById("orderSubtotal").textContent = `₹${summary.subtotal}`;
+    document.getElementById("orderDelivery").textContent = `₹${summary.delivery}`;
+    document.getElementById("orderPlatform").textContent = `₹${summary.platform_fee}`;
+    document.getElementById("orderTotal").textContent = `₹${summary.total}`;
+}
+</script>
 
 
 <script>
@@ -1799,7 +1915,7 @@ function recalcCartSummaryFromDOM() {
         <div class="product-info">
           <div class="product-name mb-2">{{ x.product.name }}</div>
           {% if x.price_display %}
-          <div class="product-price">{{ x.price_display }}<span style="text-decoration: line-through;">{{ x.min_original_price}}-{{max_original_price}}</span></div>
+          <div class="product-price"><span style="color: #DC3545;">{{ x.price_display }}</span><span style="text-decoration: line-through;">{{ x.min_original_price}}-{{max_original_price}}</span></div>
           {% endif %}
           <span class="badge-rating">
             <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
@@ -2064,6 +2180,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const original = parseFloat(currentVariant.price);
         const discounted = parseFloat(currentVariant.discounted_price);
         const real = parseFloat(currentVariant.original_price);
+  
+        // calculate percentage with price and originalprice
+        const percentage = real > 0 ? Math.round(((real - original) / real) * 100) : 0;
+
 
         // CASE 1: Discount exists
         if (discounted && discounted < original) {
@@ -2102,8 +2222,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 realpriceEl.style.display = "block";
             }
             if (savingsEl) {
-                savingsEl.innerText = "";
-                savingsEl.style.display = "none";
+                savingsEl.innerText = `(${percentage}% OFF)`;
+                savingsEl.style.display = "inline-block";
             }
         }
     }
@@ -2210,12 +2330,27 @@ document.addEventListener("DOMContentLoaded", function () {
     quantityInput?.addEventListener("input", updatePrice);
 
     // Initialize first load
+   // Initialize first load
+const category = sizeContainer.dataset.category?.replace(/\s+/g, '').toLowerCase();
+const subcategoryName = sizeContainer.dataset.subcategory?.toLowerCase() || "";
+const isAttar = subcategoryName.replace(/\s+/g, "").includes("attar") || category === "attars";
+
+// CASE 1 — Attars or Incense (no bottle selection)
+if (category === "incense" || isAttar) {
+    renderSizeButtons();
+    updatePrice();
+}
+
+// CASE 2 — Other products (bottle + size selection)
+else {
     if (bottleBtns.length > 0) {
         selectedBottle = bottleBtns[0].dataset.bottle.toString();
         highlightActiveBottle();
         renderSizeButtons();
         updatePrice();
     }
+}
+
 });
 </script>
 
@@ -2280,6 +2415,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedFlavoursInput = document.getElementById('selected-flavours');
     const selectedPriceInput = document.getElementById('selected-price');
     const normalPriceInput = document.getElementById('nor-price');
+
     let flavourLimit = 0;
 
     function showMessage(msg) {
@@ -2289,10 +2425,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleSizeSelection(option) {
         sizeOptions.forEach(opt => opt.classList.remove('active'));
         option.classList.add('active');
-
+        
+        const normalPrice = parseFloat(option.getAttribute('data-normal-price')) || 0;
         const price = parseFloat(option.getAttribute('data-price'));
         const discounted = parseFloat(option.getAttribute('data-discounted-price')) || null;
         const offerPercent = option.getAttribute('data-offer-percentage');
+        const norPercent = price > 0 ? Math.round(((price - normalPrice) / price) * 100) : 0;
 
         if (discounted) {
             priceDisplay.textContent = `₹${discounted}`;
@@ -2301,8 +2439,8 @@ document.addEventListener('DOMContentLoaded', function () {
             offerDiscountDisplay.textContent = `Discount: ${offerPercent}% Off`;
         } else {
             priceDisplay.textContent = `₹${price}`;
-            originalPriceDisplay.textContent = '';
-            offerDiscountDisplay.textContent = '';
+            originalPriceDisplay.textContent = `₹${normalPrice}`;
+            offerDiscountDisplay.textContent = `${norPercent}% Off`;
             normalPriceInput.style.display = 'inline-block';
         }
 
@@ -2361,129 +2499,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 </script>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const form = document.getElementById('add-to-cart-form');
-    const addToCartBtn = document.getElementById('addToCartBtn');
-    const quantityInput = document.getElementById("quantity");
 
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
 
-        // Gather selected flavours
-        const selectedFlavours = Array.from(document.querySelectorAll('.gift-option.active'))
-            .map(opt => opt.getAttribute('data-flavour-id'));
-        document.getElementById('selected-flavours').value = selectedFlavours.join(',');
-
-        // CSRF token
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-        // Form data
-        const formData = new FormData(form);
-
-        console.log("Submitting Add to Cart Form:");
-        for (let [key, value] of formData.entries()) {
-            console.log(key, value);
-        }
-
-        // URL from Django template
-        const addToCartUrl = "{% url 'add_to_cart' product.id %}";
-
-        fetch(addToCartUrl, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': csrftoken
-            },
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                console.error("Server returned non-200 response:", response.status);
-                throw new Error("Server error");
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log("Add to Cart Response:", data);
-
-            const notification = document.getElementById('cart-notification');
-            const messageSpan = notification?.querySelector('.notification-message');
-            const productInfo = notification?.querySelector('.product-info');
-            const progressBar = notification?.querySelector('.progress-bar');
-
-            if (data.status === 'success') {
-                // Show success message
-                if (messageSpan) messageSpan.textContent = data.message || 'Added to Cart';
-                if (productInfo && data.cart_items?.length > 0) {
-                    const firstItem = data.cart_items[0];
-                    productInfo.innerHTML = `
-                        <img src="${firstItem.image || ''}" alt="${firstItem.name}" style="width:50px;height:50px;object-fit:cover;margin-right:10px;">
-                        <div style="text-align:left;">
-                            <div class="product-name">${firstItem.name}</div>
-                            <div class="product-price">₹${firstItem.price}</div>
-                        </div>
-                    `;
-                }
-
-                // Progress bar animation
-                if (progressBar) {
-                    progressBar.style.transition = 'none';
-                    progressBar.style.width = '100%';
-                    void progressBar.offsetWidth; // trigger reflow
-                    progressBar.style.transition = 'width 4s linear';
-                    progressBar.style.width = '0%';
-                }
-
-                // Show notification
-                if (notification) {
-                    notification.classList.remove('d-none');
-                    notification.style.display = 'flex';
-                    setTimeout(() => notification.classList.add('show'), 10);
-
-                    setTimeout(() => {
-                        notification.classList.remove('show');
-                        setTimeout(() => {
-                            notification.classList.add('d-none');
-                            notification.style.display = 'none';
-                            if (progressBar) {
-                                progressBar.style.transition = 'none';
-                                progressBar.style.width = '100%';
-                            }
-                        }, 300);
-                    }, 4000);
-                }
-
-                // Update cart count badge
-                const cartCount = document.getElementById('cart-count');
-                if (cartCount) cartCount.textContent = data.cart_count;
-
-            } else if (data.review_required) {
-                let modal = new bootstrap.Modal(document.getElementById("reviewModal"));
-                modal.show();
-            } else {
-                console.error("Add to cart failed:", data.message);
-                alert(data.message || "Failed to add item to cart.");
-            }
-        })
-        .catch(error => {
-            console.error("Add to Cart Error:", error);
-            alert("Failed to add item to cart. Check console for details.");
-        });
-    });
-
-    // Quantity buttons
-    document.getElementById("increase")?.addEventListener("click", () => {
-        quantityInput.value = parseInt(quantityInput.value || 1) + 1;
-    });
-    document.getElementById("decrease")?.addEventListener("click", () => {
-        if (parseInt(quantityInput.value) > 1) {
-            quantityInput.value = parseInt(quantityInput.value) - 1;
-        }
-    });
-});
-</script>
- 
 
 
 <script>
@@ -2599,3 +2616,4 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endblock content %}
 <!-- 1. is flvour selection 
 2.price updete in cart page -->
+

@@ -392,187 +392,245 @@ def toggle_wishlist(request):
 from django.db.models import Min, Max, FloatField
 from django.db.models.functions import Cast
 from django.core.paginator import Paginator
+from django.db.models import Min, Max, Avg, Prefetch, FloatField
+from django.db.models.functions import Cast
+from django.core.cache import cache
+from django.db.models import Min, Max, Avg, F, FloatField, Q
+from django.db.models.functions import Cast
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.utils import timezone
+from django.db.models import Min, Max, Avg, F, FloatField, Q, Subquery, OuterRef
+from django.db.models.functions import Cast
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.utils import timezone
+from decimal import Decimal
+
+
 def ajax_filter_products(request):
     page = int(request.GET.get('page', 1))
-    
-    # --- 1️⃣ Get filters from GET ---
+
+    # --- 1️⃣ GET FILTERS ---
     category_ids = request.GET.getlist('category[]')
     subcategory_ids = request.GET.getlist('subcategory[]')
     sizes = request.GET.getlist('size[]')
+
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
-   
 
     try:
         min_price = float(min_price) if min_price else None
         max_price = float(max_price) if max_price else None
-    except ValueError:
+    except:
         min_price = max_price = None
 
-    # --- 2️⃣ Active offers ---
-    active_offers = PremiumFestiveOffer.objects.filter(
-        is_active=True,
-        start_date__lte=timezone.now(),
-        end_date__gte=timezone.now()
+    now = timezone.now()
+
+    # --- 2️⃣ PREFETCH OFFERS (FAST) ---
+    active_offers = (
+        PremiumFestiveOffer.objects.filter(is_active=True)
+        .filter(
+            Q(premium_festival__in=['Welcome', 'Premium']) |
+            Q(start_date__lte=now, end_date__gte=now)
+        )
+        .prefetch_related('category', 'subcategory')
     )
 
-    # --- 3️⃣ Category/Subcategory info for banners ---
-    category_name = subcategory_name = ""
-    category_banner_url = subcategory_banner_url = ""
-
+    # --- 3️⃣ CATEGORY & SUBCATEGORY INFO ---
     cat_obj = Category.objects.filter(id__in=category_ids).first() if category_ids else None
     subcat_obj = Subcategory.objects.filter(id__in=subcategory_ids).first() if subcategory_ids else None
 
-    if cat_obj:
-        category_name = cat_obj.name
-        category_banner_url = cat_obj.banner.url if cat_obj.banner else ""
+    category_name = cat_obj.name if cat_obj else ""
+    subcategory_name = subcat_obj.name if subcat_obj else ""
+    category_banner_url = cat_obj.banner.url if cat_obj and cat_obj.banner else ""
+    subcategory_banner_url = subcat_obj.banner.url if subcat_obj and subcat_obj.banner else ""
 
-    if subcat_obj:
-        subcategory_name = subcat_obj.name
-        subcategory_banner_url = subcat_obj.banner.url if subcat_obj.banner else ""
-
-    # --- 4️⃣ Wishlist products for logged-in users ---
+    # --- 4️⃣ WISHLIST ---
     wishlist_product_ids = []
     if request.user.is_authenticated:
-        wishlist_product_ids = list(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True))
+        wishlist_product_ids = list(
+            Wishlist.objects.filter(user=request.user)
+            .values_list('product_id', flat=True)
+        )
 
     product_data = []
 
-    # --- 5️⃣ Handle GiftSets separately ---
+    # 🧡 --- 5️⃣ GIFTSET QUERIES COMPLETELY OPTIMIZED ---
     if cat_obj and cat_obj.name.lower().replace(' ', '').replace('-', '') == 'giftsets':
-        giftsets = GiftSet.objects.filter(product__category=cat_obj).select_related('product').prefetch_related('flavours')
-        unique_giftproducts = {gs.product.id: gs for gs in giftsets}
 
-        for gs in unique_giftproducts.values():
-            # Apply first active offer if exists
+        giftsets_qs = (
+            GiftSet.objects.filter(product__category=cat_obj)
+            .select_related('product')
+            .prefetch_related('flavours')
+            .annotate(
+                min_price=Subquery(
+                    GiftSet.objects.filter(product=OuterRef('product'))
+                    .values('product')
+                    .annotate(mn=Min('price'))
+                    .values('mn')[:1]
+                ),
+                max_price=Subquery(
+                    GiftSet.objects.filter(product=OuterRef('product'))
+                    .values('product')
+                    .annotate(mx=Max('price'))
+                    .values('mx')[:1]
+                ),
+            )
+        )
+
+        paginator = Paginator(giftsets_qs, 10)
+        page_giftsets = paginator.get_page(page)
+
+        for gs in page_giftsets:
+
+            # FAST OFFER CALCULATION
             discounted_price = None
             offer_applied = None
+
             for offer in active_offers:
-                discounted = offer.apply_offer(gs)
-                if discounted:
-                    discounted_price = discounted
+                price = offer.apply_offer(gs)
+                if price:
+                    discounted_price = float(price)
                     offer_applied = offer
                     break
 
-            # Price range across all variants/flavours
-            gift_price_range = giftsets.filter(product=gs.product).aggregate(
-                min_price=Min('price'), max_price=Max('price')
-            )
-            original_range = giftsets.annotate(
-                    original_float=Cast('original_price', FloatField())
-                  ).aggregate(
-    min_original=Min('original_float'),
-    max_original=Max('original_float')
-)
-
             product_data.append({
-                'id': gs.product.id,
-                'name': gs.product.name,
-                'original_price': gs.product.original_price,
-                'price': float(gs.price),
-                'min_price': float(gift_price_range['min_price']) if gift_price_range['min_price'] else None,
-                'max_price': float(gift_price_range['max_price']) if gift_price_range['max_price'] else None,
-                'min_original_price': float(original_range['min_original']) if original_range['min_original'] else None,
-                'max_original_price': float(original_range['max_original']) if original_range['max_original'] else None,
-                'discounted_price': float(discounted_price) if discounted_price else None,
-                'offer_code': offer_applied.code if offer_applied else None,
-                'offer_start_time': offer_applied.start_date if offer_applied else None,
-                'offer_end_time': offer_applied.end_date if offer_applied else None,
-                'flavours': [f.name for f in gs.flavours.all()],
-                'image': gs.product.image1.url if gs.product.image1 else '',
-                'image2': gs.product.image2.url if gs.product.image2 else '',
-                'is_active': gs.product.is_active,
-                'is_giftset': True,
-                'average_rating': float(gs.product.reviews.aggregate(avg=Avg('rating'))['avg'] or 0),
-                'review_count': gs.product.reviews.count(),
-                'stock_status': gs.product.stock_status or "In Stock",
-                'is_favorite': gs.product.id in wishlist_product_ids,
-                'is_best_seller': gs.product.is_best_seller,
-                'is_trending': gs.product.is_trending,
-                'is_new_arrival': gs.product.is_new_arrival,
+                "id": gs.product.id,
+                "name": gs.product.name,
+                "price": float(gs.price),
+                "original_price": float(gs.product.original_price),
+                "min_price": float(gs.min_price) if gs.min_price else None,
+                "max_price": float(gs.max_price) if gs.max_price else None,
+
+                "discounted_price": discounted_price,
+                "offer_code": offer_applied.code if offer_applied else None,
+                "offer_start_time": offer_applied.start_date if offer_applied else None,
+                "offer_end_time": offer_applied.end_date if offer_applied else None,
+
+                "flavours": list(gs.flavours.values_list("name", flat=True)),
+                "image": gs.product.image1.url if gs.product.image1 else '',
+                "image2": gs.product.image2.url if gs.product.image2 else '',
+                "is_active": gs.product.is_active,
+                "is_giftset": True,
+
+                "average_rating": float(gs.product.reviews.aggregate(avg=Avg("rating"))["avg"] or 0),
+                "review_count": gs.product.reviews.count(),
+                "stock_status": gs.product.stock_status,
+                "is_favorite": gs.product.id in wishlist_product_ids,
+                "is_best_seller": gs.product.is_best_seller,
+                "is_trending": gs.product.is_trending,
+                "is_new_arrival": gs.product.is_new_arrival,
             })
-    else:
-        # --- 6️⃣ Regular ProductVariant-based products ---
-        variants = ProductVariant.objects.select_related('product').all()
 
-        if category_ids:
-            variants = variants.filter(product__category_id__in=category_ids)
-        if subcategory_ids:
-            variants = variants.filter(product__subcategory_id__in=subcategory_ids)
-        if sizes:
-            variants = variants.filter(size__in=sizes)
-        if min_price is not None:
-            variants = variants.filter(price__gte=min_price)
-        if max_price is not None:
-            variants = variants.filter(price__lte=max_price)
+        return JsonResponse({
+            "products": product_data,
+            "category_name": category_name,
+            "subcategory_name": subcategory_name,
+            "category_banner_url": category_banner_url,
+            "subcategory_banner_url": subcategory_banner_url,
+            "current_page": page_giftsets.number,
+            "total_pages": paginator.num_pages,
+            "has_next": page_giftsets.has_next(),
+            "next_page": page_giftsets.next_page_number() if page_giftsets.has_next() else None
+        })
 
-        # Remove duplicates (keep one variant per product)
-        unique_products = {}
-        for var in variants:
-            if var.product.id not in unique_products:
-                unique_products[var.product.id] = var
+    # ❤️ --- 6️⃣ REGULAR VARIANTS — FULLY OPTIMIZED ---
+    variants = (
+        ProductVariant.objects.select_related("product", "product__category", "product__subcategory")
+        .annotate(
+            min_price=Subquery(
+                ProductVariant.objects.filter(product=OuterRef("product"))
+                .values("product")
+                .annotate(mn=Min("price"))
+                .values("mn")[:1]
+            ),
+            max_price=Subquery(
+                ProductVariant.objects.filter(product=OuterRef("product"))
+                .values("product")
+                .annotate(mx=Max("price"))
+                .values("mx")[:1]
+            ),
+        )
+    )
 
-        for var in unique_products.values():
-            final_discounted_price = None
-            final_offer = None
-            for offer in active_offers:
-                discounted = offer.apply_offer(var)
-                if discounted:
-                    final_discounted_price = discounted
-                    final_offer = offer
-                    break
+    if category_ids:
+        variants = variants.filter(product__category_id__in=category_ids)
+    if subcategory_ids:
+        variants = variants.filter(product__subcategory_id__in=subcategory_ids)
+    if sizes:
+        variants = variants.filter(size__in=sizes)
+    if min_price is not None:
+        variants = variants.filter(price__gte=min_price)
+    if max_price is not None:
+        variants = variants.filter(price__lte=max_price)
 
-            product_variants = ProductVariant.objects.filter(product=var.product)
-            price_range = product_variants.aggregate(min_price=Min('price'), max_price=Max('price'))
-            original_range = product_variants.annotate(
-                     original_float=Cast('original_price', FloatField())
-                    ).aggregate(
-                min_original=Min('original_float'),
-                max_original=Max('original_float')
-              )
+    paginator = Paginator(variants, 10)
+    page_variants = paginator.get_page(page)
 
-            product_data.append({
-                'id': var.product.id,
-                'name': var.product.name,
-                'original_price': var.product.original_price,
-                'price': float(var.price),
-                'min_price': float(price_range['min_price']) if price_range['min_price'] else None,
-                'max_price': float(price_range['max_price']) if price_range['max_price'] else None,
-                'min_original_price': float(original_range['min_original']) if original_range['min_original'] else None,
-                'max_original_price': float(original_range['max_original']) if original_range['max_original'] else None,
-                'discounted_price': float(final_discounted_price) if final_discounted_price else None,
-                'offer_code': final_offer.code if final_offer else None,
-                'offer_start_time': final_offer.start_date if final_offer else None,
-                'offer_end_time': final_offer.end_date if final_offer else None,
-                'size': var.size,
-                'stock': var.stock,
-                'image': var.product.image1.url if var.product.image1 else '',
-                'image2': var.product.image2.url if var.product.image2 else '',
-                'is_active': var.product.is_active,
-                'is_giftset': False,
-                'average_rating': float(var.product.reviews.aggregate(avg=Avg('rating'))['avg'] or 0),
-                'review_count': var.product.reviews.count(),
-                'stock_status': var.product.stock_status or "In Stock",
-                'is_favorite': var.product.id in wishlist_product_ids,
-                'is_best_seller': var.product.is_best_seller,
-                'is_trending': var.product.is_trending,
-                'is_new_arrival': var.product.is_new_arrival,
-            })
-    paginator = Paginator(product_data, 10)  # 12 products per page
+    unique_products = {}
+    for var in page_variants:
+        if var.product.id not in unique_products:
+            unique_products[var.product.id] = var
 
-    page_obj = paginator.get_page(page)
-    paged_products = page_obj.object_list
+    for var in unique_products.values():
+
+        discounted_price = None
+        offer_applied = None
+
+        for offer in active_offers:
+            price = offer.apply_offer(var)
+            if price:
+                discounted_price = float(price)
+                offer_applied = offer
+                break
+
+        product_data.append({
+            "id": var.product.id,
+            "name": var.product.name,
+            "price": float(var.price),
+            "original_price": float(var.product.original_price),
+            "min_price": float(var.min_price) if var.min_price else None,
+            "max_price": float(var.max_price) if var.max_price else None,
+
+            "discounted_price": discounted_price,
+            "offer_code": offer_applied.code if offer_applied else None,
+            "offer_start_time": offer_applied.start_date if offer_applied else None,
+            "offer_end_time": offer_applied.end_date if offer_applied else None,
+
+            "size": var.size,
+            "stock": var.stock,
+
+            "image": var.product.image1.url if var.product.image1 else '',
+            "image2": var.product.image2.url if var.product.image2 else '',
+
+            "is_active": var.product.is_active,
+            "is_giftset": False,
+
+            "average_rating": float(var.product.reviews.aggregate(avg=Avg("rating"))["avg"] or 0),
+            "review_count": var.product.reviews.count(),
+            "stock_status": var.product.stock_status,
+            "is_favorite": var.product.id in wishlist_product_ids,
+
+            "is_best_seller": var.product.is_best_seller,
+            "is_trending": var.product.is_trending,
+            "is_new_arrival": var.product.is_new_arrival,
+        })
+
     return JsonResponse({
-        'products': paged_products,
-        'category_name': category_name,
-        'subcategory_name': subcategory_name,
-        'category_banner_url': category_banner_url,
-        'subcategory_banner_url': subcategory_banner_url,
-        'current_page': page_obj.number,
-        'total_pages': paginator.num_pages,
-        'has_next': page_obj.has_next(),
-        'next_page': page_obj.next_page_number() if page_obj.has_next() else None
+        "products": product_data,
+        "category_name": category_name,
+        "subcategory_name": subcategory_name,
+        "category_banner_url": category_banner_url,
+        "subcategory_banner_url": subcategory_banner_url,
+        "current_page": page_variants.number,
+        "total_pages": paginator.num_pages,
+        "has_next": page_variants.has_next(),
+        "next_page": page_variants.next_page_number() if page_variants.has_next() else None
     })
+
+
+
 
 
 
@@ -1223,8 +1281,9 @@ def recalculate_cart_total(request):
         price = item.price or item.product_variant.price or item.product.price
         total += price * item.quantity
 
-    delivery = sum(item.product.delivery_charges or 0 for item in cart_items)
-    platform = sum(item.product.platform_fee or 0 for item in cart_items)
+    delivery = max((item.product.delivery_charges or 0) for item in cart_items) if cart_items else 0
+    platform = max((item.product.platform_fee or 0) for item in cart_items) if cart_items else 0
+
 
     premium_discount = Decimal(request.session.get('premium_offer_percentage', 0))
     premium_discount_amount = (total + delivery + platform) * premium_discount / 100 if premium_discount else Decimal('0.00')
@@ -1386,8 +1445,6 @@ def view_cart(request):
         total_items += quantity
         item_total = final_price * quantity
         total_price += item_total
-        delivery_charges += product.delivery_charges or Decimal('0.00')
-        platform_fee += product.platform_fee or Decimal('0.00')
 
         cart_item.final_price = final_price
         cart_item.original_price = selling_price
@@ -1397,6 +1454,15 @@ def view_cart(request):
     if request.session.get('gift_wrap', False):
         gift_wrap_display = Decimal('150.00')
     cart_total=total_price
+    delivery_charges = max([
+    (item.product.delivery_charges or Decimal('0.00'))
+    for item in cart_items
+])
+
+    platform_fee = max([
+    (item.product.platform_fee or Decimal('0.00'))
+    for item in cart_items
+])
     current_cart_total = total_price + delivery_charges + platform_fee  
 
     # Coupon
@@ -1644,69 +1710,254 @@ def user_logout(request):
     messages.success(request, "Logged out successfully!")
     return redirect('email_login')
 
+from django.db.models import Min, Max, Avg, Prefetch, Q
+from django.views.decorators.http import require_GET
+from django.http import JsonResponse
+
+from django.db.models import Min, Max, Avg, Prefetch, Q
+from django.views.decorators.http import require_GET
+from django.http import JsonResponse
+
 @require_GET
 def search_suggestions(request):
     query = request.GET.get('q', '').strip()
     category_id = request.GET.get('category', '').strip()
-    suggestions = []
-    all_categories = list(Category.objects.all().values('id', 'name'))
 
-    matching_products = Product.objects.all()
+    # Pre-cached categories
+    all_categories = list(Category.objects.only('id', 'name').values('id', 'name'))
 
-    # 👉 Filter by query if provided
-    if query:
-        matching_products = matching_products.filter(
-            Q(name__icontains=query) | Q(description__icontains=query) | Q(sku__icontains=query)
-        )
+    # Prefetch GiftSet
+    giftset_prefetch = Prefetch(
+        'gift_sets',   # <-- Correct related_name
+        queryset=GiftSet.objects.only('id', 'product_id', 'price', 'original_price', 'discounted_price'),
+        to_attr='prefetched_giftsets'
+    )
 
-    # 👉 Filter by category if provided (independent of query)
-    if category_id:
-        matching_products = matching_products.filter(category_id=category_id)
+    # Prefetch variants
+    variant_prefetch = Prefetch(
+        'variants',
+        queryset=ProductVariant.objects.only('id', 'product_id', 'price', 'original_price'),
+        to_attr='prefetched_variants'
+    )
 
-    # 👉 Annotate prices & ratings
-    matching_products = matching_products.annotate(
+    # Prefetch reviews
+    review_prefetch = Prefetch(
+        'reviews',
+        queryset=Review.objects.only('id', 'product_id', 'rating'),
+        to_attr='prefetched_reviews'
+    )
+
+    # Main Query Optimized
+    products = Product.objects.select_related(
+        'category'
+    ).prefetch_related(
+        giftset_prefetch,
+        variant_prefetch,
+        review_prefetch
+    ).annotate(
         min_price=Min('variants__price'),
         max_price=Max('variants__price'),
+        min_original_price=Min('variants__original_price'),
+        max_original_price=Max('variants__original_price'),
+        avg_rating=Avg('reviews__rating'),
+    )
+
+    # Filtering
+    if query:
+        products = products.filter(
+            Q(name__icontains=query) |
+            Q(description__icontains=query) |
+            Q(sku__icontains=query)
+        )
+
+    if category_id:
+        products = products.filter(category_id=category_id)
+
+    results = []
+
+    for p in products:
+        category_normalized = p.category.name.lower().replace(" ", "").replace("-", "")
+
+        # ===== PRICE HANDLING =====
+        if category_normalized == "giftsets" and p.prefetched_giftsets:
+            prices = [g.discounted_price or g.price for g in p.prefetched_giftsets if g.price]
+            original_prices = [g.original_price for g in p.prefetched_giftsets if g.original_price]
+
+            # Selling price
+            if prices:
+                price_display = f"₹{min(prices)}" if min(prices) == max(prices) else f"₹{min(prices)} - ₹{max(prices)}"
+            else:
+                price_display = "Price not available"
+
+            # Original price
+            if original_prices:
+                original_price_display = (
+                    f"₹{min(original_prices)}"
+                    if min(original_prices) == max(original_prices)
+                    else f"₹{min(original_prices)} - ₹{max(original_prices)}"
+                )
+            else:
+                original_price_display = "N/A"
+
+        else:  # Normal products
+            if p.min_price:
+                price_display = f"₹{p.min_price}" if p.min_price == p.max_price else f"₹{p.min_price} - ₹{p.max_price}"
+            else:
+                price_display = "Price not available"
+
+            if p.min_original_price:
+                original_price_display = (
+                    f"₹{p.min_original_price}"
+                    if p.min_original_price == p.max_original_price
+                    else f"₹{p.min_original_price} - ₹{p.max_original_price}"
+                )
+            else:
+                original_price_display = "N/A"
+
+        # ===== RATINGS =====
+        avg_rating = round(p.avg_rating or 0, 1)
+        rating_percentage = round((avg_rating / 5) * 100, 1)
+
+        # ===== BUILD RESULT =====
+        results.append({
+            "id": p.id,
+            "name": p.name,
+            "image": p.image1.url if p.image1 else "",
+            "description": (p.description or "")[:100],
+            "url": f"/product/{p.id}/",
+            "price_display": price_display,
+            "original_price_display": original_price_display,
+            "average_rating": avg_rating,
+            "rating_percentage": rating_percentage,
+        })
+
+    return JsonResponse({"results": results, "categories": all_categories})
+
+
+
+from django.db.models import Min, Max, Avg, Prefetch
+from django.views.decorators.http import require_GET
+from django.http import JsonResponse
+
+@require_GET
+def earch_suggestions(request):
+    query = request.GET.get('q', '').strip()
+    category_id = request.GET.get('category', '').strip()
+
+    # Get all categories (cached by Django)
+    all_categories = list(Category.objects.only('id', 'name').values('id', 'name'))
+
+    # Prefetch giftsets (select only required fields)
+    giftset_prefetch = Prefetch(
+        'giftset_set',
+        queryset=GiftSet.objects.only('id', 'product_id', 'price', 'original_price'),
+        to_attr='prefetched_giftsets'
+    )
+
+    # Prefetch variants
+    variant_prefetch = Prefetch(
+        'variants',
+        queryset=Variant.objects.only('id', 'product_id', 'price', 'original_price'),
+        to_attr='prefetched_variants'
+    )
+
+    # Prefetch reviews
+    review_prefetch = Prefetch(
+        'reviews',
+        queryset=Review.objects.only('id', 'product_id', 'rating'),
+        to_attr='prefetched_reviews'
+    )
+
+    products = Product.objects.all().select_related(
+        'category'
+    ).prefetch_related(
+        giftset_prefetch,
+        variant_prefetch,
+        review_prefetch
+    ).annotate(
+        min_price=Min('variants__price'),
+        max_price=Max('variants__price'),
+        min_original_price=Min('variants__original_price'),
+        max_original_price=Max('variants__original_price'),
         avg_rating=Avg('reviews__rating')
     )
 
-    for product in matching_products:
-        category_normalized = product.category.name.lower().replace(' ', '').replace('-', '')
+    # Search filtering
+    if query:
+        products = products.filter(
+            Q(name__icontains=query) |
+            Q(description__icontains=query) |
+            Q(sku__icontains=query)
+        )
 
-        if category_normalized == 'giftsets':
-            giftsets = GiftSet.objects.filter(product=product)
-            if giftsets.exists():
-                prices = giftsets.values_list('price', flat=True)
-                if len(prices) == 1:
-                    price_display = f"₹{prices[0]}"
-                else:
-                    min_price = min(prices)
-                    max_price = max(prices)
-                    price_display = f"₹{min_price}" if min_price == max_price else f"₹{min_price} - ₹{max_price}"
+    if category_id:
+        products = products.filter(category_id=category_id)
+
+    results = []
+
+    for p in products:
+        category_normalized = p.category.name.lower().replace(" ", "").replace("-", "")
+
+        # ================================
+        #   PRICE HANDLING (FAST)
+        # ================================
+        if category_normalized == "giftsets" and p.prefetched_giftsets:
+            prices = [g.price for g in p.prefetched_giftsets if g.price]
+            original_prices = [g.original_price for g in p.prefetched_giftsets if g.original_price]
+
+            # Selling price
+            if prices:
+                price_display = f"₹{min(prices)}" if min(prices) == max(prices) else f"₹{min(prices)} - ₹{max(prices)}"
             else:
                 price_display = "Price not available"
+
+            # Original price
+            if original_prices:
+                original_price_display = (
+                    f"₹{min(original_prices)}" if min(original_prices) == max(original_prices)
+                    else f"₹{min(original_prices)} - ₹{max(original_prices)}"
+                )
+            else:
+                original_price_display = "N/A"
+
         else:
-            if product.min_price and product.max_price:
-                price_display = f"₹{product.min_price}" if product.min_price == product.max_price else f"₹{product.min_price} - ₹{product.max_price}"
+            # Normal product prices (annotated)
+            if p.min_price and p.max_price:
+                price_display = f"₹{p.min_price}" if p.min_price == p.max_price else f"₹{p.min_price} - ₹{p.max_price}"
             else:
                 price_display = "Price not available"
 
-        avg_rating = round(product.avg_rating or 0, 1)
-        rating_percentage = round((avg_rating / 5) * 100, 1) if avg_rating else 0
+            if p.min_original_price and p.max_original_price:
+                original_price_display = (
+                    f"₹{p.min_original_price}" if p.min_original_price == p.max_original_price
+                    else f"₹{p.min_original_price} - ₹{p.max_original_price}"
+                )
+            else:
+                original_price_display = "N/A"
 
-        suggestions.append({
-            'id': product.id,
-            'name': product.name,
-            'image': product.image1.url if product.image1 else '', 
-            'description': product.description[:100] if product.description else '',
-            'url': f"/product/{product.id}/",
-            'price_display': price_display,
-            'average_rating': avg_rating,
-            'rating_percentage': rating_percentage,
-            'original_price': product.original_price if hasattr(product, 'original_price') else None,
+        # ================================
+        #   RATINGS (FAST)
+        # ================================
+        avg_rating = round(p.avg_rating or 0, 1)
+        rating_percentage = round((avg_rating / 5) * 100, 1)
+
+        # ================================
+        #   RESULT APPEND
+        # ================================
+        results.append({
+            "id": p.id,
+            "name": p.name,
+            "image": p.image1.url if p.image1 else "",
+            "description": (p.description or "")[:100],
+            "url": f"/product/{p.id}/",
+            "price_display": price_display,
+            "original_price_display": original_price_display,
+            "average_rating": avg_rating,
+            "rating_percentage": rating_percentage,
         })
 
-    return JsonResponse({'results': suggestions, 'categories': all_categories})
+    return JsonResponse({"results": results, "categories": all_categories})
+
 
 
 @login_required(login_url='email_login')
@@ -1731,6 +1982,8 @@ def viewall_products(request, section):
     base_products = base_products.annotate(
         min_price=Min('variants__price'),
         max_price=Max('variants__price'),
+        min_original_price=Min('variants__original_price'),
+        max_original_price=Max('variants__original_price'),
         average_rating=Avg('reviews__rating'),
     review_count=Count('reviews')
     )
@@ -1739,6 +1992,8 @@ def viewall_products(request, section):
     giftset_prices = GiftSet.objects.filter(product__in=base_products).values('product').annotate(
         min_price=Min('price'),
         max_price=Max('price'),
+        min_original_price=Min('original_price'),
+        max_original_price=Max('original_price'),
     #     average_rating=Avg('reviews__rating'),
     # review_count=Count('reviews')
     )
@@ -1767,6 +2022,8 @@ def viewall_products(request, section):
                 'product': product,
                 'min_price': price_data['min_price'],
                 'max_price': price_data['max_price'],
+                'min_original_price': price_data['min_original_price'],
+                'max_original_price': price_data['max_original_price'],
                 'is_in_wishlist': is_in_wishlist,
         #         'average_rating': product.average_rating or 0,
                 'average_rating': round(average_rating, 1),
@@ -1778,6 +2035,8 @@ def viewall_products(request, section):
                 'product': product,
                 'min_price': product.min_price,
                 'max_price': product.max_price,
+                'min_original_price': product.min_original_price,
+                'max_original_price': product.max_original_price,
                 'is_in_wishlist': is_in_wishlist,
                 'average_rating': product.average_rating or 0,
         'average_rating': round(average_rating, 1),

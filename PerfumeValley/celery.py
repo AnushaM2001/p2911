@@ -10,7 +10,7 @@ app.autodiscover_tasks()
 # ✅ Celery Beat Schedule (runs every 1 min)
 app.conf.beat_schedule = {
     "create-shiprocket-orders-every-1-min": {
-        "task": "admin_panel.tasks.process_order_with_shiprocket",
+        "task": "admin_panel.tasks.schedule_pending_shiprocket_orders",
         "schedule": 60.0,  # every 5 minute
     },
     "send-invoices-every-5-min": {
