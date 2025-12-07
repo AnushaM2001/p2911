@@ -408,6 +408,12 @@ from django.utils import timezone
 from decimal import Decimal
 
 
+from decimal import Decimal
+from django.db.models import Q, Min, Max, Avg, Subquery, OuterRef
+from django.core.paginator import Paginator
+from django.utils import timezone
+from django.http import JsonResponse
+
 def ajax_filter_products(request):
     page = int(request.GET.get('page', 1))
 
@@ -428,14 +434,39 @@ def ajax_filter_products(request):
     now = timezone.now()
 
     # --- 2️⃣ PREFETCH OFFERS (FAST) ---
-    active_offers = (
+    # Keep DB filter to only currently relevant offers (Welcome/Premium always included; Festival only if active by date)
+    active_offers_qs = (
         PremiumFestiveOffer.objects.filter(is_active=True)
         .filter(
             Q(premium_festival__in=['Welcome', 'Premium']) |
             Q(start_date__lte=now, end_date__gte=now)
         )
         .prefetch_related('category', 'subcategory')
+        .order_by('id')  # preserve natural ordering; change if you want explicit priority
     )
+
+    active_offers = list(active_offers_qs)  # fetch once
+
+    # --- Build light-weight offer metadata to AVOID DB hits during evaluation ---
+    # We'll pull category/subcategory id lists into Python sets and compute a small dict per offer.
+    offers_meta = []
+    for o in active_offers:
+        cat_ids = set(o.category.values_list('id', flat=True)) if o.category.exists() else set()
+        subcat_ids = set(o.subcategory.values_list('id', flat=True)) if o.subcategory.exists() else set()
+        size_val = (o.size or "").strip().lower()
+        offers_meta.append({
+            "obj": o,
+            "id": o.id,
+            "premium_festival": o.premium_festival,
+            "percentage": Decimal(o.percentage) if o.percentage is not None else None,
+            "start_date": o.start_date,
+            "end_date": o.end_date,
+            "is_active": o.is_active,
+            "code": o.code,
+            "cat_ids": cat_ids,
+            "subcat_ids": subcat_ids,
+            "size": size_val,  # '' or 'all' or explicit
+        })
 
     # --- 3️⃣ CATEGORY & SUBCATEGORY INFO ---
     cat_obj = Category.objects.filter(id__in=category_ids).first() if category_ids else None
@@ -456,9 +487,94 @@ def ajax_filter_products(request):
 
     product_data = []
 
-    # 🧡 --- 5️⃣ GIFTSET QUERIES COMPLETELY OPTIMIZED ---
-    if cat_obj and cat_obj.name.lower().replace(' ', '').replace('-', '') == 'giftsets':
+    # --- Helper: compute first matching offer price for an item using offers_meta (NO DB hits) ---
+    def first_matching_offer_price_for_variant(variant):
+        """
+        Variant is ProductVariant instance (select_related product and product category/subcategory recommended)
+        Returns (discounted_price_float, offer_obj) or (None, None)
+        """
+        product = variant.product
+        product_cat_id = getattr(product, "category_id", None)
+        product_subcat_id = getattr(product, "subcategory_id", None)
+        variant_size = str(variant.size).strip().lower() if variant.size is not None else ""
 
+        for om in offers_meta:
+            # --- Fast checks
+            # 1) Welcome/Premium: skip date filtering; Festival: date range required
+            if om["premium_festival"] not in ["Welcome", "Premium"]:
+                # Festival-like; check dates and active
+                if not (om["is_active"] and om["start_date"] and om["end_date"] and (om["start_date"] <= now <= om["end_date"])):
+                    continue
+            else:
+                # Welcome/Premium must be active (we already filter is_active=True from DB but keep defensive)
+                if not om["is_active"]:
+                    continue
+
+            # 2) Category/subcategory/size matching (mirrors your original logic)
+            has_cat_filter = bool(om["cat_ids"])
+            has_subcat_filter = bool(om["subcat_ids"])
+            size_cfg = om["size"]  # '' | 'all' | specific
+
+            # category match
+            category_match = has_cat_filter and (product_cat_id in om["cat_ids"])
+            subcategory_match = has_subcat_filter and (product_subcat_id in om["subcat_ids"])
+            size_match = False
+            if size_cfg:
+                if size_cfg == "all":
+                    size_match = True
+                else:
+                    size_match = (variant_size == size_cfg)
+            # If conditions match (mirrors your previous complex clause)
+            if (
+                (category_match and size_match) or
+                (subcategory_match and size_match) or
+                (size_cfg == "all" and (category_match or subcategory_match)) or
+                (not has_cat_filter and not has_subcat_filter and (size_cfg == "" or size_match))
+            ):
+                if om["percentage"] is not None and variant.price is not None:
+                    discount = (om["percentage"] / Decimal(100)) * variant.price
+                    final_price = (variant.price - discount).quantize(Decimal("0.01"))
+                    return (float(final_price), om["obj"])
+        return (None, None)
+
+    def first_matching_offer_price_for_giftset(giftset):
+        """
+        GiftSet instance (select_related product recommended)
+        """
+        product = giftset.product
+        product_cat_id = getattr(product, "category_id", None)
+        product_subcat_id = getattr(product, "subcategory_id", None)
+
+        for om in offers_meta:
+            # date & active checks same as above
+            if om["premium_festival"] not in ["Welcome", "Premium"]:
+                if not (om["is_active"] and om["start_date"] and om["end_date"] and (om["start_date"] <= now <= om["end_date"])):
+                    continue
+            else:
+                if not om["is_active"]:
+                    continue
+
+            has_cat_filter = bool(om["cat_ids"])
+            has_subcat_filter = bool(om["subcat_ids"])
+
+            category_match = has_cat_filter and (product_cat_id in om["cat_ids"])
+            subcategory_match = has_subcat_filter and (product_subcat_id in om["subcat_ids"])
+
+            if (
+                category_match or
+                subcategory_match or
+                (not has_cat_filter and not has_subcat_filter)
+            ):
+                if om["percentage"] is not None and giftset.price is not None:
+                    discount = (om["percentage"] / Decimal(100)) * giftset.price
+                    final_price = (giftset.price - discount).quantize(Decimal("0.01"))
+                    return (float(final_price), om["obj"])
+        return (None, None)
+
+    # -------------------------
+    # 🧡 Giftset handling (optimized)
+    # -------------------------
+    if cat_obj and cat_obj.name.lower().replace(' ', '').replace('-', '') == 'giftsets':
         giftsets_qs = (
             GiftSet.objects.filter(product__category=cat_obj)
             .select_related('product')
@@ -482,18 +598,10 @@ def ajax_filter_products(request):
         paginator = Paginator(giftsets_qs, 10)
         page_giftsets = paginator.get_page(page)
 
+        # Important: build a small cache of product reviews averages/counts if you have many products.
+        # For now we keep your original calculation, but it's now only per-page (not the big cost).
         for gs in page_giftsets:
-
-            # FAST OFFER CALCULATION
-            discounted_price = None
-            offer_applied = None
-
-            for offer in active_offers:
-                price = offer.apply_offer(gs)
-                if price:
-                    discounted_price = float(price)
-                    offer_applied = offer
-                    break
+            discounted_price, offer_obj = first_matching_offer_price_for_giftset(gs)
 
             product_data.append({
                 "id": gs.product.id,
@@ -504,9 +612,9 @@ def ajax_filter_products(request):
                 "max_price": float(gs.max_price) if gs.max_price else None,
 
                 "discounted_price": discounted_price,
-                "offer_code": offer_applied.code if offer_applied else None,
-                "offer_start_time": offer_applied.start_date if offer_applied else None,
-                "offer_end_time": offer_applied.end_date if offer_applied else None,
+                "offer_code": offer_obj.code if offer_obj else None,
+                "offer_start_time": offer_obj.start_date if offer_obj else None,
+                "offer_end_time": offer_obj.end_date if offer_obj else None,
 
                 "flavours": list(gs.flavours.values_list("name", flat=True)),
                 "image": gs.product.image1.url if gs.product.image1 else '',
@@ -535,7 +643,9 @@ def ajax_filter_products(request):
             "next_page": page_giftsets.next_page_number() if page_giftsets.has_next() else None
         })
 
-    # ❤️ --- 6️⃣ REGULAR VARIANTS — FULLY OPTIMIZED ---
+    # -------------------------
+    # ❤️ Variants handling (optimized)
+    # -------------------------
     variants = (
         ProductVariant.objects.select_related("product", "product__category", "product__subcategory")
         .annotate(
@@ -568,22 +678,14 @@ def ajax_filter_products(request):
     paginator = Paginator(variants, 10)
     page_variants = paginator.get_page(page)
 
+    # Build unique product list (to show one product per product id)
     unique_products = {}
     for var in page_variants:
         if var.product.id not in unique_products:
             unique_products[var.product.id] = var
 
     for var in unique_products.values():
-
-        discounted_price = None
-        offer_applied = None
-
-        for offer in active_offers:
-            price = offer.apply_offer(var)
-            if price:
-                discounted_price = float(price)
-                offer_applied = offer
-                break
+        discounted_price, offer_obj = first_matching_offer_price_for_variant(var)
 
         product_data.append({
             "id": var.product.id,
@@ -594,9 +696,9 @@ def ajax_filter_products(request):
             "max_price": float(var.max_price) if var.max_price else None,
 
             "discounted_price": discounted_price,
-            "offer_code": offer_applied.code if offer_applied else None,
-            "offer_start_time": offer_applied.start_date if offer_applied else None,
-            "offer_end_time": offer_applied.end_date if offer_applied else None,
+            "offer_code": offer_obj.code if offer_obj else None,
+            "offer_start_time": offer_obj.start_date if offer_obj else None,
+            "offer_end_time": offer_obj.end_date if offer_obj else None,
 
             "size": var.size,
             "stock": var.stock,
@@ -628,7 +730,6 @@ def ajax_filter_products(request):
         "has_next": page_variants.has_next(),
         "next_page": page_variants.next_page_number() if page_variants.has_next() else None
     })
-
 
 
 
