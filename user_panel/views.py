@@ -1872,127 +1872,6 @@ def search_suggestions(request):
 
 
 from django.db.models import Min, Max, Avg, Prefetch
-from django.views.decorators.http import require_GET
-from django.http import JsonResponse
-
-@require_GET
-def earch_suggestions(request):
-    query = request.GET.get('q', '').strip()
-    category_id = request.GET.get('category', '').strip()
-
-    # Get all categories (cached by Django)
-    all_categories = list(Category.objects.only('id', 'name').values('id', 'name'))
-
-    # Prefetch giftsets (select only required fields)
-    giftset_prefetch = Prefetch(
-        'giftset_set',
-        queryset=GiftSet.objects.only('id', 'product_id', 'price', 'original_price'),
-        to_attr='prefetched_giftsets'
-    )
-
-    # Prefetch variants
-    variant_prefetch = Prefetch(
-        'variants',
-        queryset=Variant.objects.only('id', 'product_id', 'price', 'original_price'),
-        to_attr='prefetched_variants'
-    )
-
-    # Prefetch reviews
-    review_prefetch = Prefetch(
-        'reviews',
-        queryset=Review.objects.only('id', 'product_id', 'rating'),
-        to_attr='prefetched_reviews'
-    )
-
-    products = Product.objects.all().select_related(
-        'category'
-    ).prefetch_related(
-        giftset_prefetch,
-        variant_prefetch,
-        review_prefetch
-    ).annotate(
-        min_price=Min('variants__price'),
-        max_price=Max('variants__price'),
-        min_original_price=Min('variants__original_price'),
-        max_original_price=Max('variants__original_price'),
-        avg_rating=Avg('reviews__rating')
-    )
-
-    # Search filtering
-    if query:
-        products = products.filter(
-            Q(name__icontains=query) |
-            Q(description__icontains=query) |
-            Q(sku__icontains=query)
-        )
-
-    if category_id:
-        products = products.filter(category_id=category_id)
-
-    results = []
-
-    for p in products:
-        category_normalized = p.category.name.lower().replace(" ", "").replace("-", "")
-
-        # ================================
-        #   PRICE HANDLING (FAST)
-        # ================================
-        if category_normalized == "giftsets" and p.prefetched_giftsets:
-            prices = [g.price for g in p.prefetched_giftsets if g.price]
-            original_prices = [g.original_price for g in p.prefetched_giftsets if g.original_price]
-
-            # Selling price
-            if prices:
-                price_display = f"₹{min(prices)}" if min(prices) == max(prices) else f"₹{min(prices)} - ₹{max(prices)}"
-            else:
-                price_display = "Price not available"
-
-            # Original price
-            if original_prices:
-                original_price_display = (
-                    f"₹{min(original_prices)}" if min(original_prices) == max(original_prices)
-                    else f"₹{min(original_prices)} - ₹{max(original_prices)}"
-                )
-            else:
-                original_price_display = "N/A"
-
-        else:
-            # Normal product prices (annotated)
-            if p.min_price and p.max_price:
-                price_display = f"₹{p.min_price}" if p.min_price == p.max_price else f"₹{p.min_price} - ₹{p.max_price}"
-            else:
-                price_display = "Price not available"
-
-            if p.min_original_price and p.max_original_price:
-                original_price_display = (
-                    f"₹{p.min_original_price}" if p.min_original_price == p.max_original_price
-                    else f"₹{p.min_original_price} - ₹{p.max_original_price}"
-                )
-            else:
-                original_price_display = "N/A"
-
-        # ================================
-        #   RATINGS (FAST)
-        # ================================
-        avg_rating = round(p.avg_rating or 0, 1)
-        rating_percentage = round((avg_rating / 5) * 100, 1)
-
-        # ================================
-        #   RESULT APPEND
-        # ================================
-        results.append({
-            "id": p.id,
-            "name": p.name,
-            "image": p.image1.url if p.image1 else "",
-            "description": (p.description or "")[:100],
-            "url": f"/product/{p.id}/",
-            "price_display": price_display,
-            "original_price_display": original_price_display,
-            "average_rating": avg_rating,
-            "rating_percentage": rating_percentage,
-        })
-
-    return JsonResponse({"results": results, "categories": all_categories})
 
 
 from django.db.models import Min, Max, Avg, Count, Q
@@ -2016,28 +1895,33 @@ def viewall_products(request, section):
         base_products = Product.objects.filter(is_shop_by_occassion=True, is_active=True)
         title = "Shop By Occasions"
 
-    # -------- ANNOTATIONS --------
+    # --------------------------------------------------------
+    # FIX: Cast price & original_price to Integer for accuracy
+    # --------------------------------------------------------
     base_products = base_products.annotate(
-        min_price=Min('variants__price'),
-        max_price=Max('variants__price'),
-        min_original_price=Min('variants__original_price'),
-        max_original_price=Max('variants__original_price'),
+        min_price=Min(Cast('variants__price', IntegerField())),
+        max_price=Max(Cast('variants__price', IntegerField())),
+        min_original_price=Min(Cast('variants__original_price', IntegerField())),
+        max_original_price=Max(Cast('variants__original_price', IntegerField())),
         average_rating=Avg('reviews__rating'),
         review_count=Count('reviews'),
     )
 
-    # -------- GIFTSET AGGREGATION --------
-    giftset_prices = GiftSet.objects.filter(product__in=base_products).values('product').annotate(
-        min_price=Min('price'),
-        max_price=Max('price'),
-        min_original_price=Min('original_price'),
-        max_original_price=Max('original_price'),
+    # -------- GIFTSET AGGREGATION WITH CAST --------
+    giftset_prices = GiftSet.objects.filter(product__in=base_products).annotate(
+        num_price=Cast('price', IntegerField()),
+        num_original=Cast('original_price', IntegerField())
+    ).values('product').annotate(
+        min_price=Min('num_price'),
+        max_price=Max('num_price'),
+        min_original_price=Min('num_original'),
+        max_original_price=Max('num_original'),
     )
 
     giftset_price_map = {g['product']: g for g in giftset_prices}
     giftset_product_ids = set(giftset_price_map.keys())
 
-    # -------- WISHLIST CHECK --------
+    # -------- WISHLIST --------
     wishlist_product_ids = []
     if request.user.is_authenticated:
         wishlist_product_ids = list(
@@ -2046,45 +1930,17 @@ def viewall_products(request, section):
 
     combined_items = []
 
-    # -------- LOOP PRODUCTS --------
+    # -------- LOOP --------
     for product in base_products:
 
-        # ------------------------------------------------------
-        # DEBUG PRINT — VERY IMPORTANT
-        # ------------------------------------------------------
-        print("\n==============================")
-        print("PRODUCT:", product.id, product.name)
-
-        variant_prices = list(
-            product.variants.all().values(
-                'id', 'size', 'price', 'original_price'
-            )
-        )
-        print("VARIANTS →", variant_prices)
-
-        giftsets = list(
-            GiftSet.objects.filter(product=product).values(
-                'id', 'price', 'original_price'
-            )
-        )
-        print("GIFTSETS →", giftsets)
-
-        print("ANNOTATED PRICES →", {
-            'min_price': product.min_price,
-            'max_price': product.max_price,
-            'min_original_price': product.min_original_price,
-            'max_original_price': product.max_original_price,
-        })
-        # ------------------------------------------------------
-
-        # CHECK WISHLIST
+        # WISHLIST CHECK
         is_in_wishlist = product.id in wishlist_product_ids
 
         # RATINGS
-        average_rating = product.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
-        review_count = product.reviews.count()
+        average_rating = product.average_rating or 0
+        review_count = product.review_count or 0
 
-        # IF GIFTSET EXIST → USE GIFTSET DATA
+        # GIFTSET OVERRIDE
         if product.id in giftset_product_ids:
             price_data = giftset_price_map[product.id]
 
@@ -2100,7 +1956,7 @@ def viewall_products(request, section):
                 'review_count': review_count
             })
 
-        # NORMAL PRODUCTS
+        # REGULAR PRODUCT
         else:
             combined_items.append({
                 'type': 'product',
@@ -2122,7 +1978,6 @@ def viewall_products(request, section):
         'banner': banner,
         'wishlist_product_ids': wishlist_product_ids,
     })
-
 
 
 
