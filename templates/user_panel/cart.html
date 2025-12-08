@@ -390,11 +390,18 @@ html, body {
       </div>
           
           <!-- <p class="mt-2 text-muted small"><i class="bi bi-calendar3"></i> Expected Delivery 24 Dec</p> -->
+          <div class="cart-item" data-item-id="{{ item.id }}">
+              <!-- Item details, image, name, price -->
 
-        <form method="POST" action="{% url 'remove_cart_item' item.id %}" class="remove-form" data-item-id="{{ item.id }}">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-link text-danger small p-0">Remove</button>
-        </form>
+              <form method="POST" action="{% url 'remove_cart_item' item.id %}" 
+                  class="remove-form" data-item-id="{{ item.id }}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-link text-danger small p-0">
+                      Remove
+                  </button>
+              </form>
+          </div>
+
 
         </div>
       </div>
@@ -642,13 +649,11 @@ html, body {
   </div>
 </div>
 <script>
-// In your cart.html template
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle remove item clicks
     document.querySelectorAll('.remove-form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             fetch(this.action, {
                 method: 'POST',
                 headers: {
@@ -657,54 +662,51 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({})
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Remove the item from DOM
-                    const itemElement = document.querySelector(`[data-item-id="${data.item_id}"]`);
+
+                    // FIXED: remove correct cart item wrapper
+                    const itemElement = document.querySelector(
+                        `.cart-item[data-item-id="${this.dataset.itemId}"]`
+                    );
+
                     if (itemElement) {
-                        itemElement.closest('.cart-item').remove();
+                        itemElement.remove();
                     }
-                    
-                    // Update cart count
+
+                    // Update cart count everywhere
                     document.querySelectorAll('.cart-count').forEach(el => {
                         el.textContent = data.cart_count;
                     });
-                    
-                    // Show success message
+
                     showToast('Item removed from cart');
-                    
-                    // Reload if cart is empty
+
                     if (data.is_empty) {
-                        setTimeout(() => location.reload(), 1000);
+                        setTimeout(() => location.reload(), 800);
                     }
+
                 } else {
                     showToast('Error: ' + data.message);
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Remove Error:', error);
                 showToast('Error removing item');
             });
         });
     });
-    
+
     function showToast(message) {
         const toast = document.getElementById('toast');
         if (toast) {
             toast.querySelector('.toast-body').textContent = message;
             toast.style.display = "block";
-            setTimeout(() => {
-                toast.style.display = "none";
-            }, 2000);
+            setTimeout(() => { toast.style.display = "none" }, 2000);
         }
     }
 });
+
 </script>
 
 
@@ -1098,3 +1100,4 @@ updatePriceElement('total', prices.total_price);
 
   
 {% endblock content %}
+

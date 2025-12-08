@@ -423,6 +423,8 @@ def product_list(request):
     selected_date = request.GET.get('date', '')
     if query:
         products = products.filter(
+            Q(sku__icontains=query) |
+
             Q(name__icontains=query) |
             Q(category__name__icontains=query) |
             Q(subcategory__name__icontains=query)|
