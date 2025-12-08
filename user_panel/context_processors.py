@@ -114,7 +114,7 @@ def latest_purchases_orders(request):
             Prefetch("items", queryset=OrderItem.objects.select_related("product"))
         ).select_related("user", "address").order_by("-created_at")[:10]
 
-        print(f"Fetched {len(orders)} orders")  # ✅ Debugging
+        # print(f"Fetched {len(orders)} orders")  # ✅ Debugging
 
         for order in orders:
             item = order.items.first()
@@ -122,7 +122,7 @@ def latest_purchases_orders(request):
                 continue
 
             product = item.product
-            print(f"Processing product: {product.name}")  # ✅ Debugging
+            # print(f"Processing product: {product.name}")  # ✅ Debugging
 
             price_display = f"₹{item.price}" if item.price else "Price not available"
             original_price_display = f"₹{item.original_price}" if getattr(item, "original_price", None) else ""
@@ -137,7 +137,7 @@ def latest_purchases_orders(request):
                 "product_url": reverse("product_detail", args=[product.id]),
             })
 
-        print(f"Final purchases list: {purchases}")  # ✅ Debugging
+        # print(f"Final purchases list: {purchases}")  # ✅ Debugging
 
     except Exception as e:
         print(f"Error fetching latest purchases: {e}")  # ✅ Debugging
