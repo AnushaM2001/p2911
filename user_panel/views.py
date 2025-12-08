@@ -21,6 +21,8 @@ from django.db.models import Sum, Q, Min, Max, Avg, Count
 from django.db.models.functions import Lower
 from django.core.mail import send_mail, EmailMessage
 from django.views.decorators.cache import cache_page
+from django.db.models import Min, Max, Avg, Count, IntegerField
+from django.db.models.functions import Cast
 
 import razorpay
 import redis
