@@ -2053,7 +2053,7 @@ def viewall_products(request, section):
         # DEBUG PRINT — VERY IMPORTANT
         # ------------------------------------------------------
         print("\n==============================")
-        print("PRODUCT:", product.id, product.product_name)
+        print("PRODUCT:", product.id, product.name)
 
         variant_prices = list(
             product.variants.all().values(
