@@ -1995,6 +1995,7 @@ def earch_suggestions(request):
     return JsonResponse({"results": results, "categories": all_categories})
 
 
+from django.db.models import Min, Max, Avg, Count, Q
 
 @login_required(login_url='email_login')
 def viewall_products(request, section):
@@ -2014,45 +2015,45 @@ def viewall_products(request, section):
         base_products = Product.objects.filter(is_shop_by_occassion=True, is_active=True)
         title = "Shop By Occasions"
 
-    # Annotate base products with variant price range
+    # ---------------- VARIANT PRICE RANGE FIX ----------------
     base_products = base_products.annotate(
-        min_price=Min('variants__price'),
-        max_price=Max('variants__price'),
-        min_original_price=Min('variants__original_price'),
-        max_original_price=Max('variants__original_price'),
+        min_price=Min('variants__price', filter=Q(variants__price__gt=0)),
+        max_price=Max('variants__price', filter=Q(variants__price__gt=0)),
+        min_original_price=Min('variants__original_price', filter=Q(variants__original_price__gt=0)),
+        max_original_price=Max('variants__original_price', filter=Q(variants__original_price__gt=0)),
         average_rating=Avg('reviews__rating'),
-    review_count=Count('reviews')
+        review_count=Count('reviews'),
     )
 
-    # Group giftsets by product and calculate min/max price per product
+    # ---------------- GIFTSET PRICE RANGE FIX ----------------
     giftset_prices = GiftSet.objects.filter(product__in=base_products).values('product').annotate(
-        min_price=Min('price'),
-        max_price=Max('price'),
-        min_original_price=Min('original_price'),
-        max_original_price=Max('original_price'),
-    #     average_rating=Avg('reviews__rating'),
-    # review_count=Count('reviews')
+        min_price=Min('price', filter=Q(price__gt=0)),
+        max_price=Max('price', filter=Q(price__gt=0)),
+        min_original_price=Min('original_price', filter=Q(original_price__gt=0)),
+        max_original_price=Max('original_price', filter=Q(original_price__gt=0)),
     )
 
-    # Create a dictionary of product_id to giftset min/max prices
     giftset_price_map = {g['product']: g for g in giftset_prices}
-
-    # Get product IDs that have giftsets
     giftset_product_ids = set(giftset_price_map.keys())
 
-    # Wishlist logic
     wishlist_product_ids = []
     if request.user.is_authenticated:
-        wishlist_product_ids = list(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True))
+        wishlist_product_ids = list(
+            Wishlist.objects.filter(user=request.user)
+            .values_list('product_id', flat=True)
+        )
 
     combined_items = []
 
     for product in base_products:
         is_in_wishlist = product.id in wishlist_product_ids
-        average_rating = product.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
+        avg_rating = product.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
         review_count = product.reviews.count()
+
+        # If giftset exists for this product → use only giftset prices
         if product.id in giftset_product_ids:
             price_data = giftset_price_map[product.id]
+
             combined_items.append({
                 'type': 'giftset',
                 'product': product,
@@ -2061,11 +2062,12 @@ def viewall_products(request, section):
                 'min_original_price': price_data['min_original_price'],
                 'max_original_price': price_data['max_original_price'],
                 'is_in_wishlist': is_in_wishlist,
-        #         'average_rating': product.average_rating or 0,
-                'average_rating': round(average_rating, 1),
-                'review_count': review_count
+                'average_rating': round(avg_rating, 1),
+                'review_count': review_count,
             })
+
         else:
+            # Pure product (no giftsets)
             combined_items.append({
                 'type': 'product',
                 'product': product,
@@ -2074,9 +2076,8 @@ def viewall_products(request, section):
                 'min_original_price': product.min_original_price,
                 'max_original_price': product.max_original_price,
                 'is_in_wishlist': is_in_wishlist,
-                'average_rating': product.average_rating or 0,
-        'average_rating': round(average_rating, 1),
-            'review_count': review_count
+                'average_rating': round(avg_rating, 1),
+                'review_count': review_count,
             })
 
     banner = Banner.objects.filter(section=section).first()
@@ -2086,8 +2087,8 @@ def viewall_products(request, section):
         'title': title,
         'banner': banner,
         'wishlist_product_ids': wishlist_product_ids,
-        
     })
+
 
 
 def international_order(request):
