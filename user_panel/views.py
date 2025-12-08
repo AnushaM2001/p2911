@@ -195,8 +195,8 @@ def home1(request):
     best_selling = Product.objects.filter(is_best_seller=True).annotate(
     min_price=Min('variants__price'),
     max_price=Max('variants__price'),
-    s_price=Min('variants__original_price'),
-    e_price=Max('variants__original_price'),
+    s_price=Min(Cast('variants__original_price', IntegerField())),
+    e_price=Max(Cast('variants__original_price', IntegerField())),
     average_rating=Avg('reviews__rating'),      # 👈 avg rating
     review_count=Count('reviews')               # 👈 number of reviews
       ).order_by('-created_at')[:12]
@@ -204,16 +204,16 @@ def home1(request):
     new_arrival = Product.objects.filter(is_new_arrival=True).annotate(
         min_price=Min('variants__price'),
         max_price=Max('variants__price'),
-        s_price=Min('variants__original_price'),
-        e_price=Max('variants__original_price'),
+        s_price=Min(Cast('variants__original_price', IntegerField())),
+        e_price=Max(Cast('variants__original_price', IntegerField())),
         average_rating=Avg('reviews__rating'),      # 👈 avg rating
     review_count=Count('reviews') 
     ).order_by('-created_at')[:12]
     trending = Product.objects.filter(is_trending=True).annotate(
         min_price=Min('variants__price'),
         max_price=Max('variants__price'),
-        s_price=Min('variants__original_price'),
-        e_price=Max('variants__original_price'),
+        s_price=Min(Cast('variants__original_price', IntegerField())),
+        e_price=Max(Cast('variants__original_price', IntegerField())),
         average_rating=Avg('reviews__rating'),      # 👈 avg rating
     review_count=Count('reviews') 
     ).order_by('-created_at')[:12]
