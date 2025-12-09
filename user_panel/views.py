@@ -23,6 +23,7 @@ from django.core.mail import send_mail, EmailMessage
 from django.views.decorators.cache import cache_page
 from django.db.models import Min, Max, Avg, Count, IntegerField
 from django.db.models.functions import Cast
+from django.db.models.functions import Coalesce, Cast
 
 import razorpay
 import redis
