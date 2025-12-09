@@ -894,18 +894,12 @@ def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
 
     try:
-        # ---- gather inputs ----
-        raw_quantity = request.POST.get('quantity', 1)
-        try:
-            quantity = int(raw_quantity)
-        except (ValueError, TypeError):
-            quantity = 1
-
+        quantity = int(request.POST.get('quantity', 1))
+        action = request.POST.get('action')
         variant_id = request.POST.get('variant_id')
         gift_set_id = request.POST.get('gift_set_id')
-        # frontend should set this hidden input to the displayed/discounted price
-        selected_price = request.POST.get('selected_price', None)
-        selected_flavours = request.POST.get('selected_flavours', '') or ''
+        selected_price = request.POST.get('selected_price')
+        selected_flavours = request.POST.get('selected-flavours', '')
 
         if quantity < 1:
             raise ValueError("Quantity must be at least 1")
@@ -914,94 +908,32 @@ def add_to_cart(request, product_id):
 
         cart_key = f"cart:{request.user.id}"
 
-        # ---- determine item key and compute "price" and "added_quantity" ----
-        # added_quantity = how many units will be incremented into cart.quantity
-        # price = charged unit price (what customer pays per unit shown in sidebar)
-        added_quantity = quantity  # may be changed by BOGO logic
-
         if gift_set_id:
             item_key = f"giftset:{gift_set_id}"
             gift_set = get_object_or_404(GiftSet, id=gift_set_id)
-
-            # Prefer selected_price (frontend-calculated), then gift_set.discounted_price, then gift_set.price
-            if selected_price:
-                try:
-                    price = float(selected_price)
-                except:
-                    price = float(gift_set.discounted_price or gift_set.price)
-            elif getattr(gift_set, "discounted_price", None):
-                price = float(gift_set.discounted_price)
-            else:
-                price = float(gift_set.price)
-
-            # If gift_set has an offer and it's BOGO (rare but handled)
-            offer = getattr(gift_set, "offer", None)
-            if offer and getattr(offer, "type", "").upper() == "BOGO":
-                # if the offer has percentage, compute charged price accordingly
-                if getattr(offer, "percentage", None):
-                    pct = float(offer.percentage)
-                    price = float(gift_set.price) - (float(gift_set.price) * pct / 100.0)
-                else:
-                    price = float(gift_set.price) / 2.0
-                added_quantity = quantity * 2
-
-        else:
-            # variant item
+            price = float(selected_price) if selected_price else float(gift_set.price)
+        elif variant_id:
             item_key = f"variant:{variant_id}"
             variant = get_object_or_404(ProductVariant, id=variant_id)
+            price = float(variant.price)
+        else:
+            item_key = f"product:{product_id}"
+            price = float(product.price)
 
-            # 1) If frontend sent selected_price (recommended), prefer it
-            if selected_price:
-                try:
-                    price = float(selected_price)
-                except:
-                    price = None
-            else:
-                price = None
-
-            # 2) If not provided by frontend, try variant.discounted_price
-            if price is None:
-                if getattr(variant, "discounted_price", None):
-                    price = float(variant.discounted_price)
-
-            # 3) If still None, check product-level offer
-            offer = getattr(product, "offer", None)
-            if price is None and offer:
-                offer_type = getattr(offer, "type", "").upper()
-                # BOGO handling: *charged unit price* should be half or based on percentage,
-                # and the added_quantity should be doubled so user receives 2×.
-                if offer_type == "BOGO":
-                    if getattr(offer, "percentage", None):
-                        pct = float(offer.percentage)
-                        price = float(variant.price) - (float(variant.price) * pct / 100.0)
-                    else:
-                        # fallback classic: charge half per unit
-                        price = float(variant.price) / 2.0
-                    added_quantity = quantity * 2
-                elif getattr(offer, "percentage", None):
-                    pct = float(offer.percentage)
-                    price = float(variant.price) - (float(variant.price) * pct / 100.0)
-
-            # 4) fallback to variant.price
-            if price is None:
-                price = float(variant.price)
-
-        # ---- CART FILTER to find existing Cart row ----
         cart_filter = {
-            "user": request.user,
-            "product": product,
-            "product_variant_id": variant_id if variant_id else None,
-            "gift_set_id": gift_set_id if gift_set_id else None,
+            'user': request.user,
+            'product': product,
+            'product_variant_id': variant_id if variant_id else None,
+            'gift_set_id': gift_set_id if gift_set_id else None
         }
+
         if selected_flavours:
-            cart_filter["selected_flavours"] = selected_flavours
+            cart_filter['selected_flavours'] = selected_flavours
 
         cart_item = Cart.objects.filter(**cart_filter).first()
 
-        # ---- Update or create DB cart row ----
         if cart_item:
-            # add the new (possibly doubled) quantity
-            cart_item.quantity += added_quantity
+            cart_item.quantity += quantity
             cart_item.price = price
             if selected_flavours:
                 cart_item.selected_flavours = selected_flavours
@@ -1012,94 +944,79 @@ def add_to_cart(request, product_id):
                 product=product,
                 product_variant_id=variant_id if variant_id else None,
                 gift_set_id=gift_set_id if gift_set_id else None,
-                quantity=added_quantity,
+                quantity=quantity,
                 price=price,
-                selected_flavours=selected_flavours or "",
+                selected_flavours=selected_flavours or ''
             )
 
-        # ---- Update Redis store to reflect DB state ----
-        # We will store quantity and price in redis hset
-        # If existing redis entry exists, sum quantities consistently.
         current_item = r.hget(cart_key, item_key)
-        try:
-            current_quantity = json.loads(current_item)["quantity"] if current_item else 0
-        except Exception:
-            current_quantity = 0
-
-        new_quantity = current_quantity + added_quantity
+        current_quantity = json.loads(current_item)['quantity'] if current_item else 0
+        new_quantity = current_quantity + quantity
 
         item_data = {
-            "product_id": product_id,
-            "variant_id": variant_id,
-            "gift_set_id": gift_set_id,
-            "quantity": new_quantity,
-            "price": price,
-            "selected_flavours": selected_flavours or "",
-            "updated_at": time.time(),
+            'product_id': product_id,
+            'variant_id': variant_id,
+            'gift_set_id': gift_set_id,
+            'quantity': new_quantity,
+            'price': price,
+            'selected_flavours': selected_flavours or '',
+            'updated_at': time.time()
         }
 
         r.hset(cart_key, item_key, json.dumps(item_data))
         r.publish(
             f"cart_updates:{request.user.id}",
-            json.dumps(
-                {
-                    "action": "update",
-                    "item_key": item_key,
-                    "quantity": new_quantity,
-                    "cart_count": r.hlen(cart_key),
-                }
-            ),
+            json.dumps({
+                'action': 'update',
+                'item_key': item_key,
+                'quantity': new_quantity,
+                'cart_count': r.hlen(cart_key)
+            })
         )
 
-        # ---- Build sidebar data from DB (single source of truth) ----
+        # 🟩 NEW — Build complete sidebar data
         cart_items_db = Cart.objects.filter(user=request.user)
+
         cart_items_list = []
-        subtotal = 0.0
+        subtotal = 0
 
         for item in cart_items_db:
-            # item.price is the charged unit price (what user pays per unit)
-            item_total = float(item.price) * int(item.quantity)
+            item_total = item.price * item.quantity
             subtotal += item_total
 
-            cart_items_list.append(
-                {
-                    "id": item.id,
-                    "name": item.product.name,
-                    "price": float(item.price),
-                    "quantity": item.quantity,
-                    "image": item.product.image1.url if getattr(item.product, "image1", None) else "",
-                    "offer": f"{getattr(item.product, 'offer').percentage}% Off"
-                    if getattr(item.product, "offer", None)
-                    else "",
-                }
-            )
+            cart_items_list.append({
+                "id": item.id,
+                "name": item.product.name,
+                "price": float(item.price),
+                "quantity": item.quantity,
+                "image": item.product.image1.url if item.product.image1 else "",
+                "offer": f"{item.product.offer.percentage}% Off" if hasattr(item.product, "offer") else ""
+            })
 
-        # delivery/platform can be product-level or global; adjust as per your model
-        delivery_charge = getattr(product, "delivery_charges", 0) if subtotal > 0 else 0
-        platform_fee = getattr(product, "platform_fee", 0) if subtotal > 0 else 0
+        delivery_charge = item.product.delivery_charges if subtotal > 0 else 0
+        platform_fee = item.product.platform_fee if subtotal > 0 else 0
         total = subtotal + delivery_charge + platform_fee
 
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return JsonResponse(
-                {
-                    "status": "success",
-                    "message": "Item added to cart successfully!",
-                    "cart_count": r.hlen(cart_key),
-                    "cart_items": cart_items_list,
-                    "order_summary": {
-                        "subtotal": subtotal,
-                        "delivery": delivery_charge,
-                        "platform_fee": platform_fee,
-                        "total": total,
-                    },
-                }
-            )
+        # 🟩 NEW — Return full JSON needed for sidebar
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Item added to cart successfully!',
+                'cart_count': r.hlen(cart_key),
 
-        return redirect("view_cart")
+                'cart_items': cart_items_list,
+                'order_summary': {
+                    "subtotal": subtotal,
+                    "delivery": delivery_charge,
+                    "platform_fee": platform_fee,
+                    "total": total
+                }
+            })
+
+        return redirect('view_cart')
 
     except Exception as e:
-        # You can log the exception as needed
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
 from decimal import Decimal
 from django.db.models import Sum
