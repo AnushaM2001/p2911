@@ -436,8 +436,6 @@ from django.utils import timezone
 from django.db.models.functions import Coalesce, Cast
 from django.db.models import FloatField
 
-
-You said:
 def ajax_filter_products(request):
     page = int(request.GET.get('page', 1))
 
@@ -598,7 +596,9 @@ def ajax_filter_products(request):
         variants = variants.filter(price__lte=max_price)
 
     # UNIQUE PRODUCT IDS ONLY – this removes duplicates
-    product_ids = variants.values_list('product_id', flat=True).distinct()
+    # UNIQUE PRODUCT IDS ONLY – this removes duplicates
+    product_ids = list(set(variants.values_list('product_id', flat=True)))
+
 
     # PAGINATE BY PRODUCT
     paginator = Paginator(product_ids, 10)

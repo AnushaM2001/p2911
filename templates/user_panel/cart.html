@@ -666,16 +666,17 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.status === 'success') {
 
-                    // FIXED: remove correct cart item wrapper
-                    const itemElement = document.querySelector(
+                    // FIX: remove whole cart item wrapper
+                    const cartItem = document.querySelector(
                         `.cart-item[data-item-id="${this.dataset.itemId}"]`
                     );
 
-                    if (itemElement) {
-                        itemElement.remove();
+                    if (cartItem) {
+                        const wrapper = cartItem.closest('.d-flex.p-3.mb-3');
+                        if (wrapper) wrapper.remove();
                     }
 
-                    // Update cart count everywhere
+                    // Update cart count
                     document.querySelectorAll('.cart-count').forEach(el => {
                         el.textContent = data.cart_count;
                     });
@@ -683,7 +684,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     showToast('Item removed from cart');
 
                     if (data.is_empty) {
-                        setTimeout(() => location.reload(), 800);
+                        setTimeout(() => location.reload(), 700);
                     }
 
                 } else {
@@ -699,15 +700,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showToast(message) {
         const toast = document.getElementById('toast');
-        if (toast) {
-            toast.querySelector('.toast-body').textContent = message;
-            toast.style.display = "block";
-            setTimeout(() => { toast.style.display = "none" }, 2000);
-        }
+        toast.querySelector('.toast-body').textContent = message;
+        toast.style.display = "block";
+        setTimeout(() => { toast.style.display = "none" }, 2000);
     }
 });
-
 </script>
+
 
 
 
