@@ -1387,49 +1387,36 @@
 </style>
 
 <script>
+/* ---------- Sidebar open/close ---------- */
 function openCartSidebar() {
     document.getElementById("cartSidebar").classList.add("open");
 }
 
-document.getElementById("closeCart").addEventListener("click", () => {
+document.getElementById("closeCart")?.addEventListener("click", () => {
     document.getElementById("cartSidebar").classList.remove("open");
 });
 
-
-
-
-
-
-// ====== CSRF Helper (keep this if you're using POST anywhere else too) ======
+/* ---------- CSRF Helper ---------- */
 function getCSRFToken() {
   const match = document.cookie.match(/csrftoken=([^;]+)/);
   return match ? match[1] : "";
 }
 
-// ====== Flash Animation Helper ======
+/* ---------- UI Helpers ---------- */
 function flashRow(id) {
   const row = document.getElementById(`cart-item-${id}`);
   if (!row) return;
-
   row.classList.add("flash");
-
-  // remove the class after animation completes
-  setTimeout(() => {
-    row.classList.remove("flash");
-  }, 400);
+  setTimeout(() => row.classList.remove("flash"), 400);
 }
 
-// ====== Update Totals Helper ======
 function updateSummaryFromPrices(prices, itemCount) {
   if (!prices) return;
-
   const count = itemCount || 0;
-
   const priceLabel = document.getElementById("priceLabel");
   if (priceLabel) {
     priceLabel.textContent = `Price (${count} product${count === 1 ? "" : "s"})`;
   }
-
   const subtotalEl = document.getElementById("orderSubtotal");
   const deliveryEl = document.getElementById("orderDelivery");
   const platformEl = document.getElementById("orderPlatform");
@@ -1441,45 +1428,37 @@ function updateSummaryFromPrices(prices, itemCount) {
   if (totalEl) totalEl.textContent = `₹${Number(prices.total_price || 0).toFixed(2)}`;
 }
 
+/* ---------- Update qty via API ---------- */
 function updateQty(id, action) {
     const qtySpan = document.getElementById(`qty-${id}`);
     const currentQty = qtySpan ? parseInt(qtySpan.textContent) : 1;
     if (action === "decrease" && currentQty <= 1) return;
 
     const formData = new FormData();
-    formData.append("action", action);  // ✅ Send as form field
+    formData.append("action", action);
 
     fetch(`/update-cart-item/${id}/`, {
         method: "POST",
         headers: {
             "X-Requested-With": "XMLHttpRequest",
             "X-CSRFToken": getCSRFToken()
-            // ❗ DO NOT add "Content-Type": "application/json"
         },
-        body: formData  // ✅ Not JSON anymore
+        body: formData
     })
     .then(res => res.json())
     .then(data => {
         if (data.status === "success") {
             if (qtySpan) qtySpan.textContent = data.new_quantity;
-            recalcCartSummaryFromDOM();  // ✅ Update totals instantly
-            flashRow(id);              // ✅ highlight row
+            recalcCartSummaryFromDOM();
+            flashRow(id);
         }
     })
     .catch(err => console.error("Qty update error:", err));
 }
 
-// Cookie-based CSRF reader
-function getCSRFToken() {
-    const match = document.cookie.match(/csrftoken=([^;]+)/);
-    return match ? match[1] : "";
-}
-
-
-// ====== Improved Remove Logic (only remove row + recalc totals instantly) ======
+/* ---------- Remove item ---------- */
 function removeItem(id) {
   const row = document.getElementById(`cart-item-${id}`);
-  const currentBadge = document.getElementById("cart-count")?.textContent || 0;
 
   fetch(`/remove-cart-item/${id}/`, {
     method: "POST",
@@ -1491,20 +1470,18 @@ function removeItem(id) {
   .then(res => res.json())
   .then(data => {
     if (data.status === "success") {
-      // ✅ Remove only that row from DOM
       if (row) {
         row.style.opacity = "0";
         row.style.transform = "translateX(30px)";
         setTimeout(() => row.remove(), 260);
       }
 
-      // ✅ Update badge from backend (it should match real count)
       const cartCountEl = document.getElementById("cart-count");
       if (cartCountEl && typeof data.cart_count !== "undefined") {
         cartCountEl.textContent = data.cart_count;
       }
 
-      // ✅ Recalculate totals from DOM immediately so removed price doesn't exist
+      // Recalc totals from DOM so remaining items keep their delivery/platform
       setTimeout(() => {
         recalcCartSummaryFromDOM();
       }, 270);
@@ -1513,7 +1490,7 @@ function removeItem(id) {
   .catch(err => console.error("Remove error:", err));
 }
 
-// ====== DOM Based Recalc (Already present but ensure this exists) ======
+/* ---------- Recalculate summary from DOM (relies on data-delivery & data-platform attributes) ---------- */
 function recalcCartSummaryFromDOM() {
   const items = document.querySelectorAll(".cart-item");
 
@@ -1547,44 +1524,51 @@ function recalcCartSummaryFromDOM() {
     total_price: subtotal + delivery + platform
   };
 
-  // ✅ Update UI summary
   updateSummaryFromPrices(prices, itemCount);
 
-  // ✅ Toggle Empty cart UI
   if (itemCount === 0) {
-    document.getElementById("emptyCartUI").style.display = "flex";
-    document.getElementById("orderSummaryCard").style.display = "none";
+    const emptyUI = document.getElementById("emptyCartUI");
+    if (emptyUI) emptyUI.style.display = "flex";
+    const orderCard = document.getElementById("orderSummaryCard");
+    if (orderCard) orderCard.style.display = "none";
   }
 }
 
-</script>
-
-
-<script>
+/* ---------- Main DOMContentLoaded: add-to-cart handling + UI wiring ---------- */
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById('add-to-cart-form');
     const addToCartBtn = document.getElementById('addToCartBtn');
     const quantityInput = document.getElementById("quantity");
     const notification = document.getElementById('cart-notification');
 
-    /* ✅ Single listener only (duplicate removed) */
+    if (!form) {
+        console.warn("add-to-cart-form not found.");
+        return;
+    }
+
     form.addEventListener('submit', function (e) {
         e.preventDefault();
 
-        /* ✅ prevent double submit */
-        if (addToCartBtn.disabled) return;
-        addToCartBtn.disabled = true;
-        addToCartBtn.style.pointerEvents = "none";
+        if (addToCartBtn && addToCartBtn.disabled) return;
+        if (addToCartBtn) {
+            addToCartBtn.disabled = true;
+            addToCartBtn.style.pointerEvents = "none";
+        }
 
-        /* Gather selected flavours */
+        // Gather selected flavours
         const selectedFlavours = Array.from(document.querySelectorAll('.gift-option.active'))
             .map(opt => opt.getAttribute('data-flavour-id'));
         document.getElementById('selected-flavours').value = selectedFlavours.join(',');
 
-        /* CSRF Token */
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        // === NEW: ensure selected-price hidden input is set from visible price (variant-price or gift-variant-price)
+        const variantPriceEl = document.getElementById("variant-price") || document.getElementById("gift-variant-price");
+        if (variantPriceEl) {
+            const numeric = (variantPriceEl.innerText || "").toString().replace(/[^\d.]/g, "");
+            document.getElementById("selected-price").value = numeric;
+            console.log("DEBUG set selected-price:", numeric);
+        }
 
-        /* Form data */
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         const formData = new FormData(form);
 
         console.log("Submitting Add to Cart Form:");
@@ -1592,7 +1576,6 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log(key, value);
         }
 
-        /* Django URL */
         const addToCartUrl = "{% url 'add_to_cart' product.id %}";
 
         fetch(addToCartUrl, {
@@ -1616,22 +1599,18 @@ document.addEventListener("DOMContentLoaded", function () {
             const cartCount = document.getElementById('cart-count');
 
             if (data.status === 'success') {
-                /* Update badge */
                 if (cartCount) cartCount.textContent = data.cart_count;
 
-                /* Update sidebar items */
                 if (data.cart_items && data.order_summary) {
                     updateCartSidebar(data.cart_items, data.order_summary);
                 }
 
-                /* ✅ NOW OPEN SIDEBAR (your required feature) */
                 if (typeof openCartSidebar === "function") {
-                    openCartSidebar();  // sidebar animation trigger
+                    openCartSidebar();
                 } else {
                     document.getElementById("cartSidebar").classList.add("open");
                 }
 
-                /* Notification UI */
                 if (messageSpan) messageSpan.textContent = data.message || 'Added to Cart';
                 if (productInfo && data.cart_items?.length > 0) {
                     const firstItem = data.cart_items[0];
@@ -1674,13 +1653,13 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Failed to add item to cart.");
         })
         .finally(() => {
-            /* ✅ Re-enable button */
-            addToCartBtn.disabled = false;
-            addToCartBtn.style.pointerEvents = "auto";
+            if (addToCartBtn) {
+                addToCartBtn.disabled = false;
+                addToCartBtn.style.pointerEvents = "auto";
+            }
         });
     });
 
-    /* Sidebar open/close functions (Already exists, don't remove) */
     window.openCartSidebar = function () {
         document.getElementById("cartSidebar").classList.add("open");
     };
@@ -1689,7 +1668,6 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("cartSidebar").classList.remove("open");
     });
 
-    /* Quantity buttons */
     document.getElementById("increase")?.addEventListener("click", () => {
         quantityInput.value = parseInt(quantityInput.value || 1) + 1;
     });
@@ -1701,14 +1679,19 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
-/* ✅ Sidebar UI update function (Unchanged, works normally) */
+/* ---------- Update sidebar markup (adds per-item delivery/platform data and calls recalc) ---------- */
 function updateCartSidebar(items, summary) {
     const container = document.getElementById("cartItemsContainer");
     container.innerHTML = "";
 
     items.forEach(item => {
+        const perDelivery = (typeof item.delivery !== "undefined") ? item.delivery : 0;
+        const perPlatform = (typeof item.platform_fee !== "undefined") ? item.platform_fee : 0;
+
         container.innerHTML += `
-            <div class="cart-item" id="cart-item-${item.id}">
+            <div class="cart-item" id="cart-item-${item.id}"
+                 data-delivery="${perDelivery}"
+                 data-platform="${perPlatform}">
                 <img src="${item.image}">
                 <div style="flex:1">
                     <h6>${item.name}</h6>
@@ -1724,12 +1707,17 @@ function updateCartSidebar(items, summary) {
         `;
     });
 
+    // update summary values
     document.getElementById("orderSubtotal").textContent = `₹${summary.subtotal}`;
     document.getElementById("orderDelivery").textContent = `₹${summary.delivery}`;
     document.getElementById("orderPlatform").textContent = `₹${summary.platform_fee}`;
     document.getElementById("orderTotal").textContent = `₹${summary.total}`;
+
+    // Recalculate to ensure DOM-driven totals stay consistent
+    recalcCartSummaryFromDOM();
 }
 </script>
+
 
 
 <script>
