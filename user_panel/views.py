@@ -454,10 +454,10 @@ def ajax_filter_products(request):
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
 
-    # Ensure numeric conversion
+    # Safe conversion
     try:
-        min_price = float(min_price) if min_price not in [None, "", "0", "null"] else None
-        max_price = float(max_price) if max_price not in [None, "", "0", "null"] else None
+        min_price = float(min_price) if min_price not in [None, "", "null"] else None
+        max_price = float(max_price) if max_price not in [None, "", "null"] else None
     except:
         min_price = max_price = None
 
@@ -470,21 +470,21 @@ def ajax_filter_products(request):
     ).prefetch_related('category', 'subcategory')
 
     offer_qs = offer_qs.filter(
-        Q(premium_festival__in=['Welcome', 'Premium']) |
-        Q(start_date__lte=now, end_date__gte=now)
+        Q(premium_festival__in=['Welcome', 'Premium'])
+        | Q(start_date__lte=now, end_date__gte=now)
     )
 
     if category_ids or subcategory_ids:
         offer_qs = offer_qs.filter(
-            Q(category__in=category_ids) |
-            Q(subcategory__in=subcategory_ids) |
-            Q(category__isnull=True, subcategory__isnull=True)
+            Q(category__in=category_ids)
+            | Q(subcategory__in=subcategory_ids)
+            | Q(category__isnull=True, subcategory__isnull=True)
         )
 
     active_offers = list(offer_qs.distinct())
 
     # ----------------------------------------
-    # 3️⃣ OFFER MAP (FAST LOOKUP)
+    # 3️⃣ OFFER MAP
     # ----------------------------------------
     offer_map = {}
 
@@ -533,7 +533,8 @@ def ajax_filter_products(request):
     # ----------------------------------------
     wish_ids = []
     if request.user.is_authenticated:
-        wish_ids = list(Wishlist.objects.filter(user=request.user).values_list("product_id", flat=True))
+        wish_ids = list(Wishlist.objects.filter(user=request.user)
+                        .values_list("product_id", flat=True))
 
     # ----------------------------------------
     # 6️⃣ SPECIAL CASE: GIFTS
@@ -551,66 +552,41 @@ def ajax_filter_products(request):
 
         paginator = Paginator(qs, 10)
         page_list = paginator.get_page(page)
-
         product_ids = [g.product_id for g in page_list]
-
-        # ------- BULK HELPERS -------
-        price_data = GiftSet.objects.filter(product_id__in=product_ids).values("product_id").annotate(
-            min_price=Min("price"), max_price=Max("price")
-        )
-
-        price_map = {p["product_id"]: p for p in price_data}
-
-        orig_data = GiftSet.objects.filter(product_id__in=product_ids).annotate(
-            original_float=Cast("original_price", FloatField())
-        ).values("product_id").annotate(
-            min_original=Min("original_float"),
-            max_original=Max("original_float")
-        )
-
-        orig_map = {p["product_id"]: p for p in orig_data}
 
         rating_data = Product.objects.filter(id__in=product_ids).annotate(
             avg_rating=Avg("reviews__rating"),
             review_count=Count("reviews")
         ).values("id", "avg_rating", "review_count")
-
         rating_map = {r["id"]: r for r in rating_data}
 
         result = []
 
         for item in page_list:
             product = item.product
-            final_price = item.price
 
-            # Offer match
+            base_price = item.price or 0  # FIX
             candidates = []
+
             candidates += offer_map.get(("cat", product.category_id), [])
             candidates += offer_map.get(("subcat", product.subcategory_id), [])
             candidates += offer_map.get(("global",), [])
 
-            discount_applied = None
-            offer_obj = None
-
+            offer_price = None
             for off in candidates:
                 if off.percentage:
-                    discount_applied = _apply_percentage(final_price, off.percentage)
-                    offer_obj = off
+                    offer_price = _apply_percentage(base_price, off.percentage)
                     break
 
-            r = rating_map.get(product.id, {})
+            rating = rating_map.get(product.id, {})
 
             result.append({
                 "id": product.id,
                 "name": product.name,
-                "price": float(final_price),
-                "discounted_price": float(discount_applied) if discount_applied else None,
-                "min_price": float(price_map.get(product.id, {}).get("min_price", 0)),
-                "max_price": float(price_map.get(product.id, {}).get("max_price", 0)),
-                "min_original_price": float(orig_map.get(product.id, {}).get("min_original", 0)),
-                "max_original_price": float(orig_map.get(product.id, {}).get("max_original", 0)),
-                "average_rating": float(r.get("avg_rating") or 0),
-                "review_count": int(r.get("review_count") or 0),
+                "price": float(base_price),
+                "discounted_price": float(offer_price) if offer_price else None,
+                "average_rating": float(rating.get("avg_rating") or 0),
+                "review_count": int(rating.get("review_count") or 0),
                 "is_favorite": product.id in wish_ids,
                 "image": product.image1.url if product.image1 else "",
                 "image2": product.image2.url if product.image2 else "",
@@ -626,28 +602,22 @@ def ajax_filter_products(request):
             "current_page": page_list.number,
             "total_pages": paginator.num_pages,
             "has_next": page_list.has_next(),
-            "next_page": page_list.next_page_number() if page_list.has_next() else None
+            "next_page": page_list.next_page_number() if page_list.has_next() else None,
         })
 
     # ----------------------------------------
     # 7️⃣ NORMAL PRODUCTS
     # ----------------------------------------
-    qs = ProductVariant.objects.select_related("product", "product__category", "product__subcategory")
+    qs = ProductVariant.objects.select_related("product")
 
-    # CATEGORY FILTER
     if category_ids:
         qs = qs.filter(product__category_id__in=category_ids)
     if subcategory_ids:
         qs = qs.filter(product__subcategory_id__in=subcategory_ids)
-
-    # SIZE FILTER
     if sizes:
         qs = qs.filter(size__in=sizes)
-
-    # PRICE FIX — THIS WAS YOUR BUG ❗
     if min_price is not None:
         qs = qs.filter(price__gte=min_price)
-
     if max_price is not None:
         qs = qs.filter(price__lte=max_price)
 
@@ -663,35 +633,12 @@ def ajax_filter_products(request):
         if v.product_id not in smallest:
             smallest[v.product_id] = v
 
-    ids = list(smallest.keys())
-
-    # Bulk helpers
-    price_ranges = (
-        ProductVariant.objects.filter(product_id__in=ids)
-        .values("product_id")
-        .annotate(min_price=Min("price"), max_price=Max("price"))
-    )
-    price_map = {p["product_id"]: p for p in price_ranges}
-
-    orig_ranges = (
-        ProductVariant.objects.filter(product_id__in=ids)
-        .annotate(original_float=Cast("original_price", FloatField()))
-        .values("product_id")
-        .annotate(min_original=Min("original_float"), max_original=Max("original_float"))
-    )
-    orig_map = {p["product_id"]: p for p in orig_ranges}
-
-    rating_data = Product.objects.filter(id__in=ids).annotate(
-        avg_rating=Avg("reviews__rating"),
-        review_count=Count("reviews")
-    ).values("id", "avg_rating", "review_count")
-
-    rating_map = {r["id"]: r for r in rating_data}
-
     final_data = []
 
     for var in smallest.values():
         product = var.product
+
+        base_price = var.price or 0  # FIXED
         size_key = (var.size or "").lower()
 
         candidates = []
@@ -703,33 +650,26 @@ def ajax_filter_products(request):
         candidates += offer_map.get(("global",), [])
 
         discount_price = None
-        offer_used = None
-
         for off in candidates:
             if off.percentage:
-                discount_price = _apply_percentage(var.price, off.percentage)
-                offer_used = off
+                discount_price = _apply_percentage(base_price, off.percentage)
                 break
 
-        rating = rating_map.get(product.id, {})
+        rating = Product.objects.filter(id=product.id).annotate(
+            avg_rating=Avg("reviews__rating"),
+            review_count=Count("reviews")
+        ).values("avg_rating", "review_count").first() or {}
 
         final_data.append({
             "id": product.id,
             "name": product.name,
-            "price": float(var.price),
+            "price": float(base_price),
             "discounted_price": float(discount_price) if discount_price else None,
-            "min_price": float(price_map.get(product.id, {}).get("min_price", 0)),
-            "max_price": float(price_map.get(product.id, {}).get("max_price", 0)),
-            "min_original_price": float(orig_map.get(product.id, {}).get("min_original", 0)),
-            "max_original_price": float(orig_map.get(product.id, {}).get("max_original", 0)),
             "average_rating": float(rating.get("avg_rating") or 0),
             "review_count": int(rating.get("review_count") or 0),
             "image": product.image1.url if product.image1 else "",
             "image2": product.image2.url if product.image2 else "",
-            "size": var.size,
-            "stock": var.stock,
             "is_favorite": product.id in wish_ids,
-            "is_giftset": False,
         })
 
     return JsonResponse({
@@ -741,7 +681,7 @@ def ajax_filter_products(request):
         "current_page": page_products.number,
         "total_pages": paginator.num_pages,
         "has_next": page_products.has_next(),
-        "next_page": page_products.next_page_number() if page_products.has_next() else None
+        "next_page": page_products.next_page_number() if page_products.has_next() else None,
     })
 
 @login_required(login_url='email_login')
