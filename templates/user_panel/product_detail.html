@@ -493,7 +493,7 @@
         }
 
         .off {
-            /* background: #4A9B4D; */
+            background: #4A9B4D;
             color: white;
             padding: 4px 12px;
             border-radius: 4px;
@@ -976,8 +976,6 @@
     <h3 class="mb-0" id="gift-variant-price">₹--</h3>
     <h3 class="mb-0 text-muted text-decoration-line-through" id="gift-original-price"></h3>
     <h3 id="nor-price" class="mb-0 text-decoration-line-through" style="display:none;"></h3>
-    <!-- <span class="mb-0 text-success" id="nor-percent"></span>  -->
-
     <h3 class="mb-0 text-success" id="gift-offer-discount"></h3>
 </div>
 
@@ -986,7 +984,7 @@
     <h3 class="mb-0" id="variant-price" style="font-family: 'Jomolhari';font-size:1.6rem;">₹0</h3>
     <h3 class="mb-0 text-muted text-decoration-line-through" id="original-price" style="display:none;font-size:1.1rem;font-family: 'Jomolhari'; font-size: 30px;"></h3>
     <h3 id="normal-price" class="mb-0 text-decoration-line-through" style="font-family: 'Jomolhari'; font-size: 20px;"></h3>
-    <span class="mb-0 text-success off" id="you-save"></span> 
+    <!-- <span class="mb-0 text-success off" id="you-save" style="margin-left: 3px;margin-right: -13rem; "></span> -->
     <span class="mb-0 text-success off" id="discount-percentage" style="font-size: 25px;"></span>
 </div>
 
@@ -1002,7 +1000,6 @@
             <div class="size-option selected-size {% if forloop.first %}active{% endif %}" 
                  data-price="{{ set.price }}" 
                  data-id="{{ set.id }}" 
-                 data-normal-price="{{ set.original_price|default:'' }}"
                  data-flavour-limit="{{ set.giftset.set_name }}" 
                  data-discounted-price="{{ set.discounted_price|default:'' }}"
                  {% if set.offer %}data-offer-percentage="{{ set.offer.percentage }}"{% else %}data-offer-percentage=""{% endif %}>
@@ -1903,7 +1900,7 @@ function updateCartSidebar(items, summary) {
         <div class="product-info">
           <div class="product-name mb-2">{{ x.product.name }}</div>
           {% if x.price_display %}
-          <div class="product-price"><span style="color: #DC3545;">{{ x.price_display }}</span><span style="text-decoration: line-through;">{{ x.min_original_price}}-{{max_original_price}}</span></div>
+          <div class="product-price">{{ x.price_display }}<span style="text-decoration: line-through;">{{ x.min_original_price}}-{{max_original_price}}</span></div>
           {% endif %}
           <span class="badge-rating">
             <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
@@ -2168,10 +2165,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const original = parseFloat(currentVariant.price);
         const discounted = parseFloat(currentVariant.discounted_price);
         const real = parseFloat(currentVariant.original_price);
-  
-        // calculate percentage with price and originalprice
-        const percentage = real > 0 ? Math.round(((real - original) / real) * 100) : 0;
-
 
         // CASE 1: Discount exists
         if (discounted && discounted < original) {
@@ -2210,8 +2203,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 realpriceEl.style.display = "block";
             }
             if (savingsEl) {
-                savingsEl.innerText = `(${percentage}% OFF)`;
-                savingsEl.style.display = "inline-block";
+                savingsEl.innerText = "";
+                savingsEl.style.display = "none";
             }
         }
     }
@@ -2318,27 +2311,12 @@ document.addEventListener("DOMContentLoaded", function () {
     quantityInput?.addEventListener("input", updatePrice);
 
     // Initialize first load
-   // Initialize first load
-const category = sizeContainer.dataset.category?.replace(/\s+/g, '').toLowerCase();
-const subcategoryName = sizeContainer.dataset.subcategory?.toLowerCase() || "";
-const isAttar = subcategoryName.replace(/\s+/g, "").includes("attar") || category === "attars";
-
-// CASE 1 — Attars or Incense (no bottle selection)
-if (category === "incense" || isAttar) {
-    renderSizeButtons();
-    updatePrice();
-}
-
-// CASE 2 — Other products (bottle + size selection)
-else {
     if (bottleBtns.length > 0) {
         selectedBottle = bottleBtns[0].dataset.bottle.toString();
         highlightActiveBottle();
         renderSizeButtons();
         updatePrice();
     }
-}
-
 });
 </script>
 
@@ -2403,7 +2381,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedFlavoursInput = document.getElementById('selected-flavours');
     const selectedPriceInput = document.getElementById('selected-price');
     const normalPriceInput = document.getElementById('nor-price');
-
     let flavourLimit = 0;
 
     function showMessage(msg) {
@@ -2413,12 +2390,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleSizeSelection(option) {
         sizeOptions.forEach(opt => opt.classList.remove('active'));
         option.classList.add('active');
-        
-        const normalPrice = parseFloat(option.getAttribute('data-normal-price')) || 0;
+
         const price = parseFloat(option.getAttribute('data-price'));
         const discounted = parseFloat(option.getAttribute('data-discounted-price')) || null;
         const offerPercent = option.getAttribute('data-offer-percentage');
-        const norPercent = price > 0 ? Math.round(((price - normalPrice) / price) * 100) : 0;
 
         if (discounted) {
             priceDisplay.textContent = `₹${discounted}`;
@@ -2427,8 +2402,8 @@ document.addEventListener('DOMContentLoaded', function () {
             offerDiscountDisplay.textContent = `Discount: ${offerPercent}% Off`;
         } else {
             priceDisplay.textContent = `₹${price}`;
-            originalPriceDisplay.textContent = `₹${normalPrice}`;
-            offerDiscountDisplay.textContent = `${norPercent}% Off`;
+            originalPriceDisplay.textContent = '';
+            offerDiscountDisplay.textContent = '';
             normalPriceInput.style.display = 'inline-block';
         }
 
@@ -2604,4 +2579,3 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endblock content %}
 <!-- 1. is flvour selection 
 2.price updete in cart page -->
-
