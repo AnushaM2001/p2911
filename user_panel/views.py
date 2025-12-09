@@ -663,10 +663,16 @@ def ajax_filter_products(request):
     # ---------------------------------------------------------
     variants = ProductVariant.objects.select_related('product', 'product__category', 'product__subcategory')
 
-    if category_ids:
-        variants = variants.filter(product__category_id__in=category_ids)
-    if subcategory_ids:
-        variants = variants.filter(product__subcategory_id__in=subcategory_ids)
+    if category_ids and subcategory_ids:
+       variants = variants.filter(
+        Q(product__category_id__in=category_ids) |
+        Q(product__subcategory_id__in=subcategory_ids)
+    )
+    elif category_ids:
+       variants = variants.filter(product__category_id__in=category_ids)
+    elif subcategory_ids:
+       variants = variants.filter(product__subcategory_id__in=subcategory_ids)
+
     if sizes:
         variants = variants.filter(size__in=sizes)
     if min_price is not None:
