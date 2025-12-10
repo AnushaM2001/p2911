@@ -1294,7 +1294,7 @@ $(document).ready(function() {
     autoRefresh();
 
     // Event listeners for filters
-    $('.categoryFilter, .subcategoryFilter, .sizeFilter, #priceRange').on('change', fetchProducts);
+    $('.categoryFilter, .subcategoryFilter, .sizeFilter, #priceRange').on('change', resetFilters);
 
     $('#priceRange').on('input', function() {
         $('#priceRangeValue').text(this.value);
