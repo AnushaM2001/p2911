@@ -445,9 +445,16 @@ from decimal import Decimal
 
 # Import your models: Product, ProductVariant, Category, Subcategory, Wishlist, GiftSet, PremiumFestiveOffer
 
+from django.db.models import Q, Min, Max, Avg, FloatField, Count
+from django.db.models.functions import Cast
+from django.core.paginator import Paginator
+from django.utils import timezone
+from django.http import JsonResponse
+from decimal import Decimal
+# Ensure you import your models: Product, ProductVariant, Category, Subcategory, Wishlist, GiftSet, PremiumFestiveOffer
+
 def ajax_filter_products(request):
     page = int(request.GET.get('page', 1))
-    # ---------- 1️⃣ GET FILTERS (Same as before) ----------
     category_ids = request.GET.getlist('category[]')
     subcategory_ids = request.GET.getlist('subcategory[]')
     sizes = request.GET.getlist('size[]')
@@ -460,99 +467,92 @@ def ajax_filter_products(request):
     except ValueError:
         min_price = max_price = None
 
-    # ---------- 2️⃣ ACTIVE OFFERS (Same as before) ----------
+    # ---------- 2️⃣ ACTIVE OFFERS ----------
     now = timezone.now()
-    # Crucial: keep prefetch_related here so .all() in the model doesn't hit DB
-    active_offers = list(PremiumFestiveOffer.objects.filter(is_active=True)
-        .filter(
+    # We still use prefetch_related here
+    active_offers_qs = PremiumFestiveOffer.objects.filter(is_active=True).filter(
             Q(premium_festival__in=['Welcome', 'Premium']) |
             Q(start_date__lte=now, end_date__gte=now)
-        )
-        .prefetch_related('category', 'subcategory')
-    )
+        ).prefetch_related('category', 'subcategory')
 
-    # ---------- 3️⃣ CATEGORY / SUBCATEGORY INFO (Same as before) ----------
-    category_name = subcategory_name = ""
-    category_banner_url = subcategory_banner_url = ""
+    # --- CRITICAL OPTIMIZATION: Prepare Offer Data for fast lookup ---
+    # Instead of passing heavy Django objects into the loop, we pass lightweight dictionaries
+    # containing sets of IDs for ultra-fast integer matching.
+    prepared_offers = []
+    for offer in active_offers_qs:
+        prepared_offers.append({
+            'obj': offer,
+            # Create sets of IDs for fast "in" checks
+            'cat_ids': set(c.id for c in offer.category.all()),
+            'subcat_ids': set(s.id for s in offer.subcategory.all()),
+            'size_lower': str(offer.size).strip().lower() if offer.size else ""
+        })
+
+    # ---------- 3️⃣ CATEGORY INFO ----------
+    category_name = subcategory_name = category_banner_url = subcategory_banner_url = ""
     cat_obj = Category.objects.filter(id__in=category_ids).first() if category_ids else None
     subcat_obj = Subcategory.objects.filter(id__in=subcategory_ids).first() if subcategory_ids else None
-    if cat_obj:
-        category_name = cat_obj.name
-        category_banner_url = cat_obj.banner.url if cat_obj.banner else ""
-    if subcat_obj:
-        subcategory_name = subcat_obj.name
-        subcategory_banner_url = subcat_obj.banner.url if subcat_obj.banner else ""
 
-    # ---------- 4️⃣ WISHLIST (Same as before) ----------
-    wishlist_product_ids = set() # Use a set for faster lookups
+    if cat_obj:
+        category_name, category_banner_url = cat_obj.name, (cat_obj.banner.url if cat_obj.banner else "")
+    if subcat_obj:
+        subcategory_name, subcategory_banner_url = subcat_obj.name, (subcat_obj.banner.url if subcat_obj.banner else "")
+
+    # ---------- 4️⃣ WISHLIST ----------
+    wishlist_product_ids = set()
     if request.user.is_authenticated:
-        wishlist_product_ids = set(
-            Wishlist.objects.filter(user=request.user)
-            .values_list('product_id', flat=True)
-        )
+        wishlist_product_ids = set(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True))
 
     product_data = []
     paginator = None
     current_page_items = []
 
     # ---------------------------------------------------------
-    # 5️⃣ SPECIAL CASE – GIFTSETS CATEGORY (OPTIMIZED)
+    # 5️⃣ SPECIAL CASE – GIFTSETS CATEGORY
     # ---------------------------------------------------------
     if cat_obj and cat_obj.name.lower().replace(' ', '').replace('-', '') == 'giftsets':
         giftsets_qs = (
             GiftSet.objects.filter(product__category=cat_obj)
-            .select_related('product')
+            # --- FIX A: Added missing related fields here ---
+            .select_related('product', 'product__category', 'product__subcategory')
             .prefetch_related('flavours')
         )
 
-        if min_price is not None:
-            giftsets_qs = giftsets_qs.filter(price__gte=min_price)
-        if max_price is not None:
-            giftsets_qs = giftsets_qs.filter(price__lte=max_price)
+        if min_price is not None: giftsets_qs = giftsets_qs.filter(price__gte=min_price)
+        if max_price is not None: giftsets_qs = giftsets_qs.filter(price__lte=max_price)
 
         paginator = Paginator(giftsets_qs, 10)
         current_page_items = paginator.get_page(page)
 
-        # --- OPTIMIZATION START: Pre-fetch aggregates for Giftsets ---
         product_ids_on_page = [gs.product_id for gs in current_page_items]
 
-        # Run ONE query to get min/max for all products on this page
+        # Bulk fetch aggregates
         aggregate_data = GiftSet.objects.filter(product_id__in=product_ids_on_page).values('product_id').annotate(
-            min_price=Min('price'),
-            max_price=Max('price'),
-            # Complex annotation for original price casting
-            min_original=Min(Cast('original_price', FloatField())),
-            max_original=Max(Cast('original_price', FloatField())),
-            # Complex annotation for average rating
-            avg_rating=Avg('product__reviews__rating')
+            min_price=Min('price'), max_price=Max('price'),
+            min_original=Min(Cast('original_price', FloatField())), max_original=Max(Cast('original_price', FloatField())),
+            avg_rating=Avg('product__reviews__rating'), review_count=Count('product__reviews')
         )
-        # Convert list of dicts to a map for easy lookup: {product_id: {stats}}
         stats_map = {item['product_id']: item for item in aggregate_data}
-        # --- OPTIMIZATION END ---
-
 
         for gs in current_page_items:
             base_price = gs.price or 0
-            discounted_price = None
-            offer_applied = None
-            
-            # CPU intensive part - but now it doesn't wait for DB
-            for offer in active_offers:
-                discounted = offer.apply_offer(gs)
+            discounted_price, offer_applied = None, None
+
+            # Use the prepared optimized offers list
+            for prep_offer in prepared_offers:
+                # Call the optimized apply method on the model
+                discounted = prep_offer['obj'].apply_optimized_offer(gs, prep_offer)
                 if discounted is not None:
                     discounted_price = float(discounted)
-                    offer_applied = offer
+                    offer_applied = prep_offer['obj']
                     break
 
-            # Look up pre-calculated stats from memory instead of DB query
             stats = stats_map.get(gs.product.id, {})
-
             product_data.append({
                 'id': gs.product.id,
                 'name': gs.product.name,
                 'original_price': float(gs.product.original_price or 0),
                 'price': float(base_price),
-                # Use .get() with default 0 in case data is missing
                 'min_price': float(stats.get('min_price') or 0),
                 'max_price': float(stats.get('max_price') or 0),
                 'min_original_price': float(stats.get('min_original') or 0),
@@ -564,11 +564,9 @@ def ajax_filter_products(request):
                 'flavours': [f.name for f in gs.flavours.all()],
                 'image': gs.product.image1.url if gs.product.image1 else '',
                 'image2': gs.product.image2.url if gs.product.image2 else '',
-                'is_active': gs.product.is_active,
-                'is_giftset': True,
-                # Use pre-calculated rating
+                'is_active': gs.product.is_active, 'is_giftset': True,
                 'average_rating': float(stats.get('avg_rating') or 0),
-                'review_count': gs.product.reviews.count(),
+                'review_count': stats.get('review_count') or 0,
                 'stock_status': gs.product.stock_status or "In Stock",
                 'is_favorite': gs.product.id in wishlist_product_ids,
                 'is_best_seller': gs.product.is_best_seller,
@@ -577,89 +575,67 @@ def ajax_filter_products(request):
             })
 
     # ---------------------------------------------------------
-    # 6️⃣ REGULAR PRODUCTS (OPTIMIZED)
+    # 6️⃣ REGULAR PRODUCTS
     # ---------------------------------------------------------
     else:
         variants = ProductVariant.objects.all()
+        if category_ids: variants = variants.filter(product__category_id__in=category_ids)
+        if subcategory_ids: variants = variants.filter(product__subcategory_id__in=subcategory_ids)
+        if sizes: variants = variants.filter(size__in=sizes)
+        if min_price is not None: variants = variants.filter(price__gte=min_price)
+        if max_price is not None: variants = variants.filter(price__lte=max_price)
 
-        # Apply filters
-        if category_ids:
-            variants = variants.filter(product__category_id__in=category_ids)
-        if subcategory_ids:
-            variants = variants.filter(product__subcategory_id__in=subcategory_ids)
-        if sizes:
-            variants = variants.filter(size__in=sizes)
-        if min_price is not None:
-            variants = variants.filter(price__gte=min_price)
-        if max_price is not None:
-            variants = variants.filter(price__lte=max_price)
-
-        # Get unique product IDs and paginate them
         product_ids = list(set(variants.values_list('product_id', flat=True)))
         paginator = Paginator(product_ids, 10)
-        current_page_items = paginator.get_page(page) # These are product IDs now
-
+        current_page_items = paginator.get_page(page)
         product_ids_on_page = list(current_page_items)
 
-        # Fetch the smallest variant for these products
         variants_for_page = (
             ProductVariant.objects.filter(product_id__in=product_ids_on_page)
             .order_by('price')
+            # This select_related is crucial and was already correct here
             .select_related('product', 'product__category', 'product__subcategory')
         )
 
-        # Pick ONE variant per product (the smallest price one)
         smallest_variant_map = {}
         for var in variants_for_page:
             if var.product_id not in smallest_variant_map:
                 smallest_variant_map[var.product_id] = var
-        
-        # --- OPTIMIZATION START: Pre-fetch aggregates for Regular Products ---
-        # Run ONE query to get all stats for the products on this page
+
+        # Bulk fetch price aggregates
         aggregate_data = ProductVariant.objects.filter(product_id__in=product_ids_on_page).values('product_id').annotate(
-            min_price=Min('price'),
-            max_price=Max('price'),
-            min_original=Min(Cast('original_price', FloatField())),
-            max_original=Max(Cast('original_price', FloatField())),
-             # Note: Review rating is on the Product model, not variant.
-             # We need a separate fast query for ratings if they aren't on the variant object.
+            min_price=Min('price'), max_price=Max('price'),
+            min_original=Min(Cast('original_price', FloatField())), max_original=Max(Cast('original_price', FloatField())),
         )
         stats_map = {item['product_id']: item for item in aggregate_data}
 
-        # Separate fast query for ratings on these products
-        from django.db.models import Count
+        # Bulk fetch rating aggregates
         rating_data = Product.objects.filter(id__in=product_ids_on_page).values('id').annotate(
-             avg_rating=Avg('reviews__rating'),
-             review_count=Count('reviews')
+             avg_rating=Avg('reviews__rating'), review_count=Count('reviews')
         )
         rating_map = {item['id']: item for item in rating_data}
-        # --- OPTIMIZATION END ---
-
 
         for var in smallest_variant_map.values():
             base_price = var.price or 0
-            final_discounted_price = None
-            final_offer = None
-            
-            # CPU intensive part
-            for offer in active_offers:
-                discounted = offer.apply_offer(var)
+            final_discounted_price, final_offer = None, None
+
+            # Use the prepared optimized offers list
+            for prep_offer in prepared_offers:
+                 # Call the optimized apply method on the model
+                discounted = prep_offer['obj'].apply_optimized_offer(var, prep_offer)
                 if discounted is not None:
                     final_discounted_price = float(discounted)
-                    final_offer = offer
+                    final_offer = prep_offer['obj']
                     break
 
-            # Look up pre-calculated stats from memory
             pid = var.product.id
             stats = stats_map.get(pid, {})
             rating_stats = rating_map.get(pid, {})
 
             product_data.append({
-                'id': var.product.id,
-                'name': var.product.name,
+                'id': var.product.id, 'name': var.product.name,
                 'original_price': float(var.product.original_price or 0),
                 'price': float(base_price),
-                # Use stats map
                 'min_price': float(stats.get('min_price') or 0),
                 'max_price': float(stats.get('max_price') or 0),
                 'min_original_price': float(stats.get('min_original') or 0),
@@ -668,13 +644,10 @@ def ajax_filter_products(request):
                 'offer_code': final_offer.code if final_offer else None,
                 'offer_start_time': final_offer.start_date if final_offer else None,
                 'offer_end_time': final_offer.end_date if final_offer else None,
-                'size': var.size,
-                'stock': var.stock,
+                'size': var.size, 'stock': var.stock,
                 'image': var.product.image1.url if var.product.image1 else '',
                 'image2': var.product.image2.url if var.product.image2 else '',
-                'is_active': var.product.is_active,
-                'is_giftset': False,
-                # Use rating map
+                'is_active': var.product.is_active, 'is_giftset': False,
                 'average_rating': float(rating_stats.get('avg_rating') or 0),
                 'review_count': rating_stats.get('review_count') or 0,
                 'stock_status': var.product.stock_status or "In Stock",
@@ -684,13 +657,10 @@ def ajax_filter_products(request):
                 'is_new_arrival': var.product.is_new_arrival,
             })
 
-    # Final JSON Response
     return JsonResponse({
         'products': product_data,
-        'category_name': category_name,
-        'subcategory_name': subcategory_name,
-        'category_banner_url': category_banner_url,
-        'subcategory_banner_url': subcategory_banner_url,
+        'category_name': category_name, 'subcategory_name': subcategory_name,
+        'category_banner_url': category_banner_url, 'subcategory_banner_url': subcategory_banner_url,
         'current_page': current_page_items.number if paginator else 1,
         'total_pages': paginator.num_pages if paginator else 1,
         'has_next': current_page_items.has_next() if paginator else False,
