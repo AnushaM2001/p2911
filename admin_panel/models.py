@@ -366,9 +366,64 @@ class PremiumFestiveOffer(models.Model):
         return self.start_date <= now <= self.end_date
 
     def apply_offer(self, item):
-        if not self.offer_active_now(): return None
-        if isinstance(item, ProductVariant): return self._apply_to_variant(item)
-        if isinstance(item, GiftSet): return self._apply_to_giftset(item)
+        # (The previous implementation I gave you, or your original one.
+        # It doesn't matter as the view won't call it anymore.)
+        pass
+
+    # --- NEW OPTIMIZED METHOD CALLED BY THE VIEW ---
+    def apply_optimized_offer(self, item, prepared_data):
+        """
+        Checks offer applicability using pre-fetched ID sets to avoid DB hits.
+        prepared_data is the dict created in the view: {'cat_ids': set, 'subcat_ids': set, 'size_lower': str}
+        """
+        # 1. Check Item Type and get Product/Price/Size
+        if isinstance(item, ProductVariant):
+            product = item.product
+            price = item.price
+            # Use _id to avoid fetching related object if not needed
+            prod_cat_id = product.category_id
+            prod_subcat_id = product.subcategory_id
+            item_size_str = str(item.size).strip().lower() if item.size else ""
+        elif isinstance(item, GiftSet):
+            product = item.product
+            price = item.price
+            prod_cat_id = product.category_id
+            prod_subcat_id = product.subcategory_id
+            item_size_str = "" # Giftsets don't usually have sizes in this context
+        else:
+            return None
+
+        if price is None:
+            return None
+
+        # 2. Extract prepared data
+        offer_cat_ids = prepared_data['cat_ids']
+        offer_subcat_ids = prepared_data['subcat_ids']
+        offer_size_str = prepared_data['size_lower']
+
+        # 3. Fast Integer Matching (No DB access)
+        # Because we used select_related in the view, product.category_id is already loaded.
+        category_match = prod_cat_id in offer_cat_ids
+        subcategory_match = prod_subcat_id in offer_subcat_ids
+
+        has_cat_filter = len(offer_cat_ids) > 0
+        has_subcat_filter = len(offer_subcat_ids) > 0
+
+        # 4. Size Match (String comparison)
+        if offer_size_str and offer_size_str != "all":
+             if item_size_str != offer_size_str:
+                 return None
+
+        # 5. Final Logic
+        if (
+            (has_cat_filter and category_match) or
+            (has_subcat_filter and subcategory_match) or
+            (not has_cat_filter and not has_subcat_filter)
+        ):
+            if self.percentage:
+                discount = (self.percentage / Decimal(100)) * price
+                return round(price - discount, 2)
+
         return None
 
     def _apply_to_variant(self, variant):
