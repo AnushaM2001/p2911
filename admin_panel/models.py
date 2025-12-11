@@ -339,171 +339,158 @@ class CouponUsage(models.Model):
 
 
 class PremiumFestiveOffer(models.Model):
-    premium_festival = models.CharField(
-        max_length=20,
-        choices=[('Welcome', 'Welcome'), ('Premium', 'Premium'), ('Festival', 'Festival')]
-    )
-    offer_name = models.CharField(max_length=50, blank=True, null=True)
-    category = models.ManyToManyField(Category, blank=True)
-    subcategory = models.ManyToManyField(Subcategory, blank=True)
-    size = models.CharField(max_length=10, blank=True, null=True)
-    code = models.CharField(max_length=20, null=True, blank=True)
-    percentage = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    start_date = models.DateTimeField(null=True, blank=True)
-    end_date = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    premium_festival = models.CharField(
+        max_length=20,
+        choices=[('Welcome', 'Welcome'), ('Premium', 'Premium'), ('Festival', 'Festival')]
+    )
+    offer_name = models.CharField(max_length=50, blank=True, null=True)
+    category = models.ManyToManyField(Category, blank=True)
+    subcategory = models.ManyToManyField(Subcategory, blank=True)
+    size = models.CharField(max_length=10, blank=True, null=True)
+    code = models.CharField(max_length=20, null=True, blank=True)
+    percentage = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
 
-    # -------------------------------
-    # CACHED M2M LISTS (SUPER FAST)
-    # -------------------------------
-    def offer_active_now(self):
-        # ... same as before ...
-        if not self.is_active: return False
-        if self.premium_festival in ["Welcome", "Premium"]: return True
-        if not self.start_date or not self.end_date: return False
-        now = timezone.now()
-        return self.start_date <= now <= self.end_date
+    # -------------------------------
+    # CACHED M2M LISTS (SUPER FAST)
+    # -------------------------------
+    @property
+    def cached_categories(self):
+        if not hasattr(self, "_cached_categories"):
+            self._cached_categories = list(self.category.all())
+        return self._cached_categories
 
-    def apply_offer(self, item):
-        # (The previous implementation I gave you, or your original one.
-        # It doesn't matter as the view won't call it anymore.)
-        pass
+    @property
+    def cached_subcategories(self):
+        if not hasattr(self, "_cached_subcategories"):
+            self._cached_subcategories = list(self.subcategory.all())
+        return self._cached_subcategories
 
-    # --- NEW OPTIMIZED METHOD CALLED BY THE VIEW ---
-    def apply_optimized_offer(self, item, prepared_data):
-        """
-        Checks offer applicability using pre-fetched ID sets to avoid DB hits.
-        prepared_data is the dict created in the view: {'cat_ids': set, 'subcat_ids': set, 'size_lower': str}
-        """
-        # 1. Check Item Type and get Product/Price/Size
-        if isinstance(item, ProductVariant):
-            product = item.product
-            price = item.price
-            # Use _id to avoid fetching related object if not needed
-            prod_cat_id = product.category_id
-            prod_subcat_id = product.subcategory_id
-            item_size_str = str(item.size).strip().lower() if item.size else ""
-        elif isinstance(item, GiftSet):
-            product = item.product
-            price = item.price
-            prod_cat_id = product.category_id
-            prod_subcat_id = product.subcategory_id
-            item_size_str = "" # Giftsets don't usually have sizes in this context
-        else:
-            return None
+    # -------------------------------
+    # OFFER STATUS + DATE VALIDATION
+    # -------------------------------
+    def offer_active_now(self):
+        if not self.is_active:
+            return False
 
-        if price is None:
-            return None
+        # Welcome & Premium → always active
+        if self.premium_festival in ["Welcome", "Premium"]:
+            return True
 
-        # 2. Extract prepared data
-        offer_cat_ids = prepared_data['cat_ids']
-        offer_subcat_ids = prepared_data['subcat_ids']
-        offer_size_str = prepared_data['size_lower']
+        # Festival → requires dates
+        if not self.start_date or not self.end_date:
+            return False
 
-        # 3. Fast Integer Matching (No DB access)
-        # Because we used select_related in the view, product.category_id is already loaded.
-        category_match = prod_cat_id in offer_cat_ids
-        subcategory_match = prod_subcat_id in offer_subcat_ids
+        now = timezone.now()
+        return self.start_date <= now <= self.end_date
 
-        has_cat_filter = len(offer_cat_ids) > 0
-        has_subcat_filter = len(offer_subcat_ids) > 0
+    # -------------------------------
+    # APPLY OFFER ENTRY POINT
+    # -------------------------------
+    def apply_offer(self, item):
+        if not self.offer_active_now():
+            return None
 
-        # 4. Size Match (String comparison)
-        if offer_size_str and offer_size_str != "all":
-             if item_size_str != offer_size_str:
-                 return None
+        if isinstance(item, ProductVariant):
+            return self._apply_to_variant(item)
 
-        # 5. Final Logic
-        if (
-            (has_cat_filter and category_match) or
-            (has_subcat_filter and subcategory_match) or
-            (not has_cat_filter and not has_subcat_filter)
-        ):
-            if self.percentage:
-                discount = (self.percentage / Decimal(100)) * price
-                return round(price - discount, 2)
+        if isinstance(item, GiftSet):
+            return self._apply_to_giftset(item)
 
-        return None
+        return None
 
-    def _apply_to_variant(self, variant):
-        product = variant.product
+    # -------------------------------
+    # APPLY TO PRODUCT VARIANT
+    # -------------------------------
+    def _apply_to_variant(self, variant):
+        product = variant.product
 
-        # CHANGE: Use standard .all() - it uses the prefetch cache automatically
-        cat_list = self.category.all()
-        subcat_list = self.subcategory.all()
+        cat_list = self.cached_categories
+        subcat_list = self.cached_subcategories
 
-        # Matches
-        category_match = product.category in cat_list
-        subcategory_match = product.subcategory in subcat_list
+        # Matches
+        category_match = product.category in cat_list
+        subcategory_match = product.subcategory in subcat_list
 
-        has_cat_filter = len(cat_list) > 0
-        has_subcat_filter = len(subcat_list) > 0
+        has_cat_filter = len(cat_list) > 0
+        has_subcat_filter = len(subcat_list) > 0
 
-        # -------- SIZE MATCH --------
-        # Important: Ensure both sides are strings and lowercased for reliable comparison
-        variant_size_str = str(variant.size).strip().lower() if variant.size else ""
-        offer_size_str = str(self.size).strip().lower() if self.size else ""
+        # -------- SIZE MATCH --------
+        if self.size:
+            if self.size.lower() == "all":
+                size_match = True
+            else:
+                size_match = str(variant.size).lower() == str(self.size).lower()
+        else:
+            size_match = True  # No size filter = match all sizes
 
-        if offer_size_str and offer_size_str != "all":
-             if variant_size_str != offer_size_str:
-                 return None
+        if not size_match:
+            return None
 
-        # -------- CATEGORY/SUBCATEGORY MATCHING LOGIC ----------
-        if (
-            (has_cat_filter and category_match) or
-            (has_subcat_filter and subcategory_match) or
-            (not has_cat_filter and not has_subcat_filter) # global offer
-        ):
-            # Ensure price exists before math
-            if self.percentage and variant.price is not None:
-                discount = (self.percentage / Decimal(100)) * variant.price
-                return round(variant.price - discount, 2)
-        return None
+        # -------- CATEGORY/SUBCATEGORY MATCHING LOGIC ----------
+        if (
+            (has_cat_filter and category_match) or
+            (has_subcat_filter and subcategory_match) or
+            (not has_cat_filter and not has_subcat_filter)  # global offer
+        ):
+            if self.percentage and variant.price:
+                discount = (self.percentage / Decimal(100)) * variant.price
+                return round(variant.price - discount, 2)
 
-    def _apply_to_giftset(self, giftset):
-        product = giftset.product
-        # CHANGE: Use standard .all()
-        cat_list = self.category.all()
-        subcat_list = self.subcategory.all()
+        return None
 
-        category_match = product.category in cat_list
-        subcategory_match = product.subcategory in subcat_list
-        has_cat_filter = len(cat_list) > 0
-        has_subcat_filter = len(subcat_list) > 0
+    # -------------------------------
+    # APPLY TO GIFTSET
+    # -------------------------------
+    def _apply_to_giftset(self, giftset):
+        product = giftset.product
 
-        if (
-            (has_cat_filter and category_match) or
-            (has_subcat_filter and subcategory_match) or
-            (not has_cat_filter and not has_subcat_filter)
-        ):
-            if self.percentage and giftset.price is not None:
-                discount = (self.percentage / Decimal(100)) * giftset.price
-                return round(giftset.price - discount, 2)
-        return None
-    # -------------------------------
-    # HUMAN-READABLE STATUS
-    # -------------------------------
-    def get_status(self):
-        if self.premium_festival in ["Welcome", "Premium"]:
-            return "Active"
+        cat_list = self.cached_categories
+        subcat_list = self.cached_subcategories
 
-        now = timezone.now()
+        category_match = product.category in cat_list
+        subcategory_match = product.subcategory in subcat_list
 
-        if not self.start_date or not self.end_date:
-            return "Unknown"
+        has_cat_filter = len(cat_list) > 0
+        has_subcat_filter = len(subcat_list) > 0
 
-        if self.start_date > now:
-            return "Scheduled"
-        if self.end_date < now:
-            return "Expired"
+        if (
+            category_match or
+            subcategory_match or
+            (not has_cat_filter and not has_subcat_filter)
+        ):
+            if self.percentage and giftset.price:
+                discount = (self.percentage / Decimal(100)) * giftset.price
+                return round(giftset.price - discount, 2)
 
-        return "Active"
+        return None
 
-    def __str__(self):
-        if self.percentage:
-            return f"{self.offer_name} - {self.percentage}% off ({self.size})"
-        return "No Discount"
+    # -------------------------------
+    # HUMAN-READABLE STATUS
+    # -------------------------------
+    def get_status(self):
+        if self.premium_festival in ["Welcome", "Premium"]:
+            return "Active"
+
+        now = timezone.now()
+
+        if not self.start_date or not self.end_date:
+            return "Unknown"
+
+        if self.start_date > now:
+            return "Scheduled"
+        if self.end_date < now:
+            return "Expired"
+
+        return "Active"
+
+    def __str__(self):
+        if self.percentage:
+            return f"{self.offer_name} - {self.percentage}% off ({self.size})"
+        return "No Discount"
 
         
 
