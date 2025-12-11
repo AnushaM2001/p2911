@@ -472,8 +472,9 @@ def ajax_filter_products(request):
     # ---------------------------------------------------------
     # 5️⃣ GIFTSETS ALWAYS INCLUDED
     # ---------------------------------------------------------
-    giftsets_qs = GiftSet.objects.all()
-  
+    giftsets_qs = (
+            GiftSet.objects.filter(product__category=cat_obj)
+            .select_related('product').prefetch_related('flavours')
 
 
     if min_price is not None:
@@ -484,7 +485,7 @@ def ajax_filter_products(request):
     print("\n========== DEBUG: GIFTSETS ==========")
     print("Total Giftsets:", giftsets_qs.count())
 
-    giftsets_data = []
+    product_data = []
     for gs in giftsets_qs:
         print("Giftset Product:", gs.product.name)
 
@@ -499,13 +500,33 @@ def ajax_filter_products(request):
                 offer_applied = offer
                 break
 
-        giftsets_data.append({
-            'id': gs.product.id,
-            'name': gs.product.name,
-            'price': float(base_price),
-            'discounted_price': discounted_price,
-            'image': gs.product.image1.url if gs.product.image1 else '',
-            'is_giftset': True,
+        product_data.append({
+                "id": gs.product.id,
+                "name": gs.product.name,
+                "price": float(gs.price),
+                "original_price": float(gs.product.original_price),
+                "min_price": float(gs.min_price) if gs.min_price else None,
+                "max_price": float(gs.max_price) if gs.max_price else None,
+
+                "discounted_price": discounted_price,
+                "offer_code": offer_applied.code if offer_applied else None,
+                "offer_start_time": offer_applied.start_date if offer_applied else None,
+                "offer_end_time": offer_applied.end_date if offer_applied else None,
+
+                "flavours": list(gs.flavours.values_list("name", flat=True)),
+                "image": gs.product.image1.url if gs.product.image1 else '',
+                "image2": gs.product.image2.url if gs.product.image2 else '',
+                "is_active": gs.product.is_active,
+                "is_giftset": True,
+
+                "average_rating": float(gs.product.reviews.aggregate(avg=Avg("rating"))["avg"] or 0),
+                "review_count": gs.product.reviews.count(),
+                "stock_status": gs.product.stock_status,
+                "is_favorite": gs.product.id in wishlist_product_ids,
+                "is_best_seller": gs.product.is_best_seller,
+                "is_trending": gs.product.is_trending,
+                "is_new_arrival": gs.product.is_new_arrival,
+            })
         })
 
     # ---------------------------------------------------------
