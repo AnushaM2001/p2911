@@ -1026,17 +1026,28 @@ $(window).on("scroll", function() {
 /* ------------------------------
    DOCUMENT READY
 ------------------------------ */
-$(document).ready(function() {
-    // 1️⃣ URL params pre-check
+$(document).ready(function () {
     const urlParams = new URLSearchParams(window.location.search);
-    const categoriesCSV = urlParams.get("categories");
-    const subcategoriesCSV = urlParams.get("subcategories");
 
-    if (categoriesCSV) categoriesCSV.split(',').forEach(id => $(`.categoryFilter[value="${id}"]`).prop("checked", true));
-    if (subcategoriesCSV) subcategoriesCSV.split(',').forEach(id => $(`.subcategoryFilter[value="${id}"]`).prop("checked", true));
+    // ---- Correct Parameter Names ----
+    const categoryParams = urlParams.getAll("category");
+    const subcategoryParams = urlParams.getAll("subcategory");
 
-    // 2️⃣ Initial load
+    // ---- Pre-check category filters ----
+    categoryParams.forEach(id => {
+        $(`.categoryFilter[value="${id}"]`).prop("checked", true);
+        $(`.categoryFilterModal[value="${id}"]`).prop("checked", true);
+    });
+
+    // ---- Pre-check subcategory filters ----
+    subcategoryParams.forEach(id => {
+        $(`.subcategoryFilter[value="${id}"]`).prop("checked", true);
+        $(`.subcategoryFilterModal[value="${id}"]`).prop("checked", true);
+    });
+
     resetFilters();
+});
+
 
     // 3️⃣ Filter listeners (desktop + mobile modal sync)
     $('.categoryFilter, .subcategoryFilter, .sizeFilter').on('change', resetFilters);
