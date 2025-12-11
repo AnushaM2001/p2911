@@ -980,24 +980,36 @@ function resetFilters() {
 function startCountdowns() {
     document.querySelectorAll('[id^="countdown-"]').forEach(function(el) {
         const endTime = new Date(el.getAttribute('data-endtime'));
+
         function update() {
+
+            if (!el) return;  // <--- SAFETY FIX
+
             const now = new Date();
             const dist = endTime - now;
+
             if (dist <= 0) {
                 el.innerText = "Expired";
-                el.closest(".offer-info-bar").remove();
+
+                const bar = el.closest(".offer-info-bar");
+                if (bar) bar.remove();  // <--- PREVENT ERROR
+
                 return;
             }
+
             const d = Math.floor(dist / (1000 * 60 * 60 * 24));
             const h = Math.floor(dist / (1000 * 60 * 60) % 24);
             const m = Math.floor((dist / (1000 * 60)) % 60);
             const s = Math.floor((dist / 1000) % 60);
+
             el.innerText = ` ⚡ ${d}d ${h}h ${m}m ${s}s`;
         }
+
         update();
         setInterval(update, 1000);
     });
 }
+
 
 /* ------------------------------
    INFINITE SCROLL
@@ -1076,9 +1088,13 @@ $(document).ready(function() {
     });
 
     // 8️⃣ Highlight dropdowns
-    ["priceDropdown","sizeDropdown","brandDropdown","categoryDropdown","sortByDropdown"].forEach(id=>{
-        document.getElementById(id)?.style.backgroundColor="#981945";
-    });
+   ["priceDropdown","sizeDropdown","brandDropdown","categoryDropdown","sortByDropdown"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.style.backgroundColor = "#981945";
+    }
+});
+
 });
 </script>
 
