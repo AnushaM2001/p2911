@@ -401,7 +401,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from decimal import Decimal
 
-from django.db.models import Q, Avg, Min, Max, Cast, FloatField
+from django.db.models import Q, Avg, Min, Max,FloatField
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
