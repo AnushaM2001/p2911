@@ -604,7 +604,7 @@ html, body {
     </div>
     <div class="d-flex justify-content-between mb-2">
         <span>Delivery Charge</span>
-        <span data-price="delivery">₹{{ delivery_charges|floatformat:2 }}</span>
+        <span data-price="delivery">₹100</span>
     </div>
     <div class="d-flex justify-content-between mb-2">
         <span>Platform Fee</span>
@@ -1058,38 +1058,33 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
- function updateOrderSummary(prices) {
-  const formatCurrency = (amount) => '₹' + parseFloat(amount).toFixed(2);
+  function updateOrderSummary(prices) {
+    const formatCurrency = (amount) => '₹' + parseFloat(amount).toFixed(2);
 
-  // Update individual amounts
-  const updatePriceElement = (selector, value) => {
-    const el = document.querySelector(`[data-price="${selector}"]`);
-    if (el) el.textContent = formatCurrency(value);
-  };
+    // Update individual amounts
+    const updatePriceElement = (selector, value) => {
+      const el = document.querySelector(`[data-price="${selector}"]`);
+      if (el) el.textContent = formatCurrency(value);
+    };
 
-updatePriceElement('subtotal', prices.subtotal);
-updatePriceElement('delivery', prices.delivery);
-updatePriceElement('platform_fee', prices.platform_fee);
-updatePriceElement('discount', -Math.abs(prices.discount));
-updatePriceElement('gift_wrap', prices.gift_wrap);
-updatePriceElement('total', prices.total_price);
+    updatePriceElement('subtotal', prices.subtotal);
+    updatePriceElement('delivery', 100); // Always set delivery charge to 100
+    updatePriceElement('platform_fee', prices.platform_fee);
+    
+    if ('discount' in prices) updatePriceElement('discount', -Math.abs(prices.discount));
+    if ('gift_wrap' in prices) updatePriceElement('gift_wrap', prices.gift_wrap);
+    if ('premium_discount' in prices) updatePriceElement('premium_discount', -Math.abs(prices.premium_discount));
 
+    // Use backend-calculated total
+    updatePriceElement('total', prices.total_price);
 
-  if ('discount' in prices) updatePriceElement('discount', -Math.abs(prices.discount));
-  if ('gift_wrap' in prices) updatePriceElement('gift_wrap', prices.gift_wrap);
-  if ('premium_discount' in prices) updatePriceElement('premium_discount', -Math.abs(prices.premium_discount));
-
-  // ✅ Use backend-calculated total
-  updatePriceElement('total', prices.total_price);
-
-  // ✅ Update item count
-  if ('cart_count' in prices) {
-    const countEl = document.querySelector('[data-item-count]');
-    if (countEl) countEl.textContent = prices.cart_count;
+    // Update item count
+    if ('cart_count' in prices) {
+      const countEl = document.querySelector('[data-item-count]');
+      if (countEl) countEl.textContent = prices.cart_count;
+    }
   }
-}
 });
-
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti"></script>
@@ -1099,4 +1094,3 @@ updatePriceElement('total', prices.total_price);
 
   
 {% endblock content %}
-
