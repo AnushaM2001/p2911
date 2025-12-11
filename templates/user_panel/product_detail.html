@@ -986,7 +986,7 @@
     <h3 class="mb-0" id="variant-price" style="font-family: 'Jomolhari';font-size:1.6rem;">₹0</h3>
     <h3 class="mb-0 text-muted text-decoration-line-through" id="original-price" style="display:none;font-size:1.1rem;font-family: 'Jomolhari'; font-size: 30px;"></h3>
     <h3 id="normal-price" class="mb-0 text-decoration-line-through" style="font-family: 'Jomolhari'; font-size: 20px;"></h3>
-    <span class="mb-0 text-success off" id="you-save"></span> 
+    <span class="mb-0 text-success off" id="you-save" style="font-size: 25px;"></span> 
     <span class="mb-0 text-success off" id="discount-percentage" style="font-size: 25px;"></span>
 </div>
 
@@ -2475,19 +2475,23 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <script>
-    
-    document.querySelectorAll('.gift-option').forEach(option => {
-        option.addEventListener('click', function () {
-            const imageUrl = this.getAttribute('data-image-url');
-            const mainImage = document.querySelector('.main-image img');
-            if (imageUrl && mainImage) {
-                mainImage.src = imageUrl;
-            }
-        });
+document.querySelectorAll('.gift-option').forEach(option => {
+    option.addEventListener('click', function () {
+
+        // 1️⃣ Get clicked flavour image URL
+        const imageUrl = this.getAttribute('data-image-url');
+
+        // 2️⃣ Get main image element
+        const mainImage = document.getElementById('mainProductImage');
+
+        // 3️⃣ Update main image
+        if (imageUrl && mainImage) {
+            mainImage.src = imageUrl;
+        }
     });
-
-
+});
 </script>
+
 
 
 
