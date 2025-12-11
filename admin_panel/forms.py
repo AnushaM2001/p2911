@@ -33,14 +33,19 @@ class ProductVariantForm(forms.ModelForm):
 class GiftSetForm(forms.ModelForm):
     class Meta:
         model = GiftSet
-        
-        exclude=['discounted_price','offer_code','offer_start_time','offer_end_time']
-
+        exclude = ['discounted_price', 'offer_code', 'offer_start_time', 'offer_end_time']
 
     def __init__(self, *args, **kwargs):
-        super(GiftSetForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+
+        # Use CheckboxSelectMultiple for flavours
         self.fields['flavours'].widget = forms.CheckboxSelectMultiple()
-        self.fields['flavours'].queryset = self.fields['flavours'].queryset.distinct()
+        self.fields['flavours'].queryset = Flavour.objects.all().distinct()
+        self.fields['flavours'].required = True  # optional, if you want mandatory selection
+
+        # Ensure initial values are set for edit form
+        if self.instance.pk:
+            self.fields['flavours'].initial = self.instance.flavours.all()
 
 
 # Category Form
