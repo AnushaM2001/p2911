@@ -472,7 +472,11 @@ def ajax_filter_products(request):
     # ---------------------------------------------------------
     # 5️⃣ GIFTSETS ALWAYS INCLUDED
     # ---------------------------------------------------------
-    giftsets_qs = GiftSet.objects.all().select_related('product').prefetch_related('flavours')
+    giftsets_qs = GiftSet.objects.filter(
+    product__category_id__in=category_ids,
+    product__is_active=True
+         ).select_related("product").prefetch_related("flavours")
+
 
     if min_price is not None:
         giftsets_qs = giftsets_qs.filter(price__gte=min_price)
