@@ -29,11 +29,10 @@
     margin: 0 !important;
     cursor: pointer;
 }
-.filter-box:hover {
-    transform: translateY(-5px) scale(1.05);
-    cursor: pointer;
+.card-filter:hover {
+    transform: scale(1.05);
     z-index: 3;
-  } 
+}
 .filter-img {
     display: flex;
     align-items: stretch;
@@ -386,9 +385,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between; /* this separates left and right items */
-    font-size: 12px;
-    color: maroon;
-
+    font-size: 9px;
+    color: white;
     z-index: 10;
     white-space: nowrap;
     width: auto; /* optional: fit parent width */
@@ -652,7 +650,7 @@ html, body {
                         <!-- Sidebar filter content START -->
                         <div class="mb-4">
                             <div class="dropdown">
-                                <button class="btn btn-secondary w-100 d-flex justify-content-between align-items-center" type="button" id="sortByDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <button class="btn btn-secondary w-100 d-flex justify-content-between align-items-center" type="button" id="sortByDropdown" aria-expanded="false">
                                     Sort By
                                 </button>
                             </div>
@@ -807,37 +805,29 @@ html, body {
             content.style.display = (currentDisplay === "none" || currentDisplay === "") ? "block" : "none";
         });
 
-        
+       
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script>
-/* ------------------------------
-   CONFIG
------------------------------- */
+   <script>
 let currentPage = 1;
 let loading = false;
 let hasNext = true;
-let perPage = 12;              // change if you want more items per request
-let scrollDebounceTimer = null;
 
 /* ------------------------------
-   GET URL PARAMETERS (fixed)
-   reads `category[]`, `subcategory[]`, `size[]`
+   GET URL PARAMETERS
 ------------------------------ */
 function getUrlParams() {
     const params = new URLSearchParams(window.location.search);
     return {
-        categories: params.getAll('category[]'),
-        subcategories: params.getAll('subcategory[]'),
-        sizes: params.getAll('size[]'),
-        max_price: params.get('max_price') || null,
-        giftsets: params.get('giftsets') || null
+        categories: params.getAll('category'),      // array
+        subcategories: params.getAll('subcategory'),// array
+        sizes: params.getAll('size'),               // array
+        max_price: params.get('max_price') || null
     };
 }
 
 /* ------------------------------
    RENDER SELECTED FILTERS
-   (keeps your previous markup)
 ------------------------------ */
 function renderSelectedFilters(filters) {
     let html = '';
@@ -864,7 +854,7 @@ function updateSelectedFilters() {
         filters.push({
             type: 'category',
             id: $(this).val(),
-            name: $(this).data('name') || $(this).next().text().trim()
+            name: $(this).data('name')
         });
     });
 
@@ -873,7 +863,7 @@ function updateSelectedFilters() {
         filters.push({
             type: 'subcategory',
             id: $(this).val(),
-            name: $(this).data('name') || $(this).next().text().trim()
+            name: $(this).data('name')
         });
     });
 
@@ -882,26 +872,22 @@ function updateSelectedFilters() {
         filters.push({
             type: 'size',
             id: $(this).val(),
-            name: $(this).data('name') || $(this).next().text().trim()
+            name: $(this).data('name')
         });
     });
 
-    // Price (show only if non-zero)
-    const price = $('#priceRange').length ? $('#priceRange').val() : null;
-    if (price && price !== "0") {
-        filters.push({ type: 'price', id: 'price', name: `Price ≤ ₹${price}` });
-    }
+    // Price
+   
 
     renderSelectedFilters(filters);
 }
 
 /* ------------------------------
-   SET CHECKBOXES FROM URL (fixed)
+   SET CHECKBOXES FROM URL
 ------------------------------ */
 function setFiltersFromUrl() {
-    const { categories, subcategories, sizes, max_price, giftsets } = getUrlParams();
+    const { categories, subcategories, sizes, max_price } = getUrlParams();
 
-    // categories array matches inputs with name/value = id
     categories.forEach(id => $(`.categoryFilter[value="${id}"]`).prop('checked', true));
     subcategories.forEach(id => $(`.subcategoryFilter[value="${id}"]`).prop('checked', true));
     sizes.forEach(id => $(`.sizeFilter[value="${id}"]`).prop('checked', true));
@@ -911,32 +897,16 @@ function setFiltersFromUrl() {
         $('#priceRangeValue').text(max_price);
     }
 
-    // if giftsets=1 in URL, ensure category with data-name 'Gift Sets' is checked if present
-    if (giftsets === '1') {
-        $('.categoryFilter').each(function(){
-            if (($(this).data('name') || '').toString().trim().toLowerCase() === 'gift sets') {
-                $(this).prop('checked', true);
-            }
-        });
-    }
-
     updateSelectedFilters();
 }
 
 /* ------------------------------
    GENERATE PRODUCT CARD HTML
-   (re-uses your renderProduct but with safety checks)
 ------------------------------ */
 function renderProduct(prod) {
     const discountPercentage = prod.discounted_price && prod.price
         ? Math.round(((prod.price - prod.discounted_price) / prod.price) * 100)
         : null;
-
-    // fallback for undefined fields
-    const minPrice = (prod.min_price !== undefined && prod.min_price !== null) ? prod.min_price : prod.price;
-    const maxPrice = (prod.max_price !== undefined && prod.max_price !== null) ? prod.max_price : prod.price;
-    const minOrig = (prod.min_original_price !== undefined && prod.min_original_price !== null) ? prod.min_original_price : (prod.original_price || 0);
-    const maxOrig = (prod.max_original_price !== undefined && prod.max_original_price !== null) ? prod.max_original_price : (prod.original_price || 0);
 
     return `
     <div class="col-6 col-md-4 col-lg-3 mb-4">
@@ -968,9 +938,8 @@ function renderProduct(prod) {
               <span class="discount-percentage">${discountPercentage}% OFF</span>
             </div>` : `
             <div class="d-flex align-items-center mb-2">
-              <p class="filter-text fw-bold text-danger">₹${minPrice} - ₹${maxPrice}
-                <span style="text-decoration:line-through;color: #777; margin-left: 5px;">₹${minOrig} - ₹${maxOrig}</span>
-              </p>
+                           <p class="filter-text fw-bold text-danger">₹${prod.min_price} - ₹${prod.max_price}<span style="text-decoration:line-through;color: #777; margin-left: 5px;">₹${prod.min_original_price} - ₹${prod.max_original_price}</span></p>
+
             </div>`}
         </div>
       </div>
@@ -978,11 +947,15 @@ function renderProduct(prod) {
 }
 
 /* ------------------------------
-   BUILD AJAX DATA (includes giftsets detection)
+   LOAD PRODUCTS (AJAX)
 ------------------------------ */
-function buildFilterData(pageToLoad = 1) {
-    const urlParams = getUrlParams();
+function loadProducts(append = false) {
+    if (loading || (!hasNext && append)) return;
+    loading = true;
+    $("#infiniteLoader").show();
 
+    // Get filters from checked boxes or URL
+    const urlParams = getUrlParams();
     let categories = $('.categoryFilter:checked').map(function(){ return $(this).val(); }).get();
     if (!categories.length) categories = urlParams.categories;
 
@@ -992,76 +965,25 @@ function buildFilterData(pageToLoad = 1) {
     let sizes = $('.sizeFilter:checked').map(function(){ return $(this).val(); }).get();
     if (!sizes.length) sizes = urlParams.sizes;
 
-    let max_price = $('#priceRange').length ? $('#priceRange').val() : urlParams.max_price;
-
-    // Detect Gift Sets: either explicitly in URL (giftsets=1) OR a selected category has data-name 'Gift Sets'
-    let giftsets_flag = (urlParams.giftsets === '1');
-    if (!giftsets_flag) {
-        $('.categoryFilter:checked').each(function(){
-            const nm = ($(this).data('name') || '').toString().trim().toLowerCase();
-            if (nm === 'gift sets') giftsets_flag = true;
-        });
-    }
-
-    const data = {
-        page: pageToLoad,
-        per_page: perPage,
-        "category[]": categories,
-        "subcategory[]": subcategories,
-        "size[]": sizes,
-        min_price: 0,
-        max_price: max_price,
-    };
-    if (giftsets_flag) data.giftsets = 1;
-
-    return data;
-}
-
-/* ------------------------------
-   LOAD PRODUCTS (AJAX) - improved
------------------------------- */
-function loadProducts(append = false) {
-    if (loading) return;
-    if (append && !hasNext) return;
-
-    loading = true;
-    $("#infiniteLoader").show();
-
-    // Determine page to request
-    const pageToRequest = append ? currentPage : 1;
+    let max_price = $('#priceRange').val() || urlParams.max_price;
 
     $.ajax({
         url: "{% url 'ajax_filter_products' %}",
-        data: buildFilterData(pageToRequest),
+        data: {
+            page: currentPage,
+            "category[]": categories,
+            "subcategory[]": subcategories,
+            "size[]": sizes,
+            min_price: 0,
+            max_price: max_price
+        },
         dataType: "json",
         success: function(res){
-            if (!append) {
-                $("#productGrid").empty();
-                currentPage = 1;      // reset
-            }
-
-            // If server returned no products and this is first page, show message
-            if ((!res.products || res.products.length === 0) && !append) {
-                $("#productGrid").html('<div class="col-12 text-center py-5">No products found.</div>');
-                hasNext = false;
-                currentPage = 1;
-                updateSelectedFilters();
-                return;
-            }
-
-            // append products
+            if (!append) $("#productGrid").empty();
             res.products.forEach(prod => $("#productGrid").append(renderProduct(prod)));
 
-            // update paging state
-            hasNext = !!res.has_next;
-            if (hasNext && res.next_page) {
-                currentPage = res.next_page;
-            } else if (!hasNext) {
-                // keep currentPage at last page
-            } else {
-                // fallback increment when API doesn't provide next_page
-                currentPage = pageToRequest + 1;
-            }
+            hasNext = res.has_next;
+            if (hasNext) currentPage = res.next_page;
 
             // Banner updates
             if (res.category_banner_url) $('#category-banner').html(`<img src="${res.category_banner_url}" class="img-fluid">`).show();
@@ -1070,62 +992,52 @@ function loadProducts(append = false) {
             if (res.subcategory_banner_url) $('#subcategory-banner').html(`<img src="${res.subcategory_banner_url}" class="img-fluid">`).show();
             else $('#subcategory-banner').hide();
 
-            updateSelectedFilters();
-            startCountdowns(); // re-init any countdowns
+            startCountdowns();
         },
-        error: function(xhr, status, err) {
-            console.error("Product load error:", status, err);
-        },
-        complete: function(){
-            loading = false;
-            $("#infiniteLoader").hide();
-        }
+        complete: function(){ loading = false; $("#infiniteLoader").hide(); }
     });
 }
 
 /* ------------------------------
-   RESET FILTERS (used on change)
+   RESET FILTERS
 ------------------------------ */
 function resetFilters() {
     currentPage = 1;
     hasNext = true;
-    updateSelectedFilters();
+    updateSelectedFilters();  // <-- update selected filters UI
     loadProducts(false);
 }
 
 /* ------------------------------
-   INFINITE SCROLL (debounced)
+   INFINITE SCROLL
 ------------------------------ */
 $(window).on("scroll", function() {
     if (loading || !hasNext) return;
 
-    if (scrollDebounceTimer) clearTimeout(scrollDebounceTimer);
-    scrollDebounceTimer = setTimeout(function(){
-        let $lastProduct = $("#productGrid .product-card").last();
-        if ($lastProduct.length === 0) return;
+    let $lastProduct = $("#productGrid .product-card").last();
+    if ($lastProduct.length === 0) return;
 
-        let lastProductBottom = $lastProduct.offset().top + $lastProduct.outerHeight();
-        let scrollBottom = $(window).scrollTop() + $(window).height();
+    // Bottom position of last product
+    let lastProductBottom = $lastProduct.offset().top + $lastProduct.outerHeight();
 
-        if (scrollBottom >= lastProductBottom - 250) {
-            loadProducts(true);
-        }
-    }, 150);
+    // Scroll position + window height
+    let scrollBottom = $(window).scrollTop() + $(window).height();
+
+    // Trigger loader 200px before the last product fully reaches viewport
+    if (scrollBottom >= lastProductBottom - 200) {
+        loadProducts(true);
+    }
 });
-
+ 
 /* ------------------------------
    FILTER CHANGE LISTENERS
 ------------------------------ */
-$(document).on('change', '.categoryFilter, .subcategoryFilter, .sizeFilter', function(){
-    resetFilters();
-});
+$(".categoryFilter, .subcategoryFilter, .sizeFilter").on("change", resetFilters);
 
 // Price slider
-$(document).on('input change', '#priceRange', function(){
+$('#priceRange').on('input change', function(){
     $('#priceRangeValue').text(this.value);
-    // don't spam: only reset on change end - use a short debounce
-    if (this._debounce) clearTimeout(this._debounce);
-    this._debounce = setTimeout(function(){ resetFilters(); }, 300);
+    resetFilters();
 });
 
 // Remove filter X button
@@ -1144,41 +1056,28 @@ $(document).on('click', '.remove-filter', function() {
 });
 
 // Clear All button
-$(document).on('click', '#clearAllFilters', function(){
-    $('.categoryFilter, .subcategoryFilter, .sizeFilter').prop('checked', false);
+$("#clearAllFilters").click(function(){
+    $('.categoryFilter, .subcategoryFilter, .sizeFilter').prop("checked", false);
     $('#priceRange').val(0);
     $('#priceRangeValue').text(0);
     resetFilters();
 });
 
 /* ------------------------------
-   INITIAL LOAD / URL SYNC
+   INITIAL LOAD
 ------------------------------ */
 $(document).ready(function(){
     setFiltersFromUrl();   // <-- apply URL filters
     currentPage = 1;
     hasNext = true;
     loadProducts(false);
-
-    // modal toggles (keep your behaviour)
-    $('#categoryDropdownModal').off('click').on('click', () => $('#categoryContentModal').slideToggle(150));
-    $('#brandDropdownModal').off('click').on('click', () => $('#brandContentModal').slideToggle(150));
-    $('#sizeDropdownModal').off('click').on('click', () => $('#sizeContentModal').slideToggle(150));
 });
+</script>
 
-/* ------------------------------
-   COUNTDOWN (no change)
------------------------------- */
+<script>
 function startCountdowns() {
     document.querySelectorAll('[id^="countdown-"]').forEach(function(el) {
-        // clear any existing interval stored on element
-        if (el._interval) clearInterval(el._interval);
-
         const endTime = new Date(el.getAttribute('data-endtime'));
-        if (isNaN(endTime)) {
-            el.innerText = '';
-            return;
-        }
 
         function update() {
             const now = new Date();
@@ -1186,9 +1085,7 @@ function startCountdowns() {
 
             if (dist <= 0) {
                 el.innerText = "Expired";
-                const bar = el.closest(".offer-info-bar");
-                if (bar) bar.remove();
-                clearInterval(el._interval);
+                el.closest(".offer-info-bar").remove();
                 return;
             }
 
@@ -1201,11 +1098,10 @@ function startCountdowns() {
         }
 
         update();
-        el._interval = setInterval(update, 1000);
+        setInterval(update, 1000);
     });
 }
 
-// Ensure countdowns start on initial load too
 document.addEventListener('DOMContentLoaded', startCountdowns);
 </script>
 
@@ -1367,7 +1263,6 @@ document.getElementById("priceDropdown").style.backgroundColor = "#981945";
 document.getElementById("sizeDropdown").style.backgroundColor = "#981945";
 document.getElementById("brandDropdown").style.backgroundColor = "#981945";
 document.getElementById("categoryDropdown").style.backgroundColor = "#981945";
-document.getElementById("sortByDropdown").style.backgroundColor = "#981945";
 
 </script>
 
@@ -1393,7 +1288,6 @@ $(document).ready(function() {
 
     //  Fetch products after filters are pre-checked
     resetFilters();
-    
 
     // Event listeners for filters
     $('.categoryFilter, .subcategoryFilter, .sizeFilter, #priceRange').on('change', resetFilters);
@@ -1419,5 +1313,3 @@ $(document).ready(function() {
 <!-- Bootstrap JS Bundle (for modal functionality) -->
 
 {% endblock content %}
-
-
