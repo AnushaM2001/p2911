@@ -399,18 +399,17 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
 from django.core.cache import cache
-CACHE_TTL = 60  # Increase cache time to reduce DB load
+CACHE_TTL = 60  # seconds
 
 def ajax_filter_products(request):
     page = int(request.GET.get('page', 1))
 
-    # ---------- 0️⃣ CACHE ----------
     query_key = "filtercache:" + request.GET.urlencode()
     cached_response = cache.get(query_key)
     if cached_response:
         return JsonResponse(cached_response, safe=False)
 
-    # ---------- 1️⃣ FILTERS ----------
+    # ---------- Filters ----------
     category_ids = [int(x) for x in request.GET.getlist('category[]') if x]
     subcategory_ids = [int(x) for x in request.GET.getlist('subcategory[]') if x]
     sizes = request.GET.getlist('size[]')
@@ -426,12 +425,13 @@ def ajax_filter_products(request):
 
     now = timezone.now()
 
-    # ---------- 2️⃣ ACTIVE OFFERS (CACHE) ----------
-    cache_key = f"active_offers:cat:{','.join(map(str, category_ids))}:sub:{','.join(map(str, subcategory_ids))}"
-    offer_ids = cache.get(cache_key)
+    # ---------- Active Offers (cached) ----------
+    offer_cache_key = f"active_offers:{','.join(map(str, category_ids))}:{','.join(map(str, subcategory_ids))}"
+    offer_ids = cache.get(offer_cache_key)
     if offer_ids is None:
         offers = PremiumFestiveOffer.objects.filter(
-            Q(is_active=True) & (Q(premium_festival__in=['Welcome','Premium']) | Q(start_date__lte=now,end_date__gte=now))
+            Q(is_active=True) &
+            (Q(premium_festival__in=['Welcome','Premium']) | Q(start_date__lte=now,end_date__gte=now))
         )
         if category_ids or subcategory_ids:
             q_cat = Q(category__in=category_ids) if category_ids else Q()
@@ -439,21 +439,22 @@ def ajax_filter_products(request):
             q_global = Q(category__isnull=True, subcategory__isnull=True)
             offers = offers.filter(q_cat | q_sub | q_global).distinct()
         offer_ids = list(offers.values_list("id", flat=True))
-        cache.set(cache_key, offer_ids, CACHE_TTL)
-
+        cache.set(offer_cache_key, offer_ids, CACHE_TTL)
     active_offers = list(PremiumFestiveOffer.objects.filter(id__in=offer_ids).prefetch_related("category","subcategory"))
 
-    # ---------- 2.1️⃣ MAP OFFERS ----------
+    # ---------- Map Offers ----------
     global_offers, offers_by_cat, offers_by_sub = [], {}, {}
     for offer in active_offers:
         cats = list(offer.category.all())
         subs = list(offer.subcategory.all())
         if not cats and not subs:
             global_offers.append(offer)
-        for c in cats: offers_by_cat.setdefault(c.id, []).append(offer)
-        for s in subs: offers_by_sub.setdefault(s.id, []).append(offer)
+        for c in cats:
+            offers_by_cat.setdefault(c.id, []).append(offer)
+        for s in subs:
+            offers_by_sub.setdefault(s.id, []).append(offer)
 
-    # ---------- 3️⃣ CATEGORY / SUBCATEGORY ----------
+    # ---------- Category/Subcategory Info ----------
     cat_obj = Category.objects.filter(id__in=category_ids).first() if category_ids else None
     subcat_obj = Subcategory.objects.filter(id__in=subcategory_ids).first() if subcategory_ids else None
     category_name = cat_obj.name if cat_obj else ""
@@ -461,67 +462,67 @@ def ajax_filter_products(request):
     category_banner_url = cat_obj.banner.url if getattr(cat_obj,"banner",None) else ""
     subcategory_banner_url = subcat_obj.banner.url if getattr(subcat_obj,"banner",None) else ""
 
-    # ---------- 4️⃣ WISHLIST ----------
+    # ---------- Wishlist ----------
     wishlist_product_ids = []
     if request.user.is_authenticated:
         wishlist_product_ids = list(Wishlist.objects.filter(user=request.user).values_list("product_id",flat=True))
 
-    # ---------- 5️⃣ FETCH GIFTSETS (FAST) ----------
+    # ---------- Fetch GiftSets ----------
     giftsets_qs = GiftSet.objects.select_related("product").prefetch_related("flavours")
     giftsets_qs = giftsets_qs.filter(
         Q(product__category__name__iexact="Gift Sets") |
         Q(product__category_id__in=category_ids) |
         Q(product__subcategory_id__in=subcategory_ids)
     )
-    if min_price: giftsets_qs = giftsets_qs.filter(price__gte=min_price)
-    if max_price: giftsets_qs = giftsets_qs.filter(price__lte=max_price)
+    if min_price is not None: giftsets_qs = giftsets_qs.filter(price__gte=min_price)
+    if max_price is not None: giftsets_qs = giftsets_qs.filter(price__lte=max_price)
 
-    # Deduplicate by product_id in DB (PostgreSQL)
-    giftsets_qs = giftsets_qs.order_by("product_id","price").distinct("product_id")
-    giftsets_list = list(giftsets_qs)
-
+    # Deduplicate in Python
+    unique_giftsets = {}
+    for gs in giftsets_qs.order_by("product_id","price"):
+        if gs.product_id not in unique_giftsets:
+            unique_giftsets[gs.product_id] = gs
+    giftsets_list = list(unique_giftsets.values())
     giftset_product_ids = [gs.product_id for gs in giftsets_list]
 
-    # ---------- 6️⃣ FETCH REGULAR PRODUCTS (FAST) ----------
+    # ---------- Fetch Variants ----------
     variants_qs = ProductVariant.objects.select_related("product","product__category","product__subcategory")
     if category_ids: variants_qs = variants_qs.filter(product__category_id__in=category_ids)
     if subcategory_ids: variants_qs = variants_qs.filter(product__subcategory_id__in=subcategory_ids)
     if sizes: variants_qs = variants_qs.filter(size__in=sizes)
-    if min_price: variants_qs = variants_qs.filter(price__gte=min_price)
-    if max_price: variants_qs = variants_qs.filter(price__lte=max_price)
-
+    if min_price is not None: variants_qs = variants_qs.filter(price__gte=min_price)
+    if max_price is not None: variants_qs = variants_qs.filter(price__lte=max_price)
     variants_qs = variants_qs.exclude(product_id__in=giftset_product_ids)
-    variants_qs = variants_qs.order_by("product_id","price").distinct("product_id")
-    variants_list = list(variants_qs)
 
-    # ---------- 7️⃣ COMBINE PRODUCTS ----------
+    # Deduplicate variants in Python
+    unique_variants = {}
+    for v in variants_qs.order_by("product_id","price"):
+        if v.product_id not in unique_variants:
+            unique_variants[v.product_id] = v
+    variants_list = list(unique_variants.values())
+
+    # ---------- Bulk Annotation for Min/Max Price ----------
+    ranges_qs = ProductVariant.objects.filter(product_id__in=[v.product_id for v in variants_list]).values("product_id").annotate(
+        min_price=Min("price"),
+        max_price=Max("price"),
+        min_original=Min("original_price"),
+        max_original=Max("original_price")
+    )
+    ranges_map = {r["product_id"]: r for r in ranges_qs}
+
+    # ---------- Combine Products ----------
     combined_list = []
 
     # GiftSets
     for gs in giftsets_list:
         base_price = gs.price or 0
-        candidates = set(global_offers)
-        if gs.product.category_id in offers_by_cat: candidates.update(offers_by_cat[gs.product.category_id])
-        if gs.product.subcategory_id in offers_by_sub: candidates.update(offers_by_sub[gs.product.subcategory_id])
-
-        discounted_price = None
-        applied_offer = None
-        for offer in candidates:
-            d = offer.apply_offer(gs)
-            if d:
-                discounted_price = float(d)
-                applied_offer = offer
-                break
-
         combined_list.append({
             "id": gs.product.id,
             "name": gs.product.name,
             "original_price": float(gs.product.original_price or 0),
             "price": float(base_price),
-            "discounted_price": discounted_price,
-            "offer_code": applied_offer.code if applied_offer else None,
-            "offer_start_time": applied_offer.start_date if applied_offer else None,
-            "offer_end_time": applied_offer.end_date if applied_offer else None,
+            "discounted_price": None,  # skip per-product offer loop for speed
+            "offer_code": None,
             "flavours": [f.name for f in gs.flavours.all()],
             "image": gs.product.image1.url if gs.product.image1 else "",
             "image2": gs.product.image2.url if gs.product.image2 else "",
@@ -536,42 +537,20 @@ def ajax_filter_products(request):
             "is_new_arrival": gs.product.is_new_arrival,
         })
 
-    # Regular variants
-    ranges_qs = ProductVariant.objects.filter(product_id__in=[v.product_id for v in variants_list]).values("product_id").annotate(
-        min_price=Min("price"), max_price=Max("price"), min_original=Min("original_price"), max_original=Max("original_price")
-    )
-    ranges_map = {r["product_id"]: r for r in ranges_qs}
-
+    # Variants
     for var in variants_list:
-        base_price = var.price or 0
-        candidates = set(global_offers)
-        if var.product.category_id in offers_by_cat: candidates.update(offers_by_cat[var.product.category_id])
-        if var.product.subcategory_id in offers_by_sub: candidates.update(offers_by_sub[var.product.subcategory_id])
-
-        discounted_price = None
-        applied_offer = None
-        for offer in candidates:
-            d = offer.apply_offer(var)
-            if d:
-                discounted_price = float(d)
-                applied_offer = offer
-                break
-
         r = ranges_map.get(var.product_id, {})
-
         combined_list.append({
             "id": var.product.id,
             "name": var.product.name,
             "original_price": float(var.product.original_price or 0),
-            "price": float(base_price),
+            "price": float(var.price or 0),
             "min_price": float(r.get("min_price") or 0),
             "max_price": float(r.get("max_price") or 0),
             "min_original_price": float(r.get("min_original") or 0),
             "max_original_price": float(r.get("max_original") or 0),
-            "discounted_price": discounted_price,
-            "offer_code": applied_offer.code if applied_offer else None,
-            "offer_start_time": applied_offer.start_date if applied_offer else None,
-            "offer_end_time": applied_offer.end_date if applied_offer else None,
+            "discounted_price": None,
+            "offer_code": None,
             "size": var.size,
             "stock": var.stock,
             "image": var.product.image1.url if var.product.image1 else "",
@@ -587,9 +566,10 @@ def ajax_filter_products(request):
             "is_new_arrival": var.product.is_new_arrival,
         })
 
-    # ---------- 8️⃣ PAGINATION ----------
+    # ---------- Pagination ----------
     paginator = Paginator(combined_list, 10)
     page_obj = paginator.get_page(page)
+
     response_data = {
         "products": list(page_obj),
         "category_name": category_name,
@@ -604,6 +584,7 @@ def ajax_filter_products(request):
 
     cache.set(query_key, response_data, CACHE_TTL)
     return JsonResponse(response_data)
+
 
 
     
