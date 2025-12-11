@@ -482,11 +482,15 @@ def ajax_filter_products(request):
     if max_price is not None:
         giftsets_qs = giftsets_qs.filter(price__lte=max_price)
 
+    paginator = Paginator(giftsets_qs, 10)
+    page_giftsets = paginator.get_page(page)
+
+
     print("\n========== DEBUG: GIFTSETS ==========")
     print("Total Giftsets:", giftsets_qs.count())
 
     product_data = []
-    for gs in giftsets_qs:
+    for gs in page_giftsets:
         print("Giftset Product:", gs.product.name)
 
         base_price = gs.price or 0
@@ -499,15 +503,30 @@ def ajax_filter_products(request):
                 discounted_price = float(discounted)
                 offer_applied = offer
                 break
+        price_range = GiftSet.objects.filter(product=gs.product).aggregate(
+                min_price=Min('price'),
+                max_price=Max('price')
+            )
+        original_range = (
+                GiftSet.objects.filter(product=gs.product)
+                .annotate(original_float=Cast('original_price', FloatField()))
+                .aggregate(
+                    min_original=Min('original_float'),
+                    max_original=Max('original_float')
+                )
+            )
+
+
 
         product_data.append({
                 "id": gs.product.id,
                 "name": gs.product.name,
-                "price": float(gs.price),
+                "price": float(base_price),
                 "original_price": float(gs.product.original_price),
-                "min_price": float(gs.min_price) if gs.min_price else None,
-                "max_price": float(gs.max_price) if gs.max_price else None,
-
+                "min_price": float(price_range['min_price'] or 0),
+                "max_price": float(price_range['max_price'] or 0),
+                "min_original_price": float(original_range['min_original'] or 0),
+                "min_original_price": float(original_range['min_original'] or 0),
                 "discounted_price": discounted_price,
                 "offer_code": offer_applied.code if offer_applied else None,
                 "offer_start_time": offer_applied.start_date if offer_applied else None,
