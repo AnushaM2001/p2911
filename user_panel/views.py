@@ -474,7 +474,7 @@ def ajax_filter_products(request):
     # ---------------------------------------------------------
     giftsets_qs = (
             GiftSet.objects.filter(product__category=cat_obj)
-            .select_related('product').prefetch_related('flavours')
+            .select_related('product').prefetch_related('flavours'))
 
 
     if min_price is not None:
@@ -527,7 +527,7 @@ def ajax_filter_products(request):
                 "is_trending": gs.product.is_trending,
                 "is_new_arrival": gs.product.is_new_arrival,
             })
-        })
+    
 
     # ---------------------------------------------------------
     # 6️⃣ REGULAR PRODUCTS
@@ -628,14 +628,13 @@ def ajax_filter_products(request):
 
     print("\n========== DEBUG: FINAL RESPONSE ==========")
     print("Products Returned:", len(product_data))
-    print("Giftsets Returned:", len(giftsets_data))
+
     print("Current Page:", page)
 
     print("==================== AJAX FILTER END ====================\n\n")
 
     return JsonResponse({
         'products': product_data,
-        'giftsets': giftsets_data,
         'category_name': category_name,
         'subcategory_name': subcategory_name,
         'category_banner_url': category_banner_url,

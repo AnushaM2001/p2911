@@ -164,7 +164,7 @@ class ProductVariant(models.Model):
             if not self.price:  # Only set if price not already set manually
                 self.price = plastic_variant.price + 100
         except ProductVariant.DoesNotExist:
-            # No matching Plastic found – leave price as is (allow manual price)
+            # No matching Plastic found  leave price as is (allow manual price)
             pass
       super().save(*args, **kwargs)
 
@@ -225,7 +225,7 @@ class Order(models.Model):
     shiprocket_tracking_info = models.JSONField(null=True, blank=True)  # To store tracking history
     shiprocket_awb_code = models.CharField(max_length=100, blank=True, null=True)
     shiprocket_courier_name = models.CharField(max_length=100, blank=True, null=True)
-    shiprocket_courier_id=models.CharField(max_length=100, blank=True, null=True)  # 👈 NEW
+    shiprocket_courier_id=models.CharField(max_length=100, blank=True, null=True)  #  NEW
     label_url = models.URLField(blank=True, null=True)
     invoice_url = models.URLField(blank=True, null=True)
     manifest_url = models.URLField(blank=True, null=True)
@@ -233,7 +233,7 @@ class Order(models.Model):
     shiprocket_tracking_status = models.CharField(max_length=100, blank=True, null=True)
     shiprocket_estimated_delivery = models.CharField(max_length=100, blank=True, null=True)
     shiprocket_tracking_events = models.JSONField(null=True, blank=True)
-    shiprocket_tracking_status_updated_at = models.DateTimeField(blank=True, null=True)  # 👈 NEW
+    shiprocket_tracking_status_updated_at = models.DateTimeField(blank=True, null=True)  #  NEW
     invoice_sent = models.BooleanField(default=False)  # To track if invoice email sent
 
 
@@ -339,158 +339,155 @@ class CouponUsage(models.Model):
 
 
 class PremiumFestiveOffer(models.Model):
-    premium_festival = models.CharField(
-        max_length=20,
-        choices=[('Welcome', 'Welcome'), ('Premium', 'Premium'), ('Festival', 'Festival')]
-    )
-    offer_name = models.CharField(max_length=50, blank=True, null=True)
-    category = models.ManyToManyField(Category, blank=True)
-    subcategory = models.ManyToManyField(Subcategory, blank=True)
-    size = models.CharField(max_length=10, blank=True, null=True)
-    code = models.CharField(max_length=20, null=True, blank=True)
-    percentage = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    start_date = models.DateTimeField(null=True, blank=True)
-    end_date = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+  premium_festival = models.CharField(max_length=20,choices=[('Welcome','Welcome'),('Premium', 'Premium'), ('Festival', 'Festival')])
+  offer_name = models.CharField(max_length=50, blank=True, null=True)
+  category = models.ManyToManyField(Category, blank=True)
+  subcategory = models.ManyToManyField(Subcategory, blank=True)
+  size = models.CharField(max_length=10, blank=True, null=True)
+  code = models.CharField(max_length=20, null=True, blank=True)
+  percentage = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+  start_date = models.DateTimeField(null=True, blank=True)
+  end_date = models.DateTimeField(null=True, blank=True)
+  created_at = models.DateTimeField(auto_now_add=True)
+  is_active = models.BooleanField(default=True)
 
-    # -------------------------------
-    # CACHED M2M LISTS (SUPER FAST)
-    # -------------------------------
-    @property
-    def cached_categories(self):
-        if not hasattr(self, "_cached_categories"):
-            self._cached_categories = list(self.category.all())
-        return self._cached_categories
+  # -------------------------------
+  # CACHED M2M LISTS (SUPER FAST)
+  # -------------------------------
+  @property
+  def cached_categories(self):
+    if not hasattr(self, "_cached_categories"):
+      self._cached_categories = list(self.category.all())
+    return self._cached_categories
 
-    @property
-    def cached_subcategories(self):
-        if not hasattr(self, "_cached_subcategories"):
-            self._cached_subcategories = list(self.subcategory.all())
-        return self._cached_subcategories
+  @property
+  def cached_subcategories(self):
+    if not hasattr(self, "_cached_subcategories"):
+      self._cached_subcategories = list(self.subcategory.all())
+    return self._cached_subcategories
 
-    # -------------------------------
-    # OFFER STATUS + DATE VALIDATION
-    # -------------------------------
-    def offer_active_now(self):
-        if not self.is_active:
-            return False
+  # -------------------------------
+  # OFFER STATUS + DATE VALIDATION
+  # -------------------------------
+  def offer_active_now(self):
+    if not self.is_active:
+      return False
 
-        # Welcome & Premium → always active
-        if self.premium_festival in ["Welcome", "Premium"]:
-            return True
+    # Welcome & Premium  always active
+    if self.premium_festival in ["Welcome", "Premium"]:
+      return True
 
-        # Festival → requires dates
-        if not self.start_date or not self.end_date:
-            return False
+    # Festival  requires dates
+    if not self.start_date or not self.end_date:
+      return False
 
-        now = timezone.now()
-        return self.start_date <= now <= self.end_date
+    now = timezone.now()
+    return self.start_date <= now <= self.end_date
 
-    # -------------------------------
-    # APPLY OFFER ENTRY POINT
-    # -------------------------------
-    def apply_offer(self, item):
-        if not self.offer_active_now():
-            return None
+  # -------------------------------
+  # APPLY OFFER ENTRY POINT
+  # -------------------------------
+  def apply_offer(self, item):
+    if not self.offer_active_now():
+      return None
 
-        if isinstance(item, ProductVariant):
-            return self._apply_to_variant(item)
+    if isinstance(item, ProductVariant):
+      return self._apply_to_variant(item)
 
-        if isinstance(item, GiftSet):
-            return self._apply_to_giftset(item)
+    if isinstance(item, GiftSet):
+      return self._apply_to_giftset(item)
 
-        return None
+    return None
 
-    # -------------------------------
-    # APPLY TO PRODUCT VARIANT
-    # -------------------------------
-    def _apply_to_variant(self, variant):
-        product = variant.product
+  # -------------------------------
+  # APPLY TO PRODUCT VARIANT
+  # -------------------------------
+  def _apply_to_variant(self, variant):
+    product = variant.product
 
-        cat_list = self.cached_categories
-        subcat_list = self.cached_subcategories
+    cat_list = self.cached_categories
+    subcat_list = self.cached_subcategories
 
-        # Matches
-        category_match = product.category in cat_list
-        subcategory_match = product.subcategory in subcat_list
+    # Matches
+    category_match = product.category in cat_list
+    subcategory_match = product.subcategory in subcat_list
 
-        has_cat_filter = len(cat_list) > 0
-        has_subcat_filter = len(subcat_list) > 0
+    has_cat_filter = len(cat_list) > 0
+    has_subcat_filter = len(subcat_list) > 0
 
-        # -------- SIZE MATCH --------
-        if self.size:
-            if self.size.lower() == "all":
-                size_match = True
-            else:
-                size_match = str(variant.size).lower() == str(self.size).lower()
-        else:
-            size_match = True  # No size filter = match all sizes
+    # -------- SIZE MATCH --------
+    if self.size:
+      if self.size.lower() == "all":
+        size_match = True
+      else:
+        size_match = str(variant.size).lower() == str(self.size).lower()
+    else:
+      size_match = True # No size filter = match all sizes
 
-        if not size_match:
-            return None
+    if not size_match:
+      return None
 
-        # -------- CATEGORY/SUBCATEGORY MATCHING LOGIC ----------
-        if (
-            (has_cat_filter and category_match) or
-            (has_subcat_filter and subcategory_match) or
-            (not has_cat_filter and not has_subcat_filter)  # global offer
-        ):
-            if self.percentage and variant.price:
-                discount = (self.percentage / Decimal(100)) * variant.price
-                return round(variant.price - discount, 2)
+    # -------- CATEGORY/SUBCATEGORY MATCHING LOGIC ----------
+    if (
+      (has_cat_filter and category_match) or
+      (has_subcat_filter and subcategory_match) or
+      (not has_cat_filter and not has_subcat_filter) # global offer
+    ):
+      if self.percentage and variant.price:
+        discount = (self.percentage / Decimal(100)) * variant.price
+        return round(variant.price - discount, 2)
 
-        return None
+    return None
 
-    # -------------------------------
-    # APPLY TO GIFTSET
-    # -------------------------------
-    def _apply_to_giftset(self, giftset):
-        product = giftset.product
+  # -------------------------------
+  # APPLY TO GIFTSET
+  # -------------------------------
+  def _apply_to_giftset(self, giftset):
+    product = giftset.product
 
-        cat_list = self.cached_categories
-        subcat_list = self.cached_subcategories
+    cat_list = self.cached_categories
+    subcat_list = self.cached_subcategories
 
-        category_match = product.category in cat_list
-        subcategory_match = product.subcategory in subcat_list
+    category_match = product.category in cat_list
+    subcategory_match = product.subcategory in subcat_list
 
-        has_cat_filter = len(cat_list) > 0
-        has_subcat_filter = len(subcat_list) > 0
+    has_cat_filter = len(cat_list) > 0
+    has_subcat_filter = len(subcat_list) > 0
 
-        if (
-            category_match or
-            subcategory_match or
-            (not has_cat_filter and not has_subcat_filter)
-        ):
-            if self.percentage and giftset.price:
-                discount = (self.percentage / Decimal(100)) * giftset.price
-                return round(giftset.price - discount, 2)
+    if (
+      category_match or
+      subcategory_match or
+      (not has_cat_filter and not has_subcat_filter)
+    ):
+      if self.percentage and giftset.price:
+        discount = (self.percentage / Decimal(100)) * giftset.price
+        return round(giftset.price - discount, 2)
 
-        return None
+    return None
 
-    # -------------------------------
-    # HUMAN-READABLE STATUS
-    # -------------------------------
-    def get_status(self):
-        if self.premium_festival in ["Welcome", "Premium"]:
-            return "Active"
+  # -------------------------------
+  # HUMAN-READABLE STATUS
+  # -------------------------------
+  def get_status(self):
+    if self.premium_festival in ["Welcome", "Premium"]:
+      return "Active"
 
-        now = timezone.now()
+    now = timezone.now()
 
-        if not self.start_date or not self.end_date:
-            return "Unknown"
+    if not self.start_date or not self.end_date:
+      return "Unknown"
 
-        if self.start_date > now:
-            return "Scheduled"
-        if self.end_date < now:
-            return "Expired"
+    if self.start_date > now:
+      return "Scheduled"
+    if self.end_date < now:
+      return "Expired"
 
-        return "Active"
+    return "Active"
 
-    def __str__(self):
-        if self.percentage:
-            return f"{self.offer_name} - {self.percentage}% off ({self.size})"
-        return "No Discount"
+  def __str__(self):
+    if self.percentage:
+      return f"{self.offer_name} - {self.percentage}% off ({self.size})"
+    return "No Discount"
 
         
 
