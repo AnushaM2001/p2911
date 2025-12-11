@@ -310,8 +310,10 @@ html, body {
       {% for item in cart_items %}
       <div class="d-flex p-3 mb-3">
         {% if item.product %}
+       {% if item.product.image1 %}
         <a href="{% url 'product_detail' item.product.id %}"><img src="{{ item.product.image1.url }}" class="img-thumbnail" style="width: 150px; height:auto; border:none; border-radius: 10px;" alt="Product Image"></a>
         {% endif %}
+       {% endif %}
         <div class="ms-4 mt-4">
           <h6>{{ item.product.name }}</h6>
            {% if item.flavour_names %}
