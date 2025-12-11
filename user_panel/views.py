@@ -392,18 +392,18 @@ def toggle_wishlist(request):
 
     return JsonResponse({"error": "Invalid request"}, status=400)
 
-from decimal import Decimal
-from django.db.models import Q, Min, Max, Avg, FloatField
-from django.db.models.functions import Cast
+from django.db.models import Q, Avg, Min, Max
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
 from django.core.cache import cache
+
 CACHE_TTL = 60  # seconds
 
 def ajax_filter_products(request):
     page = int(request.GET.get('page', 1))
 
+    # ---------- Cache ----------
     query_key = "filtercache:" + request.GET.urlencode()
     cached_response = cache.get(query_key)
     if cached_response:
@@ -425,7 +425,7 @@ def ajax_filter_products(request):
 
     now = timezone.now()
 
-    # ---------- Active Offers (cached) ----------
+    # ---------- Active Offers ----------
     offer_cache_key = f"active_offers:{','.join(map(str, category_ids))}:{','.join(map(str, subcategory_ids))}"
     offer_ids = cache.get(offer_cache_key)
     if offer_ids is None:
@@ -437,7 +437,7 @@ def ajax_filter_products(request):
             q_cat = Q(category__in=category_ids) if category_ids else Q()
             q_sub = Q(subcategory__in=subcategory_ids) if subcategory_ids else Q()
             q_global = Q(category__isnull=True, subcategory__isnull=True)
-            offers = offers.filter(q_cat | q_sub | q_global).distinct()
+            offers = offers.filter(q_cat | q_sub | q_global)
         offer_ids = list(offers.values_list("id", flat=True))
         cache.set(offer_cache_key, offer_ids, CACHE_TTL)
     active_offers = list(PremiumFestiveOffer.objects.filter(id__in=offer_ids).prefetch_related("category","subcategory"))
@@ -477,12 +477,12 @@ def ajax_filter_products(request):
     if min_price is not None: giftsets_qs = giftsets_qs.filter(price__gte=min_price)
     if max_price is not None: giftsets_qs = giftsets_qs.filter(price__lte=max_price)
 
-    # Deduplicate in Python
+    # Deduplicate GiftSets in Python
     unique_giftsets = {}
-    for gs in giftsets_qs.order_by("product_id","price"):
+    for gs in giftsets_qs:
         if gs.product_id not in unique_giftsets:
             unique_giftsets[gs.product_id] = gs
-    giftsets_list = list(unique_giftsets.values())
+    giftsets_list = sorted(unique_giftsets.values(), key=lambda x: (x.product_id, x.price or 0))
     giftset_product_ids = [gs.product_id for gs in giftsets_list]
 
     # ---------- Fetch Variants ----------
@@ -496,10 +496,10 @@ def ajax_filter_products(request):
 
     # Deduplicate variants in Python
     unique_variants = {}
-    for v in variants_qs.order_by("product_id","price"):
+    for v in variants_qs:
         if v.product_id not in unique_variants:
             unique_variants[v.product_id] = v
-    variants_list = list(unique_variants.values())
+    variants_list = sorted(unique_variants.values(), key=lambda x: (x.product_id, x.price or 0))
 
     # ---------- Bulk Annotation for Min/Max Price ----------
     ranges_qs = ProductVariant.objects.filter(product_id__in=[v.product_id for v in variants_list]).values("product_id").annotate(
@@ -513,7 +513,7 @@ def ajax_filter_products(request):
     # ---------- Combine Products ----------
     combined_list = []
 
-    # GiftSets
+    # GiftSets first
     for gs in giftsets_list:
         base_price = gs.price or 0
         combined_list.append({
@@ -521,7 +521,7 @@ def ajax_filter_products(request):
             "name": gs.product.name,
             "original_price": float(gs.product.original_price or 0),
             "price": float(base_price),
-            "discounted_price": None,  # skip per-product offer loop for speed
+            "discounted_price": None,
             "offer_code": None,
             "flavours": [f.name for f in gs.flavours.all()],
             "image": gs.product.image1.url if gs.product.image1 else "",
