@@ -810,8 +810,6 @@ html, body {
         
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-
 <script>
 let currentPage = 1;
 let loading = false;
@@ -824,12 +822,73 @@ let loadedProductIds = new Set(); // Prevent duplicate products
 function getUrlParams() {
     const params = new URLSearchParams(window.location.search);
     return {
-        categories: params.getAll('category'),
-        subcategories: params.getAll('subcategory'),
+        categories: params.getAll('category').length ? params.getAll('category') : (params.get('categories') ? params.get('categories').split(',') : []),
+        subcategories: params.getAll('subcategory').length ? params.getAll('subcategory') : (params.get('subcategories') ? params.get('subcategories').split(',') : []),
         sizes: params.getAll('size'),
         min_price: params.get('min_price') || 0,
-        max_price: params.get('max_price') || null
+        max_price: params.get('max_price') || null,
+        page: params.get('page') || 1
     };
+}
+
+/* ------------------------------
+   APPLY FILTERS FROM URL
+------------------------------ */
+(function applyFiltersFromURL() {
+    const urlParams = getUrlParams();
+
+    urlParams.categories.forEach(id => {
+        $(`.categoryFilter[value="${id}"]`).prop("checked", true);
+        $(`.categoryFilterModal[value="${id}"]`).prop("checked", true);
+    });
+
+    urlParams.subcategories.forEach(id => {
+        $(`.subcategoryFilter[value="${id}"]`).prop("checked", true);
+        $(`.subcategoryFilterModal[value="${id}"]`).prop("checked", true);
+    });
+
+    urlParams.sizes.forEach(id => {
+        $(`.sizeFilter[value="${id}"]`).prop("checked", true);
+        $(`.sizeFilterModal[value="${id}"]`).prop("checked", true);
+    });
+
+    if (urlParams.max_price) {
+        $("#priceRange").val(urlParams.max_price).trigger("input");
+        $("#priceRangeModal").val(urlParams.max_price).trigger("input");
+    }
+    if (urlParams.min_price) {
+        $("#priceRangeMin").val(urlParams.min_price);
+    }
+
+    // Set initial page
+    currentPage = parseInt(urlParams.page);
+
+    // Expand dropdowns if something is auto-checked
+    if (urlParams.categories.length > 0) $("#categoryDropdownModal").click();
+    if (urlParams.subcategories.length > 0) $("#brandDropdownModal").click();
+})();
+
+/* ------------------------------
+   UPDATE URL DYNAMICALLY
+------------------------------ */
+function updateURL() {
+    const categories = $('.categoryFilter:checked').map(function(){ return $(this).val(); }).get();
+    const subcategories = $('.subcategoryFilter:checked').map(function(){ return $(this).val(); }).get();
+    const sizes = $('.sizeFilter:checked').map(function(){ return $(this).val(); }).get();
+    const min_price = $('#priceRangeMin').val();
+    const max_price = $('#priceRange').val();
+
+    const params = new URLSearchParams();
+
+    if(categories.length) params.set('categories', categories.join(','));
+    if(subcategories.length) params.set('subcategories', subcategories.join(','));
+    if(sizes.length) params.set('size', sizes.join(','));
+    if(min_price && min_price != 0) params.set('min_price', min_price);
+    if(max_price && max_price != 0) params.set('max_price', max_price);
+    if(currentPage > 1) params.set('page', currentPage);
+
+    const newUrl = window.location.pathname + '?' + params.toString();
+    window.history.replaceState({}, '', newUrl);
 }
 
 /* ------------------------------
@@ -887,7 +946,7 @@ function renderProduct(prod) {
           ${prod.is_best_seller ? `<span class="badge badge-best_seller">⚡Bestseller</span>` : ''}
           ${prod.is_trending ? `<span class="badge badge-trending">⚡Trending</span>` : ''}
           ${prod.is_new_arrival ? `<span class="badge badge-new">⚡New Arrival</span>` : ''}
-          <a href="/product/${prod.id}/"><div class="cart"><img src="{% static 'images2/shopping_cart.svg' %"> Add to Cart</div></a>
+          <a href="/product/${prod.id}/"><div class="cart"><img src="{% static 'images2/shopping_cart.svg' %}"> Add to Cart</div></a>
         </div>
         <div class="filter-card">
           <span class="badge-rating">
@@ -958,6 +1017,7 @@ function loadProducts(append = false) {
             else $('#subcategory-banner').hide();
 
             startCountdowns();
+            updateURL(); // ✅ Update URL after loading products
         },
         complete: function(){ loading = false; $("#infiniteLoader").hide(); }
     });
@@ -982,26 +1042,19 @@ function startCountdowns() {
         const endTime = new Date(el.getAttribute('data-endtime'));
 
         function update() {
-
-            if (!el) return;  // <--- SAFETY FIX
-
+            if (!el) return;
             const now = new Date();
             const dist = endTime - now;
-
             if (dist <= 0) {
                 el.innerText = "Expired";
-
                 const bar = el.closest(".offer-info-bar");
-                if (bar) bar.remove();  // <--- PREVENT ERROR
-
+                if (bar) bar.remove();
                 return;
             }
-
             const d = Math.floor(dist / (1000 * 60 * 60 * 24));
             const h = Math.floor(dist / (1000 * 60 * 60) % 24);
             const m = Math.floor((dist / (1000 * 60)) % 60);
             const s = Math.floor((dist / 1000) % 60);
-
             el.innerText = ` ⚡ ${d}d ${h}h ${m}m ${s}s`;
         }
 
@@ -1009,7 +1062,6 @@ function startCountdowns() {
         setInterval(update, 1000);
     });
 }
-
 
 /* ------------------------------
    INFINITE SCROLL
@@ -1020,64 +1072,55 @@ $(window).on("scroll", function() {
     if ($lastProduct.length === 0) return;
     const lastProductBottom = $lastProduct.offset().top + $lastProduct.outerHeight();
     const scrollBottom = $(window).scrollTop() + $(window).height();
-    if (scrollBottom >= lastProductBottom - 200) loadProducts(true);
+    if (scrollBottom >= lastProductBottom - 200) {
+        loadProducts(true);
+        updateURL(); // ✅ Update URL with current page
+    }
 });
 
 /* ------------------------------
    DOCUMENT READY
 ------------------------------ */
-$(document).ready(function () {
-    const urlParams = new URLSearchParams(window.location.search);
-
-    // ---- Correct Parameter Names ----
-    const categoryParams = urlParams.getAll("category");
-    const subcategoryParams = urlParams.getAll("subcategory");
-
-    // ---- Pre-check category filters ----
-    categoryParams.forEach(id => {
-        $(`.categoryFilter[value="${id}"]`).prop("checked", true);
-        $(`.categoryFilterModal[value="${id}"]`).prop("checked", true);
-    });
-
-    // ---- Pre-check subcategory filters ----
-    subcategoryParams.forEach(id => {
-        $(`.subcategoryFilter[value="${id}"]`).prop("checked", true);
-        $(`.subcategoryFilterModal[value="${id}"]`).prop("checked", true);
-    });
-
+$(document).ready(function() {
     resetFilters();
-});
 
+    // Filter listeners
+    $('.categoryFilter, .subcategoryFilter, .sizeFilter').on('change', function() {
+        resetFilters();
+        updateURL();
+    });
 
-    // 3️⃣ Filter listeners (desktop + mobile modal sync)
-    $('.categoryFilter, .subcategoryFilter, .sizeFilter').on('change', resetFilters);
-    $('#priceRange').on('input change', function() { $('#priceRangeValue').text(this.value); resetFilters(); });
+    $('#priceRange, #priceRangeMin').on('input change', function() {
+        $('#priceRangeValue').text($('#priceRange').val());
+        resetFilters();
+        updateURL();
+    });
 
-    // 4️⃣ Remove individual filters
+    // Remove individual filters
     $(document).on('click', '.remove-filter', function() {
         const type = $(this).data('type');
         const id = $(this).data('id');
         $(`.${type}Filter[value="${id}"]`).prop("checked", false);
         resetFilters();
+        updateURL();
     });
 
-    // 5️⃣ Clear all
+    // Clear all filters
     $("#clearAllFilters").click(function(){
         $('.categoryFilter, .subcategoryFilter, .sizeFilter').prop("checked", false);
         $('#priceRange').val(0); $('#priceRangeValue').text(0);
         resetFilters();
+        updateURL();
     });
 
-    // 6️⃣ Modal toggles
+    // Modal toggles
     $('#categoryDropdownModal').click(() => $('#categoryContentModal').slideToggle(150));
     $('#brandDropdownModal').click(() => $('#brandContentModal').slideToggle(150));
     $('#sizeDropdownModal').click(() => $('#sizeContentModal').slideToggle(150));
-
     $('#priceRangeModal').on('input', function(){ $('#priceRangeValueModal').text(this.value); });
 
-    // 7️⃣ Apply modal filters
+    // Apply modal filters
     $('#applyFiltersModal').click(function () {
-        // Sync modal → main
         $('.categoryFilter').prop('checked', false);
         $('.categoryFilterModal:checked').each(function() { $('.categoryFilter[value="' + $(this).val() + '"]').prop('checked', true); });
 
@@ -1098,16 +1141,14 @@ $(document).ready(function () {
         modalInstance.hide();
     });
 
-    // 8️⃣ Highlight dropdowns
-   ["priceDropdown","sizeDropdown","brandDropdown","categoryDropdown","sortByDropdown"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-        el.style.backgroundColor = "#981945";
-    }
-});
-
+    // Highlight dropdowns
+    ["priceDropdown","sizeDropdown","brandDropdown","categoryDropdown","sortByDropdown"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.backgroundColor = "#981945";
+    });
 });
 </script>
+
 
     <!-- Filter Modal for Mobile/Tablet -->
 <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true" >
