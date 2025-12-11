@@ -1,4 +1,3 @@
-
 {% extends 'layouts/main.html' %}
 {% load static %}
 {% block title %}
@@ -494,7 +493,7 @@
         }
 
         .off {
-            background: #4A9B4D;
+            /* background: #4A9B4D; */
             color: white;
             padding: 4px 12px;
             border-radius: 4px;
@@ -977,6 +976,8 @@
     <h3 class="mb-0" id="gift-variant-price">₹--</h3>
     <h3 class="mb-0 text-muted text-decoration-line-through" id="gift-original-price"></h3>
     <h3 id="nor-price" class="mb-0 text-decoration-line-through" style="display:none;"></h3>
+    <!-- <span class="mb-0 text-success" id="nor-percent"></span>  -->
+
     <h3 class="mb-0 text-success" id="gift-offer-discount"></h3>
 </div>
 
@@ -985,7 +986,7 @@
     <h3 class="mb-0" id="variant-price" style="font-family: 'Jomolhari';font-size:1.6rem;">₹0</h3>
     <h3 class="mb-0 text-muted text-decoration-line-through" id="original-price" style="display:none;font-size:1.1rem;font-family: 'Jomolhari'; font-size: 30px;"></h3>
     <h3 id="normal-price" class="mb-0 text-decoration-line-through" style="font-family: 'Jomolhari'; font-size: 20px;"></h3>
-    <!-- <span class="mb-0 text-success off" id="you-save" style="margin-left: 3px;margin-right: -13rem; "></span> -->
+    <span class="mb-0 text-success off" id="you-save"></span> 
     <span class="mb-0 text-success off" id="discount-percentage" style="font-size: 25px;"></span>
 </div>
 
@@ -1001,6 +1002,7 @@
             <div class="size-option selected-size {% if forloop.first %}active{% endif %}" 
                  data-price="{{ set.price }}" 
                  data-id="{{ set.id }}" 
+                 data-normal-price="{{ set.original_price|default:'' }}"
                  data-flavour-limit="{{ set.giftset.set_name }}" 
                  data-discounted-price="{{ set.discounted_price|default:'' }}"
                  {% if set.offer %}data-offer-percentage="{{ set.offer.percentage }}"{% else %}data-offer-percentage=""{% endif %}>
@@ -1180,7 +1182,8 @@
             <strong id="orderTotal"></strong>
         </div>
 
-<a href="/cart/" class="go-to-cart-btn">Go to Cart</a>    </div>
+        <a href="/cart/" class="go-to-cart-btn">Go to Cart</a>
+    </div>
 </div>
 
 
@@ -1382,6 +1385,7 @@
 .cart-sidebar::-webkit-scrollbar { width: 8px; }
 .cart-sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.06); border-radius: 8px; }
 </style>
+
 
 <script>
 /* ---------- Sidebar open/close ---------- */
@@ -1717,8 +1721,6 @@ function updateCartSidebar(items, summary) {
 }
 </script>
 
-
-
 <script>
     function changeMainImage(thumbnail) {
         const mainImage = document.getElementById('mainProductImage');
@@ -1856,70 +1858,62 @@ function updateCartSidebar(items, summary) {
     <div class="products-arrow products-arrow-right">&#10095;</div>
 
     <div class="products-scroll-row" id="bestSellingScrollRow" style="scroll-behavior:smooth;">
-    {% for item in related_products %}
-    <div class="product-card">
-    <!-- Badges -->
-    <div class="badge-container">
-        {% if item.product.is_trending %}
-        <span class="badge badge-trending"> ⚡Trending</span>
-        {% endif %}
-        {% if item.product.is_best_seller %}
-        <span class="badge badge-best_seller">⚡Bestseller</span>
-        {% endif %}
-        {% if item.product.is_new_arrival %}
-        <span class="badge badge-new">⚡New Arrival</span>
-        {% endif %}
-    </div>
-    
-    <!-- Wishlist -->
-    <div class="favorite {% if item.product.id in wishlist_product_ids %}active{% endif %}"
-        data-product-id="{{ item.product.id }}">
-        <img src="{% static 'images2/favorite.svg' %}" alt="">
-    </div>
-    
-    <!-- Product Image -->
-    <div class="product-img-container">
-        {% if item.product.image1 and item.product.image2 %}
-        <img src="{{ item.product.image1.url }}" class="product-img img-fluid" 
-            alt="{{ item.product.name }}"
-            onmouseover="this.src='{{ item.product.image2.url }}'"
-            onmouseout="this.src='{{ item.product.image1.url }}'">
-        {% endif %}
-    </div>
-    
-    <!-- Add to Cart -->
-    <div class="addcart">
-        <a href="{% url 'product_detail' item.product.id %}" class="d-flex align-items-center"
-        style="text-decoration: none; color: inherit;">
-        <div class="cart">
-            <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart">
+      {% for x in related_products %}
+      <div class="product-card">
+
+        <!-- ✅ Badges -->
+        <div class="badge-container">
+          {% if x.product.is_trending %}
+          <span class="badge badge-trending"> ⚡Trending</span>
+          {% endif %}
+          {% if x.product.is_best_seller %}
+          <span class="badge badge-best_seller">⚡Bestseller</span>
+          {% endif %}
+          {% if x.product.is_new_arrival %}
+          <span class="badge badge-new">⚡New Arrival</span>
+          {% endif %}
         </div>
-        <div>Add to Cart</div>
-        </a>
-    </div>
-    
-    <!-- Product Info -->
-    <div class="product-info">
-        <div class="product-name mb-2">{{ item.product.name }}</div>
-        {% if item.price_display %}
-        <div class="product-price">
-        {{ item.price_display }}
-        {% if item.min_original_price and item.max_original_price %}
-        <span style="text-decoration: line-through;">
-            ₹{{ item.min_original_price }}-₹{{ item.max_original_price }}
-        </span>
-        {% endif %}
+
+        <!-- ✅ Wishlist / Favorite -->
+        <div class="favorite {% if x.product.id in wishlist_product_ids %}active{% endif %}"
+          data-product-id="{{ x.product.id }}">
+          <img src="{% static 'images2/favorite.svg' %}" alt="">
         </div>
-        {% endif %}
-        
-        <!-- ✅ Rating Badge (was missing) -->
-        <span class="badge-rating">
-        <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
-        {{ item.average_rating|default:"0.0"|floatformat:1 }} | {{ item.review_count|default:0 }}
-        </span>
-    </div>
-    </div>
-    {% endfor %}
+
+        <!-- ✅ Product Image -->
+        <div class="product-img-container">
+          {% if x.product.image1 and x.product.image2 %}
+          <img src="{{ x.product.image1.url }}" class="product-img img-fluid" alt="{{ x.product.name }}"
+            onmouseover="this.src='{{ x.product.image2.url }}'"
+            onmouseout="this.src='{{ x.product.image1.url }}'">
+          {% endif %}
+        </div>
+
+        <!-- ✅ Add to Cart Button -->
+        <div class="addcart">
+          <a href="{% url 'product_detail' x.product.id %}" class="d-flex align-items-center"
+            style="text-decoration: none; color: inherit;">
+            <div class="cart">
+              <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart">
+            </div>
+            <div>Add to Cart</div>
+          </a>
+        </div>
+
+        <!-- ✅ Product Info -->
+        <div class="product-info">
+          <div class="product-name mb-2">{{ x.product.name }}</div>
+          {% if x.price_display %}
+          <div class="product-price"><span style="color: #DC3545;">{{ x.price_display }}</span><span style="text-decoration: line-through;">{{ x.min_original_price}}-{{max_original_price}}</span></div>
+          {% endif %}
+          <span class="badge-rating">
+            <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
+            {{ x.average_rating|default:"0.0"|floatformat:1 }} | {{ x.review_count|default:0 }}
+          </span>
+        </div>
+
+      </div>
+      {% endfor %}
     </div>
   </div>
 </div>
@@ -2175,6 +2169,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const original = parseFloat(currentVariant.price);
         const discounted = parseFloat(currentVariant.discounted_price);
         const real = parseFloat(currentVariant.original_price);
+  
+        // calculate percentage with price and originalprice
+        const percentage = real > 0 ? Math.round(((real - original) / real) * 100) : 0;
+
 
         // CASE 1: Discount exists
         if (discounted && discounted < original) {
@@ -2213,8 +2211,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 realpriceEl.style.display = "block";
             }
             if (savingsEl) {
-                savingsEl.innerText = "";
-                savingsEl.style.display = "none";
+                savingsEl.innerText = `(${percentage}% OFF)`;
+                savingsEl.style.display = "inline-block";
             }
         }
     }
@@ -2321,12 +2319,27 @@ document.addEventListener("DOMContentLoaded", function () {
     quantityInput?.addEventListener("input", updatePrice);
 
     // Initialize first load
+   // Initialize first load
+const category = sizeContainer.dataset.category?.replace(/\s+/g, '').toLowerCase();
+const subcategoryName = sizeContainer.dataset.subcategory?.toLowerCase() || "";
+const isAttar = subcategoryName.replace(/\s+/g, "").includes("attar") || category === "attars";
+
+// CASE 1 — Attars or Incense (no bottle selection)
+if (category === "incense" || isAttar) {
+    renderSizeButtons();
+    updatePrice();
+}
+
+// CASE 2 — Other products (bottle + size selection)
+else {
     if (bottleBtns.length > 0) {
         selectedBottle = bottleBtns[0].dataset.bottle.toString();
         highlightActiveBottle();
         renderSizeButtons();
         updatePrice();
     }
+}
+
 });
 </script>
 
@@ -2391,6 +2404,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedFlavoursInput = document.getElementById('selected-flavours');
     const selectedPriceInput = document.getElementById('selected-price');
     const normalPriceInput = document.getElementById('nor-price');
+
     let flavourLimit = 0;
 
     function showMessage(msg) {
@@ -2400,10 +2414,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function handleSizeSelection(option) {
         sizeOptions.forEach(opt => opt.classList.remove('active'));
         option.classList.add('active');
-
+        
+        const normalPrice = parseFloat(option.getAttribute('data-normal-price')) || 0;
         const price = parseFloat(option.getAttribute('data-price'));
         const discounted = parseFloat(option.getAttribute('data-discounted-price')) || null;
         const offerPercent = option.getAttribute('data-offer-percentage');
+        const norPercent = price > 0 ? Math.round(((price - normalPrice) / price) * 100) : 0;
 
         if (discounted) {
             priceDisplay.textContent = `₹${discounted}`;
@@ -2412,8 +2428,8 @@ document.addEventListener('DOMContentLoaded', function () {
             offerDiscountDisplay.textContent = `Discount: ${offerPercent}% Off`;
         } else {
             priceDisplay.textContent = `₹${price}`;
-            originalPriceDisplay.textContent = '';
-            offerDiscountDisplay.textContent = '';
+            originalPriceDisplay.textContent = `₹${normalPrice}`;
+            offerDiscountDisplay.textContent = `${norPercent}% Off`;
             normalPriceInput.style.display = 'inline-block';
         }
 
@@ -2589,3 +2605,4 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endblock content %}
 <!-- 1. is flvour selection 
 2.price updete in cart page -->
+
