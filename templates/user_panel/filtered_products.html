@@ -1291,10 +1291,10 @@ $(document).ready(function() {
 
     //  Fetch products after filters are pre-checked
     resetFilters();
-    
+   
 
     // Event listeners for filters
-    $('.categoryFilter, .subcategoryFilter, .sizeFilter, #priceRange').on('change', resetFilters);
+    $('.categoryFilter, .subcategoryFilter, .sizeFilter, #priceRange').on('change', restFilters);
 
     $('#priceRange').on('input', function() {
         $('#priceRangeValue').text(this.value);
