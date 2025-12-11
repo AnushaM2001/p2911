@@ -399,11 +399,6 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.utils import timezone
 from django.core.cache import cache
-from .models import (
-    ProductVariant, Product, GiftSet, Category, Subcategory,
-    Wishlist, PremiumFestiveOffer
-)
-
 CACHE_TTL = 30  # seconds
 
 def ajax_filter_products(request):
@@ -455,6 +450,20 @@ def ajax_filter_products(request):
         PremiumFestiveOffer.objects.filter(id__in=offer_ids)
         .prefetch_related("category", "subcategory")
     )
+
+    # ---------- 2.1️⃣ MAP OFFERS (GLOBAL / CATEGORY / SUBCATEGORY) ----------
+    global_offers = []
+    offers_by_cat = {}
+    offers_by_sub = {}
+    for offer in active_offers:
+        cats = list(offer.category.all())
+        subs = list(offer.subcategory.all())
+        if not cats and not subs:
+            global_offers.append(offer)
+        for c in cats:
+            offers_by_cat.setdefault(c.id, []).append(offer)
+        for s in subs:
+            offers_by_sub.setdefault(s.id, []).append(offer)
 
     # ---------- 3️⃣ CATEGORY / SUBCATEGORY ----------
     category_name = subcategory_name = ""
@@ -523,19 +532,6 @@ def ajax_filter_products(request):
     # GiftSets first
     for gs in giftsets_list:
         base_price = gs.price or 0
-        candidates = set()
-        global_offers = []
-        offers_by_cat = {}
-        offers_by_sub = {}
-        for offer in active_offers:
-            cats = list(offer.category.all())
-            subs = list(offer.subcategory.all())
-            if not cats and not subs:
-                global_offers.append(offer)
-            for c in cats:
-                offers_by_cat.setdefault(c.id, []).append(offer)
-            for s in subs:
-                offers_by_sub.setdefault(s.id, []).append(offer)
         candidates = set(global_offers)
         if gs.product.category_id in offers_by_cat:
             candidates.update(offers_by_cat[gs.product.category_id])
