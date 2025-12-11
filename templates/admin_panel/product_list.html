@@ -641,20 +641,25 @@ function initDynamicFields(productId=null) {
     if (e.target.classList.contains('remove-variant')) e.target.closest('.variant-form').remove();
   };
 
-if (addG) addG.onclick = e => { e.preventDefault();
+// Add Giftset
+if (addG) addG.onclick = e => { 
+    e.preventDefault();
     const count = parseInt(gTotal.value);
     const clone = gForms.children[0].cloneNode(true);
-    clone.querySelectorAll('input,select').forEach(el => {
-      el.name = el.name.replace('giftsets-0', `giftsets-${count}`);
-      el.id = el.id.replace('giftsets-0', `giftsets-${count}`);
-      if (el.type !== 'hidden') el.value = '';
+
+    clone.querySelectorAll('input, select, textarea').forEach(el => {
+        el.name = el.name.replace('giftsets-0', `giftsets-${count}`);
+        el.id = el.id.replace('giftsets-0', `giftsets-${count}`);
+
+        // ✅ Fix for checkboxes
+        if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+        else if (el.type !== 'hidden') el.value = '';
     });
+
     gForms.appendChild(clone);
     gTotal.value = count + 1;
-  };
-  if (gForms) gForms.onclick = e => {
-    if (e.target.classList.contains('remove-giftset')) e.target.closest('.giftset-form').remove();
-  };
+};
+
 }
 </script>
 {% endblock %}
