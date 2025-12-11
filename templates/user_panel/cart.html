@@ -604,7 +604,7 @@ html, body {
     </div>
     <div class="d-flex justify-content-between mb-2">
         <span>Delivery Charge</span>
-        <span data-price="delivery">₹100</span>
+        <span data-price="delivery">₹{{ delivery_charges|floatformat:2 }}</span>
     </div>
     <div class="d-flex justify-content-between mb-2">
         <span>Platform Fee</span>
