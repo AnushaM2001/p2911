@@ -15,11 +15,15 @@ from pathlib import Path
 
 SHIPROCKET_EMAIL="maqdummohammed@gmail.com"
 SHIPROCKET_PASSWORD="1XcVWz2K7K!eB14*wJPwH@3VyRwmKcz^"
+
 # Celery Settings
 CELERY_BROKER_URL = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_IMPORTS = ('admin_panel.tasks', 'user_panel.tasks')
+
+CELERY_RESULT_BACKEND = 'redis://redis:6379/2'
+
 
 VAPID_PUBLIC_KEY = "BOq9RSStBKaio0QslQFxOpu3IYUrIiypkGLTOIIWw4-pAiE-BQfLreFmd2EmkBdvAnDrKP8LYSHhJVP7n83MLmo"
 VAPID_PRIVATE_KEY = "sw-kz4Rgf5IcgrM76a9ZWstlBZz74xYT9u-S8ARTFgM"
@@ -273,3 +277,13 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 REDIS_HOST = 'redis'
 REDIS_PORT = 6379
 REDIS_DB = 0
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://redis:6379/1",   # <--- Snapshot & cache DB
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}

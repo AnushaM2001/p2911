@@ -423,14 +423,16 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.core.cache import cache
 
-# from yourapp.models import (
-#     ProductVariant, Product, GiftSet, Category, Subcategory,
-#     Wishlist, PremiumFestiveOffer
-# )
-logger = logging.getLogger(__name__)
-CACHE_TTL = 30
+# user_panel/views/fast_filter.py
+import time
+from django.core.cache import cache
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.conf import settings
+from django.db import connection
 
-# ---- MUST BE HERE ----
+from user_panel.tasks.snapshots import SNAPSHOT_PREFIX, build_snapshot_for_category
+
 def _to_int_list(raw):
     out = []
     for r in raw:
@@ -439,27 +441,16 @@ def _to_int_list(raw):
         except Exception:
             continue
     return out
-    
-def ajax_filter_products(request):
-    """
-    Optimized product filter endpoint with:
-      - cache_bust support (?cache_bust=1)
-      - safe debug query logging when settings.DEBUG is True
-      - two cache strategies (hashed default, or per-category when ?cache_strategy=category)
-      - minimal DB queries (bulk aggregates + single-page pagination)
-    """
-    start_ts = time.time()
 
-    # If DEBUG, snapshot query count safely (do NOT modify connection internals)
+def ajax_filter_products_fast(request):
+    start_ts = time.time()
     if settings.DEBUG:
         before_queries = len(connection.queries)
     else:
         before_queries = 0
 
-    # ----------------- params -----------------
     page = max(int(request.GET.get("page", 1)), 1)
     per_page = int(request.GET.get("per_page", 10))
-
     raw_cat_ids = request.GET.getlist("category[]")
     raw_subcat_ids = request.GET.getlist("subcategory[]")
     sizes = request.GET.getlist("size[]")
@@ -473,7 +464,6 @@ def ajax_filter_products(request):
     except ValueError:
         min_price = max_price = None
 
-    # ----------------- category metadata -----------------
     cat_obj = Category.objects.filter(id__in=category_ids).first() if category_ids else None
     subcat_obj = Subcategory.objects.filter(id__in=subcategory_ids).first() if subcategory_ids else None
 
@@ -482,320 +472,46 @@ def ajax_filter_products(request):
     category_banner_url = cat_obj.banner.url if getattr(cat_obj, "banner", None) else ""
     subcategory_banner_url = subcat_obj.banner.url if getattr(subcat_obj, "banner", None) else ""
 
-    # ----------------- giftsets detection -----------------
     giftsets_flag = False
     if cat_obj:
         key = "".join(cat_obj.name.lower().split()).replace("-", "")
         if "giftset" in key:
             giftsets_flag = True
 
-    now = timezone.now()
+    snap_key = SNAPSHOT_PREFIX + (f"cat:{cat_obj.id}" if cat_obj else "global")
+    snapshot = cache.get(snap_key)
 
-    # ----------------- offers (ids cached) -----------------
-    offer_cache_key = "active_offers_ids_v3"
-    offer_ids = cache.get(offer_cache_key)
-    if offer_ids is None:
-        offers_qs = PremiumFestiveOffer.objects.filter(
-            Q(is_active=True) & (Q(premium_festival__in=["Welcome", "Premium"]) | Q(start_date__lte=now, end_date__gte=now))
-        ).values_list("id", flat=True)
-        offer_ids = list(offers_qs)
-        cache.set(offer_cache_key, offer_ids, CACHE_TTL)
+    if snapshot is None:
+        snapshot = build_snapshot_for_category(cat_obj.id if cat_obj else None)
 
-    active_offers = list(PremiumFestiveOffer.objects.filter(id__in=offer_ids))
+    source_list = snapshot["giftsets"] if giftsets_flag else snapshot["variants"]
 
-    # Pre-classify offers to reduce checks:
-    offers_by_cat = {}
-    offers_by_subcat = {}
-    generic_offers = []
-    for of in active_offers:
-        cats = getattr(of, "cached_categories", None)
-        subs = getattr(of, "cached_subcategories", None)
-        if cats:
-            for c in cats:
-                offers_by_cat.setdefault(c.id, []).append(of)
-        if subs:
-            for s in subs:
-                offers_by_subcat.setdefault(s.id, []).append(of)
-        if (not cats) and (not subs):
-            generic_offers.append(of)
+    filtered = source_list
 
-    # ----------------- wishlist -----------------
+    if subcat_obj:
+        filtered = [p for p in filtered if p.get("subcategory_id") == subcat_obj.id]
+
+    if sizes and not giftsets_flag:
+        filtered = [p for p in filtered if p.get("size") in sizes]
+
+    if min_price is not None:
+        filtered = [p for p in filtered if (p.get("discounted_price") is not None and p.get("discounted_price") >= min_price) or (p.get("min_price") >= min_price)]
+
+    if max_price is not None:
+        filtered = [p for p in filtered if (p.get("discounted_price") is not None and p.get("discounted_price") <= max_price) or (p.get("max_price") <= max_price)]
+
+    paginator = Paginator(filtered, per_page)
+    page_obj = paginator.get_page(page)
+    items = list(page_obj.object_list)
+
     wishlist_product_ids = []
     if request.user.is_authenticated:
         wishlist_product_ids = list(Wishlist.objects.filter(user=request.user).values_list("product_id", flat=True))
-
-    # ----------------- caching options -----------------
-    cache_bust = request.GET.get("cache_bust") == "1"
-    cache_strategy = request.GET.get("cache_strategy", "hashed")  # "hashed" (default) or "category"
-
-    # Compose cache key
-    if (cache_strategy == "category") and category_ids:
-        cat_part = "-".join(map(str, sorted(category_ids)))
-        cache_key = f"ajax_products:cat={cat_part}:p{page}:pp{per_page}:sizes={'-'.join(sizes)}"
-    else:
-        params_serialized = request.GET.urlencode()
-        cache_hash = hashlib.md5(params_serialized.encode()).hexdigest()
-        cache_key = f"ajax_products:{cache_hash}:p{page}:pp{per_page}"
-
-    # Try cache (unless cache_bust)
-    cached_resp = None if cache_bust else cache.get(cache_key)
-    if cached_resp:
-        if settings.DEBUG:
-            logger.debug("ajax_filter_products: cache HIT key=%s", cache_key)
-        return JsonResponse(cached_resp)
-
-    combined_products = []
-
-    # ---------- GiftSets flow ----------
-    if giftsets_flag:
-        gift_qs = GiftSet.objects.select_related("product")
-        if category_ids:
-            gift_qs = gift_qs.filter(product__category_id__in=category_ids)
-        if subcategory_ids:
-            gift_qs = gift_qs.filter(product__subcategory_id__in=subcategory_ids)
-        if min_price is not None:
-            gift_qs = gift_qs.filter(price__gte=min_price)
-        if max_price is not None:
-            gift_qs = gift_qs.filter(price__lte=max_price)
-
-        gift_product_ids_qs = gift_qs.values_list("product_id", flat=True).distinct()
-        gift_product_ids = list(gift_product_ids_qs)
-
-        paginator = Paginator(gift_product_ids, per_page)
-        page_obj = paginator.get_page(page)
-        page_product_ids = list(page_obj.object_list)
-
-        if page_product_ids:
-            gift_rows = GiftSet.objects.filter(product_id__in=page_product_ids).select_related("product")
-            gift_map = {}
-            for gs in gift_rows:
-                if gs.product_id not in gift_map:
-                    gift_map[gs.product_id] = gs
-
-            gift_price_map_qs = (
-                GiftSet.objects.filter(product_id__in=page_product_ids)
-                .values("product_id")
-                .annotate(min_price=Min("price"), max_price=Max("price"))
-            )
-            gift_price_map = {x["product_id"]: x for x in gift_price_map_qs}
-
-            review_stats_qs = (
-                Product.objects.filter(id__in=page_product_ids)
-                .values("id")
-                .annotate(avg_rating=Avg("reviews__rating"), review_count=Count("reviews"))
-            )
-            review_map = {x["id"]: x for x in review_stats_qs}
-
-            for pid in page_product_ids:
-                gs = gift_map.get(pid)
-                if not gs:
-                    continue
-
-                candidates = (
-                    offers_by_cat.get(gs.product.category_id, []) +
-                    offers_by_subcat.get(gs.product.subcategory_id, []) +
-                    generic_offers
-                )
-
-                discounted_price = None
-                applied_offer = None
-                for of in candidates:
-                    discounted = of.apply_offer(gs)
-                    if discounted:
-                        discounted_price = float(discounted)
-                        applied_offer = of
-                        break
-
-                gp = gift_price_map.get(pid, {})
-                pr_min = float(gp.get("min_price") or (gs.price or 0))
-                pr_max = float(gp.get("max_price") or (gs.price or 0))
-
-                rev = review_map.get(pid, {"avg_rating": None, "review_count": 0})
-                avg_rating = float(rev.get("avg_rating") or 0)
-                review_count = int(rev.get("review_count") or 0)
-
-                combined_products.append({
-                    "id": gs.product.id,
-                    "name": gs.product.name,
-                    "original_price": float(gs.product.original_price or 0),
-                    "price": float(gs.price or 0),
-                    "min_price": pr_min,
-                    "max_price": pr_max,
-                    "min_original_price": float(gs.product.original_price or 0),
-                    "max_original_price": float(gs.product.original_price or 0),
-                    "discounted_price": discounted_price,
-                    "offer_code": applied_offer.code if applied_offer else None,
-                    "offer_start_time": applied_offer.start_date.isoformat() if applied_offer and applied_offer.start_date else None,
-                    "offer_end_time": applied_offer.end_date.isoformat() if applied_offer and applied_offer.end_date else None,
-                    "flavours": list(gs.flavours.values_list("name", flat=True)) if getattr(gs, "flavours", None) is not None else [],
-                    "image": gs.product.image1.url if gs.product.image1 else "",
-                    "image2": gs.product.image2.url if gs.product.image2 else "",
-                    "is_active": gs.product.is_active,
-                    "is_giftset": True,
-                    "average_rating": avg_rating,
-                    "review_count": review_count,
-                    "stock_status": gs.product.stock_status or "In Stock",
-                    "is_favorite": gs.product.id in wishlist_product_ids,
-                })
-
-        response = {
-            "products": combined_products,
-            "category_name": category_name,
-            "subcategory_name": subcategory_name,
-            "category_banner_url": category_banner_url,
-            "subcategory_banner_url": subcategory_banner_url,
-            "current_page": page_obj.number,
-            "total_pages": paginator.num_pages,
-            "has_next": page_obj.has_next(),
-            "next_page": page_obj.next_page_number() if page_obj.has_next() else None,
-        }
-
-        if not cache_bust:
-            cache.set(cache_key, response, CACHE_TTL)
-
-        if settings.DEBUG:
-            after_queries = len(connection.queries)
-            logger.debug(
-                "ajax_filter_products (giftsets) finished: cache_bust=%s cache_key=%s queries=%s time=%.3fs",
-                cache_bust,
-                cache_key,
-                after_queries - before_queries,
-                time.time() - start_ts
-            )
-        return JsonResponse(response)
-
-    # ---------- Non-giftsets: variant path ----------
-    var_qs = ProductVariant.objects.select_related("product")
-    if category_ids:
-        var_qs = var_qs.filter(product__category_id__in=category_ids)
-    if subcategory_ids:
-        var_qs = var_qs.filter(product__subcategory_id__in=subcategory_ids)
-    if sizes:
-        var_qs = var_qs.filter(size__in=sizes)
-    if min_price is not None:
-        var_qs = var_qs.filter(price__gte=min_price)
-    if max_price is not None:
-        var_qs = var_qs.filter(price__lte=max_price)
-
-    gift_product_ids_all = GiftSet.objects.values_list("product_id", flat=True).distinct()
-    if gift_product_ids_all:
-        var_qs = var_qs.exclude(product_id__in=gift_product_ids_all)
-
-    product_ids = list(var_qs.values_list("product_id", flat=True).distinct())
-
-    paginator = Paginator(product_ids, per_page)
-    page_obj = paginator.get_page(page)
-    page_product_ids = list(page_obj.object_list)
-
-    if not page_product_ids:
-        response = {
-            "products": [],
-            "category_name": category_name,
-            "subcategory_name": subcategory_name,
-            "category_banner_url": category_banner_url,
-            "subcategory_banner_url": subcategory_banner_url,
-            "current_page": page_obj.number,
-            "total_pages": paginator.num_pages,
-            "has_next": page_obj.has_next(),
-            "next_page": page_obj.next_page_number() if page_obj.has_next() else None,
-        }
-        if not cache_bust:
-            cache.set(cache_key, response, CACHE_TTL)
-        if settings.DEBUG:
-            after_queries = len(connection.queries)
-            logger.debug(
-                "ajax_filter_products (empty page) finished: cache_bust=%s cache_key=%s queries=%s time=%.3fs",
-                cache_bust, cache_key, after_queries - before_queries, time.time() - start_ts
-            )
-        return JsonResponse(response)
-
-    variants_for_page = (
-        ProductVariant.objects
-        .filter(product_id__in=page_product_ids)
-        .order_by("product_id", "price")
-        .select_related("product")
-    )
-    smallest_variant = {}
-    for v in variants_for_page:
-        if v.product_id not in smallest_variant:
-            smallest_variant[v.product_id] = v
-
-    price_map_qs = (
-        ProductVariant.objects.filter(product_id__in=page_product_ids)
-        .values("product_id")
-        .annotate(
-            min_price=Min("price"),
-            max_price=Max("price"),
-            min_original=Min(Cast("original_price", FloatField())),
-            max_original=Max(Cast("original_price", FloatField()))
-        )
-    )
-    price_map = {x["product_id"]: x for x in price_map_qs}
-
-    review_stats_qs = (
-        Product.objects.filter(id__in=page_product_ids)
-        .values("id")
-        .annotate(avg_rating=Avg("reviews__rating"), review_count=Count("reviews"))
-    )
-    review_map = {x["id"]: x for x in review_stats_qs}
-
-    for pid in page_product_ids:
-        var = smallest_variant.get(pid)
-        if not var:
-            continue
-
-        candidates = (
-            offers_by_cat.get(var.product.category_id, []) +
-            offers_by_subcat.get(var.product.subcategory_id, []) +
-            generic_offers
-        )
-
-        discounted_price = None
-        applied_offer = None
-        for of in candidates:
-            d = of.apply_offer(var)
-            if d:
-                discounted_price = float(d)
-                applied_offer = of
-                break
-
-        pm = price_map.get(pid, {})
-        min_p = float(pm.get("min_price") or (var.price or 0))
-        max_p = float(pm.get("max_price") or (var.price or 0))
-        min_orig = float(pm.get("min_original") or 0)
-        max_orig = float(pm.get("max_original") or 0)
-
-        rev = review_map.get(pid, {"avg_rating": None, "review_count": 0})
-        avg_rating = float(rev.get("avg_rating") or 0)
-        review_count = int(rev.get("review_count") or 0)
-
-        combined_products.append({
-            "id": var.product.id,
-            "name": var.product.name,
-            "original_price": float(var.product.original_price or 0),
-            "price": float(var.price or 0),
-            "min_price": min_p,
-            "max_price": max_p,
-            "min_original_price": min_orig,
-            "max_original_price": max_orig,
-            "discounted_price": discounted_price,
-            "offer_code": applied_offer.code if applied_offer else None,
-            "offer_start_time": applied_offer.start_date.isoformat() if applied_offer and applied_offer.start_date else None,
-            "offer_end_time": applied_offer.end_date.isoformat() if applied_offer and applied_offer.end_date else None,
-            "size": var.size,
-            "stock": var.stock,
-            "image": var.product.image1.url if var.product.image1 else "",
-            "image2": var.product.image2.url if var.product.image2 else "",
-            "is_active": var.product.is_active,
-            "is_giftset": False,
-            "average_rating": avg_rating,
-            "review_count": review_count,
-            "stock_status": var.product.stock_status or "In Stock",
-            "is_favorite": var.product.id in wishlist_product_ids,
-        })
+    for it in items:
+        it["is_favorite"] = it["id"] in wishlist_product_ids
 
     response = {
-        "products": combined_products,
+        "products": items,
         "category_name": category_name,
         "subcategory_name": subcategory_name,
         "category_banner_url": category_banner_url,
@@ -805,16 +521,6 @@ def ajax_filter_products(request):
         "has_next": page_obj.has_next(),
         "next_page": page_obj.next_page_number() if page_obj.has_next() else None,
     }
-
-    if not cache_bust:
-        cache.set(cache_key, response, CACHE_TTL)
-
-    if settings.DEBUG:
-        after_queries = len(connection.queries)
-        logger.debug(
-            "ajax_filter_products finished: cache_bust=%s cache_key=%s queries=%s time=%.3fs",
-            cache_bust, cache_key, after_queries - before_queries, time.time() - start_ts
-        )
 
     return JsonResponse(response)
 
