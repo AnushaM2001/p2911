@@ -1901,51 +1901,58 @@ from django.db.models import Min, Max, Avg, Prefetch, Q
 from django.views.decorators.http import require_GET
 from django.http import JsonResponse
 
+from django.db.models import Q, Min, Max, Avg
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
+from django.db.models import Prefetch
+
 @require_GET
 def search_suggestions(request):
     query = request.GET.get('q', '').strip()
     category_id = request.GET.get('category', '').strip()
 
-    # Pre-cached categories
-    all_categories = list(Category.objects.only('id', 'name').values('id', 'name'))
+    # Limit results for ultra-fast response time
+    RESULT_LIMIT = 20
 
-    # Prefetch GiftSet
-    giftset_prefetch = Prefetch(
-        'gift_sets',   # <-- Correct related_name
-        queryset=GiftSet.objects.only('id', 'product_id', 'price', 'original_price', 'discounted_price'),
-        to_attr='prefetched_giftsets'
+    # Preload category list (cached recommended)
+    all_categories = list(
+        Category.objects.only('id', 'name').values('id', 'name')
     )
 
-    # Prefetch variants
-    variant_prefetch = Prefetch(
-        'variants',
-        queryset=ProductVariant.objects.only('id', 'product_id', 'price', 'original_price'),
-        to_attr='prefetched_variants'
+    # Prefetch only minimal required fields
+    products = (
+        Product.objects.only(
+            'id', 'name', 'image1', 'description', 'category_id'
+        )
+        .select_related('category')
+        .prefetch_related(
+            Prefetch(
+                'gift_sets',
+                queryset=GiftSet.objects.only(
+                    'id', 'product_id',
+                    'price', 'original_price', 'discounted_price'
+                ),
+                to_attr='gs'
+            ),
+            Prefetch(
+                'variants',
+                queryset=ProductVariant.objects.only(
+                    'id', 'product_id',
+                    'price', 'original_price'
+                ),
+                to_attr='vars'
+            ),
+            Prefetch(
+                'reviews',
+                queryset=Review.objects.only(
+                    'id', 'product_id', 'rating'
+                ),
+                to_attr='revs'
+            )
+        )
     )
 
-    # Prefetch reviews
-    review_prefetch = Prefetch(
-        'reviews',
-        queryset=Review.objects.only('id', 'product_id', 'rating'),
-        to_attr='prefetched_reviews'
-    )
-
-    # Main Query Optimized
-    products = Product.objects.select_related(
-        'category'
-    ).prefetch_related(
-        giftset_prefetch,
-        variant_prefetch,
-        review_prefetch
-    ).annotate(
-        min_price=Min('variants__price'),
-        max_price=Max('variants__price'),
-        min_original_price=Min('variants__original_price'),
-        max_original_price=Max('variants__original_price'),
-        avg_rating=Avg('reviews__rating'),
-    )
-
-    # Filtering
+    # Search filter
     if query:
         products = products.filter(
             Q(name__icontains=query) |
@@ -1953,55 +1960,49 @@ def search_suggestions(request):
             Q(sku__icontains=query)
         )
 
+    # Category filter
     if category_id:
         products = products.filter(category_id=category_id)
+
+    # LIMIT for fast search
+    products = products[:RESULT_LIMIT]
 
     results = []
 
     for p in products:
-        category_normalized = p.category.name.lower().replace(" ", "").replace("-", "")
+        cat = p.category.name.lower().replace(" ", "").replace("-", "")
 
         # ===== PRICE HANDLING =====
-        if category_normalized == "giftsets" and p.prefetched_giftsets:
-            prices = [g.discounted_price or g.price for g in p.prefetched_giftsets if g.price]
-            original_prices = [g.original_price for g in p.prefetched_giftsets if g.original_price]
+        if cat == "giftsets" and p.gs:
+            prices = [g.discounted_price or g.price for g in p.gs if g.price]
+            originals = [g.original_price for g in p.gs if g.original_price]
 
-            # Selling price
-            if prices:
-                price_display = f"₹{min(prices)}" if min(prices) == max(prices) else f"₹{min(prices)} - ₹{max(prices)}"
-            else:
-                price_display = "Price not available"
+        else:
+            prices = [v.price for v in p.vars if v.price]
+            originals = [v.original_price for v in p.vars if v.original_price]
 
-            # Original price
-            if original_prices:
-                original_price_display = (
-                    f"₹{min(original_prices)}"
-                    if min(original_prices) == max(original_prices)
-                    else f"₹{min(original_prices)} - ₹{max(original_prices)}"
-                )
-            else:
-                original_price_display = "N/A"
+        # Selling price formatting
+        if prices:
+            mn = min(prices)
+            mx = max(prices)
+            price_display = f"₹{mn}" if mn == mx else f"₹{mn} - ₹{mx}"
+        else:
+            price_display = "Price not available"
 
-        else:  # Normal products
-            if p.min_price:
-                price_display = f"₹{p.min_price}" if p.min_price == p.max_price else f"₹{p.min_price} - ₹{p.max_price}"
-            else:
-                price_display = "Price not available"
-
-            if p.min_original_price:
-                original_price_display = (
-                    f"₹{p.min_original_price}"
-                    if p.min_original_price == p.max_original_price
-                    else f"₹{p.min_original_price} - ₹{p.max_original_price}"
-                )
-            else:
-                original_price_display = "N/A"
+        # Original price formatting
+        if originals:
+            mn = min(originals)
+            mx = max(originals)
+            original_price_display = f"₹{mn}" if mn == mx else f"₹{mn} - ₹{mx}"
+        else:
+            original_price_display = "N/A"
 
         # ===== RATINGS =====
-        avg_rating = round(p.avg_rating or 0, 1)
+        ratings = [r.rating for r in p.revs if r.rating]
+        avg_rating = round(sum(ratings)/len(ratings), 1) if ratings else 0.0
         rating_percentage = round((avg_rating / 5) * 100, 1)
 
-        # ===== BUILD RESULT =====
+        # ===== FINAL OUTPUT =====
         results.append({
             "id": p.id,
             "name": p.name,
@@ -2014,8 +2015,10 @@ def search_suggestions(request):
             "rating_percentage": rating_percentage,
         })
 
-    return JsonResponse({"results": results, "categories": all_categories})
-
+    return JsonResponse({
+        "results": results,
+        "categories": all_categories,
+    })
 
 
 from django.db.models import Min, Max, Avg, Prefetch
