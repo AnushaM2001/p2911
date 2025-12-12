@@ -3639,7 +3639,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 </script>
 <script>
-     const carousel = document.querySelector('#productsCarousel1');
+   const carousel = document.querySelector('#productsCarousel1');
 const dots = document.querySelectorAll('.custom-pagination-dot4-1');
 
 if (carousel) {   // <--- FIX
@@ -3653,47 +3653,53 @@ if (carousel) {   // <--- FIX
 }
 
 
+
     const carousel2 = document.querySelector('#productsCarousel2');
     const dots2 = document.querySelectorAll('.custom-pagination-dot4-2');
 
+    if (carousel2) {   // <--- FIX
     carousel2.addEventListener('slide.bs.carousel', function (event) {
         const activeIndex = event.to;
+
         dots2.forEach((dot, index) => {
             dot.classList.toggle('active', index === activeIndex);
         });
     });
-
+}
+    
     const carousel3 = document.querySelector('#productsCarousel3');
     const dots3 = document.querySelectorAll('.custom-pagination-dot4-3');
-
+    if (carousel3) {
     carousel3.addEventListener('slide.bs.carousel', function (event) {
         const activeIndex = event.to;
         dots3.forEach((dot, index) => {
             dot.classList.toggle('active', index === activeIndex);
         });
     });
+    }
 
     const carousel4 = document.querySelector('#productsCarousel4');
     const dots4 = document.querySelectorAll('.custom-pagination-dot4-4');
-
+    if (carousel4) {
     carousel4.addEventListener('slide.bs.carousel', function (event) {
         const activeIndex = event.to;
         dots4.forEach((dot, index) => {
             dot.classList.toggle('active', index === activeIndex);
         });
     });
+    }
 
     const carousel5 = document.querySelector('#productsCarousel5');
     const dots5 = document.querySelectorAll('.custom-pagination-dot4-5');
-
+    if (carousel5) {
     carousel5.addEventListener('slide.bs.carousel', function (event) {
         const activeIndex = event.to;
         dots5.forEach((dot, index) => {
             dot.classList.toggle('active', index === activeIndex);
         });
     });
+}
 </script>
-
 
 
 
