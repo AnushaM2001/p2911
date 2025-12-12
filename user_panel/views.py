@@ -418,7 +418,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import connection
-from django.db.models import Min, Max, Avg, Count, Q, Cast, FloatField
+from django.db.models import Min, Max, Avg, Count, Q, FloatField
 from django.http import JsonResponse
 from django.utils import timezone
 from django.core.cache import cache
