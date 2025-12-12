@@ -853,6 +853,7 @@ def product_detail(request, product_id):
     gift_set_data = []
     for giftset in gift_sets:
         originalprice = giftset.price
+        # Stock=giftset.stock or 0
         realprice=giftset.original_price
         discounted_price = None
         applied_offer = None
@@ -889,7 +890,7 @@ def product_detail(request, product_id):
             seen_bottle_types.add(variant.bottle_type)
 
         originalprice = variant.price
-        stock = variant.stock
+        stock = variant.stock or 0
         realprice=variant.original_price
         discounted_price = None
         applied_offer = None
