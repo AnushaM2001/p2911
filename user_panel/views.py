@@ -427,7 +427,19 @@ from django.core.cache import cache
 #     ProductVariant, Product, GiftSet, Category, Subcategory,
 #     Wishlist, PremiumFestiveOffer
 # )
+logger = logging.getLogger(__name__)
+CACHE_TTL = 30
 
+# ---- MUST BE HERE ----
+def _to_int_list(raw):
+    out = []
+    for r in raw:
+        try:
+            out.append(int(r))
+        except Exception:
+            continue
+    return out
+    
 def ajax_filter_products(request):
     """
     Optimized product filter endpoint with:
