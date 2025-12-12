@@ -3639,18 +3639,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 </script>
 <script>
-    const carousel = document.querySelector('#productsCarousel1');
-    const dots = document.querySelectorAll('.custom-pagination-dot4-1');
+     const carousel = document.querySelector('#productsCarousel1');
+const dots = document.querySelectorAll('.custom-pagination-dot4-1');
 
-    // Listen to the slide event
+if (carousel) {   // <--- FIX
     carousel.addEventListener('slide.bs.carousel', function (event) {
         const activeIndex = event.to;
 
-        // Update the active class on dots
         dots.forEach((dot, index) => {
             dot.classList.toggle('active', index === activeIndex);
         });
     });
+}
 
 
     const carousel2 = document.querySelector('#productsCarousel2');
