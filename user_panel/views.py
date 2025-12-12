@@ -295,75 +295,75 @@ def all_view(request):
     return render(request, 'user_panel/All.html', context)
 
 
-# def filtered_products(request, category_id=None, subcategory_id=None):
-#     products = Product.objects.all().annotate(price=Min('variants__price'),average_rating=Avg('reviews__rating'),)
-#     category_ids = request.GET.get('categories')
-#     subcategory_ids = request.GET.get('subcategories')
+def filtered_products(request, category_id=None, subcategory_id=None):
+    products = Product.objects.all().annotate(price=Min('variants__price'),average_rating=Avg('reviews__rating'),)
+    category_ids = request.GET.get('categories')
+    subcategory_ids = request.GET.get('subcategories')
 
-#     if category_ids:
-#         ids = [int(i) for i in category_ids.split(',') if i]
-#         products = products.filter(category__id__in=ids)
+    if category_ids:
+        ids = [int(i) for i in category_ids.split(',') if i]
+        products = products.filter(category__id__in=ids)
         
-#     if subcategory_ids:
-#         ids = [int(i) for i in subcategory_ids.split(',') if i]
-#         products = products.filter(subcategory__id__in=ids)
+    if subcategory_ids:
+        ids = [int(i) for i in subcategory_ids.split(',') if i]
+        products = products.filter(subcategory__id__in=ids)
     
-#     category = Category.objects.filter(id=category_id).first() if category_id else None
-#     subcategory = Subcategory.objects.filter(id=subcategory_id).first() if subcategory_id else None
+    category = Category.objects.filter(id=category_id).first() if category_id else None
+    subcategory = Subcategory.objects.filter(id=subcategory_id).first() if subcategory_id else None
 
-#     is_giftset = category and category.name.lower().replace(' ', '').replace('-', '') == 'giftsets'
-#     active_offers = PremiumFestiveOffer.objects.filter(is_active=True)
+    is_giftset = category and category.name.lower().replace(' ', '').replace('-', '') == 'giftsets'
+    active_offers = PremiumFestiveOffer.objects.filter(is_active=True)
 
-#     if is_giftset:
-#         giftsets = GiftSet.objects.filter(product__category=category).select_related('product').prefetch_related('flavours')
-#         for gs in giftsets:
-#             for offer in active_offers:
-#                 discounted_price = offer.apply_offer(gs)  # assumes `apply_offer` works with GiftSet
-#                 if discounted_price:
-#                     gs.discounted_price = discounted_price
-#                     gs.offer_code = offer.code
-#                     gs.offer_start_time = offer.start_date
-#                     gs.offer_end_time = offer.end_date
-#                     break
-#         products = [gs.product for gs in giftsets]
-#     else:
-#         products = Product.objects.all().annotate(price=Min('variants__price'),average_rating=Avg('reviews__rating'),
-#     review_count=Count('reviews'))
-#         if category:
-#             products = products.filter(category=category)
-#         if subcategory:
-#             products = products.filter(subcategory=subcategory)
+    if is_giftset:
+        giftsets = GiftSet.objects.filter(product__category=category).select_related('product').prefetch_related('flavours')
+        for gs in giftsets:
+            for offer in active_offers:
+                discounted_price = offer.apply_offer(gs)  # assumes `apply_offer` works with GiftSet
+                if discounted_price:
+                    gs.discounted_price = discounted_price
+                    gs.offer_code = offer.code
+                    gs.offer_start_time = offer.start_date
+                    gs.offer_end_time = offer.end_date
+                    break
+        products = [gs.product for gs in giftsets]
+    else:
+        products = Product.objects.all().annotate(price=Min('variants__price'),average_rating=Avg('reviews__rating'),
+    review_count=Count('reviews'))
+        if category:
+            products = products.filter(category=category)
+        if subcategory:
+            products = products.filter(subcategory=subcategory)
 
-#         for product in products:
-#             for variant in product.variants.all():
-#                 for offer in active_offers:
-#                     discounted_price = offer.apply_offer(variant)
-#                     if discounted_price:
-#                         variant.discounted_price = discounted_price
-#                         variant.offer_code = offer.code
-#                         variant.offer_start_time = offer.start_date
-#                         variant.offer_end_time = offer.end_date
-#                         break
-#     valid_prices = ProductVariant.objects.exclude(price__isnull=True).values_list('price', flat=True)
-#     context = {
-#         'category': category,
-#         'subcategory': subcategory,
-#         'categories': Category.objects.all(),
-#         'subcategories': Subcategory.objects.all(),
-#         'sizes': ProductVariant.objects.values_list('size', flat=True).distinct(),
-#         'min_price': int(min(valid_prices, default=0)),
-#         'max_price': int(max(valid_prices, default=1000)),
-#         'products': products,
-#         'product_lists': products,
-#         'category_banner_url': category.banner.url if category and category.banner else None,
-#         'subcategory_banner_url': subcategory.banner.url if subcategory and subcategory.banner else None,
-#         'is_giftset': is_giftset
-#     }
+        for product in products:
+            for variant in product.variants.all():
+                for offer in active_offers:
+                    discounted_price = offer.apply_offer(variant)
+                    if discounted_price:
+                        variant.discounted_price = discounted_price
+                        variant.offer_code = offer.code
+                        variant.offer_start_time = offer.start_date
+                        variant.offer_end_time = offer.end_date
+                        break
+    valid_prices = ProductVariant.objects.exclude(price__isnull=True).values_list('price', flat=True)
+    context = {
+        'category': category,
+        'subcategory': subcategory,
+        'categories': Category.objects.all(),
+        'subcategories': Subcategory.objects.all(),
+        'sizes': ProductVariant.objects.values_list('size', flat=True).distinct(),
+        'min_price': int(min(valid_prices, default=0)),
+        'max_price': int(max(valid_prices, default=1000)),
+        'products': products,
+        'product_lists': products,
+        'category_banner_url': category.banner.url if category and category.banner else None,
+        'subcategory_banner_url': subcategory.banner.url if subcategory and subcategory.banner else None,
+        'is_giftset': is_giftset
+    }
 
-#     if is_giftset:
-#         context['giftsets'] = giftsets
+    if is_giftset:
+        context['giftsets'] = giftsets
 
-#     return render(request, 'user_panel/filtered_products.html', context)
+    return render(request, 'user_panel/filtered_products.html', context)
 
 
 
