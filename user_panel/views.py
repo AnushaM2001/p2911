@@ -451,6 +451,8 @@ def ajax_filter_products(request):
       - minimal DB queries (bulk aggregates + single-page pagination)
     """
     start_ts = time.time()
+    if settings.DEBUG:
+        before_queries = len(connection.queries)
     # ----------------- params -----------------
     page = max(int(request.GET.get("page", 1)), 1)
     per_page = int(request.GET.get("per_page", 10))
@@ -658,8 +660,11 @@ def ajax_filter_products(request):
         if settings.DEBUG:
             after_queries = len(connection.queries)
             logger.debug(
-                "ajax_filter_products (giftsets) finished: cache_bust=%s cache_key=%s queries=%s time=%.3fs",
-                cache_bust, cache_key, after_queries - before_queries, time.time() - start_ts
+        "ajax_filter_products (giftsets) finished: cache_bust=%s cache_key=%s queries=%s time=%.3fs",
+        cache_bust,
+        cache_key,
+        after_queries - before_queries,
+        time.time() - start_ts
             )
         return JsonResponse(response)
 
