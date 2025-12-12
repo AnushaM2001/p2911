@@ -2,7 +2,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
-
+from admin_panel.models import *
 @receiver([post_save, post_delete], sender=Product)
 @receiver([post_save, post_delete], sender=ProductVariant)
 @receiver([post_save, post_delete], sender=GiftSet)
