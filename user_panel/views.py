@@ -601,7 +601,7 @@ def filtered_products(request, category_id=None, subcategory_id=None):
 # 2) AJAX API VIEW (ajax_filter_products) - FIXED VERSION
 # ============================================================
 def ajax_filter_products(request):
-    """Optimized AJAX API with caching - FIXED"""
+    """Optimized AJAX API with caching - FIXED with correct original price calculations"""
     start_time = time.time()
     
     # Create cache key
@@ -696,10 +696,9 @@ def ajax_filter_products(request):
     combined_products = []
     
     if giftsets_flag and cat_obj:
-        # GIFTSETS
+        # ========== GIFTSETS ==========
         giftsets_qs = GiftSet.objects.filter(
-            product__category=cat_obj,
-            product__is_active=True
+            product__category=cat_obj
         )
         
         # Apply price filters
@@ -712,27 +711,67 @@ def ajax_filter_products(request):
         product_ids = list(giftsets_qs.values_list('product_id', flat=True).distinct())
         
         if product_ids:
-            # Get cheapest giftset for each product
-            giftsets_by_product = {}
-            for gs in giftsets_qs.order_by('product_id', 'price'):
-                if gs.product_id not in giftsets_by_product:
-                    giftsets_by_product[gs.product_id] = gs
+            # ========== GET ORIGINAL PRICE RANGES FOR GIFTSETS ==========
+            # Convert original_price (CharField) to Float for min/max calculation
+            from django.db.models import F, Value, CharField
+            from django.db.models.functions import Cast, Coalesce, NullIf
             
-            # Get price ranges
-            price_ranges = {}
-            price_data = GiftSet.objects.filter(
-                product_id__in=product_ids
-            ).values('product_id').annotate(
-                min_price=Min('price'),
-                max_price=Max('price'),
-                min_original=Min(Cast('original_price', FloatField())),
-                max_original=Max(Cast('original_price', FloatField()))
-            )
+            # Method 1: Using annotation with Cast (more accurate)
+            try:
+                price_range_data = GiftSet.objects.filter(
+                    product_id__in=product_ids
+                ).annotate(
+                    # Convert original_price string to float, handle empty/None
+                    original_float=Cast(
+                        NullIf('original_price', Value('')),
+                        FloatField()
+                    )
+                ).values('product_id').annotate(
+                    min_price=Min('price'),
+                    max_price=Max('price'),
+                    min_original=Min('original_float'),
+                    max_original=Max('original_float')
+                )
+            except:
+                # Method 2: Simple approach - get all and calculate in Python
+                all_giftsets = GiftSet.objects.filter(product_id__in=product_ids)
+                price_range_dict = {}
+                for gs in all_giftsets:
+                    if gs.product_id not in price_range_dict:
+                        price_range_dict[gs.product_id] = {
+                            'min_price': float('inf'),
+                            'max_price': float('-inf'),
+                            'min_original': float('inf'),
+                            'max_original': float('-inf')
+                        }
+                    
+                    # Current price
+                    current_price = float(gs.price) if gs.price else 0
+                    price_range_dict[gs.product_id]['min_price'] = min(
+                        price_range_dict[gs.product_id]['min_price'],
+                        current_price
+                    )
+                    price_range_dict[gs.product_id]['max_price'] = max(
+                        price_range_dict[gs.product_id]['max_price'],
+                        current_price
+                    )
+                    
+                    # Original price (from original_price CharField)
+                    try:
+                        original_val = float(gs.original_price) if gs.original_price else 0
+                    except (ValueError, TypeError):
+                        original_val = 0
+                    
+                    price_range_dict[gs.product_id]['min_original'] = min(
+                        price_range_dict[gs.product_id]['min_original'],
+                        original_val
+                    )
+                    price_range_dict[gs.product_id]['max_original'] = max(
+                        price_range_dict[gs.product_id]['max_original'],
+                        original_val
+                    )
             
-            for pd in price_data:
-                price_ranges[pd['product_id']] = pd
-            
-            # Get reviews
+            # ========== GET REVIEWS ==========
             reviews = {}
             review_data = Review.objects.filter(
                 product_id__in=product_ids
@@ -744,10 +783,16 @@ def ajax_filter_products(request):
             for rd in review_data:
                 reviews[rd['product_id']] = rd
             
-            # Process giftsets
+            # ========== PROCESS GIFTSETS ==========
+            # Get cheapest giftset for each product
+            giftsets_by_product = {}
+            for gs in giftsets_qs.order_by('product_id', 'price'):
+                if gs.product_id not in giftsets_by_product:
+                    giftsets_by_product[gs.product_id] = gs
+            
             for product_id, gs in giftsets_by_product.items():
                 # Apply offers
-                base_price = gs.price or 0
+                base_price = float(gs.price) if gs.price else 0
                 discounted_price = None
                 offer_applied = None
                 
@@ -758,81 +803,181 @@ def ajax_filter_products(request):
                         offer_applied = offer
                         break
                 
-                # Get data
-                price_info = price_ranges.get(product_id, {})
-                review_info = reviews.get(product_id, {})
+                # ========== GET ORIGINAL PRICE RANGES ==========
+                # Get product's original price from Product model
+                product_original = float(gs.product.original_price) if gs.product.original_price else 0
                 
+                # Get min/max original from GiftSet table
+                try:
+                    # Get original price from this specific gift set
+                    gs_original = float(gs.original_price) if gs.original_price else 0
+                    
+                    # Get price ranges from calculated dict or query
+                    if 'price_range_dict' in locals():
+                        price_info = price_range_dict.get(product_id, {
+                            'min_price': base_price,
+                            'max_price': base_price,
+                            'min_original': gs_original,
+                            'max_original': gs_original
+                        })
+                    else:
+                        # Get from query result
+                        pr_data = next((p for p in price_range_data if p['product_id'] == product_id), None)
+                        price_info = {
+                            'min_price': pr_data.get('min_price', base_price) if pr_data else base_price,
+                            'max_price': pr_data.get('max_price', base_price) if pr_data else base_price,
+                            'min_original': pr_data.get('min_original', gs_original) if pr_data else gs_original,
+                            'max_original': pr_data.get('max_original', gs_original) if pr_data else gs_original
+                        }
+                except:
+                    # Fallback if any calculation fails
+                    price_info = {
+                        'min_price': base_price,
+                        'max_price': base_price,
+                        'min_original': product_original,
+                        'max_original': product_original
+                    }
+                
+                # ========== GET REVIEW DATA ==========
+                review_info = reviews.get(product_id, {'avg_rating': 0, 'review_count': 0})
+                
+                # ========== BUILD PRODUCT DATA ==========
                 combined_products.append({
                     "id": product_id,
                     "name": gs.product.name,
-                    "price": float(base_price),
-                    "original_price": float(gs.product.original_price or 0),
+                    "price": base_price,
+                    "original_price": product_original,  # From Product model
                     "min_price": float(price_info.get('min_price', base_price)),
                     "max_price": float(price_info.get('max_price', base_price)),
+                    "min_original_price": float(price_info.get('min_original', product_original)),
+                    "max_original_price": float(price_info.get('max_original', product_original)),
                     "discounted_price": discounted_price,
                     "offer_code": offer_applied.code if offer_applied else None,
+                    "offer_start_time": offer_applied.start_date if offer_applied else None,
+                    "offer_end_time": offer_applied.end_date if offer_applied else None,
+                    "flavours": list(gs.flavours.values_list("name", flat=True)),
                     "image": gs.product.image1.url if gs.product.image1 else "",
+                    "image2": gs.product.image2.url if gs.product.image2 else "",
+                    "is_active": getattr(gs.product, 'is_active', True),
                     "is_giftset": True,
                     "average_rating": float(review_info.get('avg_rating', 0)),
                     "review_count": review_info.get('review_count', 0),
+                    "stock_status": getattr(gs.product, 'stock_status', 'In Stock'),
+                    "is_favorite": product_id in wishlist_product_ids,
+                    "is_best_seller": getattr(gs.product, 'is_best_seller', False),
+                    "is_trending": getattr(gs.product, 'is_trending', False),
+                    "is_new_arrival": getattr(gs.product, 'is_new_arrival', False),
                 })
     
     else:
-        # REGULAR PRODUCTS
-        # Build filters
-        filters = Q(product__is_active=True)
+        # ========== REGULAR PRODUCTS ==========
+        # Start with Product model and filter by category/subcategory
+        products_qs = Product.objects.all()
         
+        # Apply category filters
         if category_ids:
-            filters &= Q(product_category_id__in=category_ids)
-        if subcategory_ids:
-            filters &= Q(product_subcategory_id__in=subcategory_ids)
-        if sizes:
-            filters &= Q(size__in=sizes)
-        if min_price is not None:
-            filters &= Q(price__gte=min_price)
-        if max_price is not None:
-            filters &= Q(price__lte=max_price)
+            products_qs = products_qs.filter(category_id__in=category_ids)
         
-        # Get variants with window function (if supported) or manual grouping
-        try:
-            # Try window function approach
-            variants_qs = ProductVariant.objects.filter(filters).annotate(
-                row_number=Window(
-                    expression=RowNumber(),
-                    partition_by=[F('product_id')],
-                    order_by=[F('price').asc(), F('id').asc()]
-                )
-            ).filter(row_number=1).select_related('product')
-        except:
-            # Fallback: manual grouping
-            all_variants = ProductVariant.objects.filter(filters).select_related('product')
+        # Apply subcategory filters  
+        if subcategory_ids:
+            products_qs = products_qs.filter(subcategory_id__in=subcategory_ids)
+        
+        # Get product IDs
+        product_ids = list(products_qs.values_list('id', flat=True))
+        
+        if product_ids:
+            # Get variants for these products
+            variants_qs = ProductVariant.objects.filter(
+                product_id__in=product_ids
+            )
+            
+            # Apply size filter
+            if sizes:
+                variants_qs = variants_qs.filter(size__in=sizes)
+            
+            # Apply price filters
+            if min_price is not None:
+                variants_qs = variants_qs.filter(price__gte=min_price)
+            if max_price is not None:
+                variants_qs = variants_qs.filter(price__lte=max_price)
+            
+            # Group by product to get cheapest variant
             variants_by_product = {}
-            for var in all_variants.order_by('product_id', 'price'):
+            for var in variants_qs.order_by('product_id', 'price'):
                 if var.product_id not in variants_by_product:
                     variants_by_product[var.product_id] = var
             
-            variants_qs = list(variants_by_product.values())
-        
-        # Get product IDs
-        product_ids = [var.product_id for var in variants_qs]
-        
-        if product_ids:
-            # Get price ranges
-            price_ranges = {}
-            price_data = ProductVariant.objects.filter(
-                product_id__in=product_ids
-            ).values('product_id').annotate(
-                min_price=Min('price'),
-                max_price=Max('price')
-            )
+            # Get filtered product IDs
+            filtered_product_ids = list(variants_by_product.keys())
             
-            for pd in price_data:
-                price_ranges[pd['product_id']] = pd
+            # ========== GET ORIGINAL PRICE RANGES FOR VARIANTS ==========
+            try:
+                # Convert original_price (CharField) to Float for calculation
+                price_range_data = ProductVariant.objects.filter(
+                    product_id__in=filtered_product_ids
+                ).annotate(
+                    original_float=Cast(
+                        NullIf('original_price', Value('')),
+                        FloatField()
+                    )
+                ).values('product_id').annotate(
+                    min_price=Min('price'),
+                    max_price=Max('price'),
+                    min_original=Min('original_float'),
+                    max_original=Max('original_float')
+                )
+                
+                price_ranges = {}
+                for pd in price_range_data:
+                    price_ranges[pd['product_id']] = {
+                        'min_price': pd.get('min_price'),
+                        'max_price': pd.get('max_price'),
+                        'min_original': pd.get('min_original'),
+                        'max_original': pd.get('max_original')
+                    }
+            except:
+                # Fallback: manual calculation
+                all_variants = ProductVariant.objects.filter(product_id__in=filtered_product_ids)
+                price_ranges = {}
+                for var in all_variants:
+                    if var.product_id not in price_ranges:
+                        price_ranges[var.product_id] = {
+                            'min_price': float('inf'),
+                            'max_price': float('-inf'),
+                            'min_original': float('inf'),
+                            'max_original': float('-inf')
+                        }
+                    
+                    # Current price
+                    current_price = float(var.price) if var.price else 0
+                    price_ranges[var.product_id]['min_price'] = min(
+                        price_ranges[var.product_id]['min_price'],
+                        current_price
+                    )
+                    price_ranges[var.product_id]['max_price'] = max(
+                        price_ranges[var.product_id]['max_price'],
+                        current_price
+                    )
+                    
+                    # Original price (from original_price CharField)
+                    try:
+                        original_val = float(var.original_price) if var.original_price else 0
+                    except (ValueError, TypeError):
+                        original_val = 0
+                    
+                    price_ranges[var.product_id]['min_original'] = min(
+                        price_ranges[var.product_id]['min_original'],
+                        original_val
+                    )
+                    price_ranges[var.product_id]['max_original'] = max(
+                        price_ranges[var.product_id]['max_original'],
+                        original_val
+                    )
             
-            # Get reviews
+            # ========== GET REVIEWS ==========
             reviews = {}
             review_data = Review.objects.filter(
-                product_id__in=product_ids
+                product_id__in=filtered_product_ids
             ).values('product_id').annotate(
                 avg_rating=Avg('rating'),
                 review_count=Count('id')
@@ -841,10 +986,17 @@ def ajax_filter_products(request):
             for rd in review_data:
                 reviews[rd['product_id']] = rd
             
-            # Process variants
-            for var in variants_qs:
+            # ========== GET PRODUCTS DATA ==========
+            products_dict = {p.id: p for p in products_qs.filter(id__in=filtered_product_ids)}
+            
+            # ========== PROCESS VARIANTS ==========
+            for product_id, var in variants_by_product.items():
+                product = products_dict.get(product_id)
+                if not product:
+                    continue
+                
                 # Apply offers
-                base_price = var.price or 0
+                base_price = float(var.price) if var.price else 0
                 discounted_price = None
                 offer_applied = None
                 
@@ -855,24 +1007,48 @@ def ajax_filter_products(request):
                         offer_applied = offer
                         break
                 
-                # Get data
-                price_info = price_ranges.get(var.product_id, {})
-                review_info = reviews.get(var.product_id, {})
+                # ========== GET PRICE RANGES ==========
+                price_info = price_ranges.get(product_id, {})
                 
+                # Product's original price from Product model
+                product_original = float(product.original_price) if product.original_price else 0
+                
+                # Variant's original price
+                try:
+                    var_original = float(var.original_price) if var.original_price else 0
+                except (ValueError, TypeError):
+                    var_original = product_original
+                
+                # ========== GET REVIEW DATA ==========
+                review_info = reviews.get(product_id, {'avg_rating': 0, 'review_count': 0})
+                
+                # ========== BUILD PRODUCT DATA ==========
                 combined_products.append({
-                    "id": var.product_id,
-                    "name": var.product.name,
-                    "price": float(base_price),
-                    "original_price": float(var.product.original_price or 0),
+                    "id": product_id,
+                    "name": product.name,
+                    "price": base_price,
+                    "original_price": product_original,  # From Product model
                     "min_price": float(price_info.get('min_price', base_price)),
                     "max_price": float(price_info.get('max_price', base_price)),
+                    "min_original_price": float(price_info.get('min_original', var_original)),
+                    "max_original_price": float(price_info.get('max_original', var_original)),
                     "discounted_price": discounted_price,
                     "offer_code": offer_applied.code if offer_applied else None,
+                    "offer_start_time": offer_applied.start_date if offer_applied else None,
+                    "offer_end_time": offer_applied.end_date if offer_applied else None,
                     "size": var.size,
-                    "image": var.product.image1.url if var.product.image1 else "",
+                    "stock": var.stock,
+                    "image": product.image1.url if product.image1 else "",
+                    "image2": product.image2.url if product.image2 else "",
+                    "is_active": getattr(product, 'is_active', True),
                     "is_giftset": False,
                     "average_rating": float(review_info.get('avg_rating', 0)),
                     "review_count": review_info.get('review_count', 0),
+                    "stock_status": getattr(product, 'stock_status', 'In Stock'),
+                    "is_favorite": product_id in wishlist_product_ids,
+                    "is_best_seller": getattr(product, 'is_best_seller', False),
+                    "is_trending": getattr(product, 'is_trending', False),
+                    "is_new_arrival": getattr(product, 'is_new_arrival', False),
                 })
     
     # ========== PAGINATION ==========
