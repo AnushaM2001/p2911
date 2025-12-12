@@ -428,31 +428,22 @@ from django.core.cache import cache
 #     Wishlist, PremiumFestiveOffer
 # )
 
-logger = logging.getLogger(__name__)
-CACHE_TTL = 30  # seconds - tune for your traffic
-
-
-def _to_int_list(raw):
-    out = []
-    for r in raw:
-        try:
-            out.append(int(r))
-        except Exception:
-            continue
-    return out
-
-
 def ajax_filter_products(request):
     """
     Optimized product filter endpoint with:
       - cache_bust support (?cache_bust=1)
-      - debug query logging when settings.DEBUG is True
+      - safe debug query logging when settings.DEBUG is True
       - two cache strategies (hashed default, or per-category when ?cache_strategy=category)
       - minimal DB queries (bulk aggregates + single-page pagination)
     """
     start_ts = time.time()
+
+    # If DEBUG, snapshot query count safely (do NOT modify connection internals)
     if settings.DEBUG:
         before_queries = len(connection.queries)
+    else:
+        before_queries = 0
+
     # ----------------- params -----------------
     page = max(int(request.GET.get("page", 1)), 1)
     per_page = int(request.GET.get("per_page", 10))
@@ -537,15 +528,9 @@ def ajax_filter_products(request):
     # Try cache (unless cache_bust)
     cached_resp = None if cache_bust else cache.get(cache_key)
     if cached_resp:
-        # debug logging
         if settings.DEBUG:
             logger.debug("ajax_filter_products: cache HIT key=%s", cache_key)
         return JsonResponse(cached_resp)
-
-    if settings.DEBUG:
-        # reset query log counter snapshot
-        connection.queries_log = list(connection.queries) if hasattr(connection, "queries") else []
-        before_queries = len(connection.queries)
 
     combined_products = []
 
@@ -653,18 +638,17 @@ def ajax_filter_products(request):
             "next_page": page_obj.next_page_number() if page_obj.has_next() else None,
         }
 
-        # write cache unless cache_bust
         if not cache_bust:
             cache.set(cache_key, response, CACHE_TTL)
 
         if settings.DEBUG:
             after_queries = len(connection.queries)
             logger.debug(
-        "ajax_filter_products (giftsets) finished: cache_bust=%s cache_key=%s queries=%s time=%.3fs",
-        cache_bust,
-        cache_key,
-        after_queries - before_queries,
-        time.time() - start_ts
+                "ajax_filter_products (giftsets) finished: cache_bust=%s cache_key=%s queries=%s time=%.3fs",
+                cache_bust,
+                cache_key,
+                after_queries - before_queries,
+                time.time() - start_ts
             )
         return JsonResponse(response)
 
