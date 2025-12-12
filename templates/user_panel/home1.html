@@ -2906,21 +2906,27 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const row = document.getElementById('newArrivalsScrollRow');
-        const prev = document.getElementById('newArrivalsPrev');
-        const next = document.getElementById('newArrivalsNext');
-        const scrollAmount = 340; // Adjust to your card width + gap
+<!-- <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const row  = document.getElementById('newArrivalsScrollRow');
+    const prev = document.getElementById('newArrivalsPrev');
+    const next = document.getElementById('newArrivalsNext');
+    const scrollAmount = 340;
 
+    if (prev && row) {
         prev.addEventListener('click', () => {
             row.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
         });
+    }
+
+    if (next && row) {
         next.addEventListener('click', () => {
             row.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         });
-    });
-</script>
+    }
+});
+</script> -->
+
  
 <!-- card3 -->
 <div class="container-fluid products-section-container">
@@ -3171,7 +3177,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="text-center mt-4">
     <a href="{% url 'viewall_products' 'trending' %}" class="custom-view-all-btn">View All</a>
 </div>
-<script>
+<!-- <script>
     document.addEventListener('DOMContentLoaded', function () {
         const row = document.getElementById('trendingScrollRow');
         const prev = document.getElementById('trendingPrev');
@@ -3185,7 +3191,7 @@ document.addEventListener('DOMContentLoaded', function() {
             row.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         });
     });
-</script>
+</script> -->
 
 <br>
 
@@ -3243,126 +3249,153 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Auto-scroll logic for carousel
-        const row = document.getElementById('videoScrollRow');
-        if (row) {
-            const cards = row.querySelectorAll('.video-card');
-            let currentIndex = 0;
-            let visibleCount = Math.floor(row.parentElement.offsetWidth / cards[0].offsetWidth);
+document.addEventListener('DOMContentLoaded', function () {
 
-            function updateVisibleCount() {
-                visibleCount = Math.max(1, Math.floor(row.parentElement.offsetWidth / cards[0].offsetWidth));
-            }
+    /* ----------------------------
+       VIDEO SLIDER AUTO SCROLL FIXED
+    ----------------------------- */
 
-            function moveToNext() {
-                updateVisibleCount();
-                currentIndex++;
-                if (currentIndex > cards.length - visibleCount) currentIndex = 0;
-                row.style.transform = `translateX(-${currentIndex * (cards[0].offsetWidth + 24)}px)`;
-            }
+    const row = document.getElementById('videoScrollRow');
 
-            let interval = setInterval(moveToNext, 2500);
-            row.parentElement.addEventListener('mouseenter', () => clearInterval(interval));
-            row.parentElement.addEventListener('mouseleave', () => interval = setInterval(moveToNext, 2500));
-            window.addEventListener('resize', () => {
-                updateVisibleCount();
-                row.style.transform = `translateX(-${currentIndex * (cards[0].offsetWidth + 24)}px)`;
-            });
+    if (row) {
+        const cards = row.querySelectorAll('.video-card');
+
+        // ❌ No video cards → stop here safely
+        if (cards.length === 0) return;
+
+        let currentIndex = 0;
+
+        // Safe visible count
+        let visibleCount = 1;
+        if (cards[0]) {
+            visibleCount = Math.floor(row.parentElement.offsetWidth / cards[0].offsetWidth);
         }
 
-        // Modal logic
-        document.body.addEventListener('click', function (e) {
-            const videoBtn = e.target.closest('.video-link');
-            const productBtn = e.target.closest('.view-product-in-video-btn');
-            const modalElement = document.getElementById('videoModal');
-            const modal = new bootstrap.Modal(modalElement);
-            const modalBody = document.getElementById('videoModalBody');
+        function updateVisibleCount() {
+            if (cards[0]) {
+                visibleCount = Math.max(1, Math.floor(row.parentElement.offsetWidth / cards[0].offsetWidth));
+            }
+        }
 
-            // Load video + iframe in split layout
-            if (productBtn) {
-                e.preventDefault();
-                const productUrl = productBtn.getAttribute('data-url');
-                const videoUrl = productBtn.closest('.product')?.getAttribute('data-video-url') || '';
-                if (window.innerWidth <= 480) {
-        // Mobile: redirect directly, without modal and without ?from_video
-        const url = new URL(productUrl, window.location.origin);
-        url.searchParams.delete('from_video');
-        window.location.href = url.pathname;
-        return;
+        function moveToNext() {
+            updateVisibleCount();
+            currentIndex++;
+
+            if (currentIndex > cards.length - visibleCount) {
+                currentIndex = 0;
+            }
+
+            if (cards[0]) {
+                row.style.transform = `translateX(-${currentIndex * (cards[0].offsetWidth + 24)}px)`;
+            }
+        }
+
+        let interval = setInterval(moveToNext, 2500);
+
+        row.parentElement.addEventListener('mouseenter', () => clearInterval(interval));
+        row.parentElement.addEventListener('mouseleave', () => interval = setInterval(moveToNext, 2500));
+
+        window.addEventListener('resize', () => {
+            updateVisibleCount();
+            if (cards[0]) {
+                row.style.transform = `translateX(-${currentIndex * (cards[0].offsetWidth + 24)}px)`;
+            }
+        });
     }
 
-                modalBody.innerHTML = `
-        <div class="modal-split-layout">
-          <div class="left-video">
-            <video controls autoplay muted playsinline>
-              <source src="${videoUrl}" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          </div>
-          <div class="right-iframe">
-            <iframe id="videoModalIframe" src="${productUrl}" allowfullscreen></iframe>
-          </div>
-        </div>
-      `;
+    /* ----------------------------
+       MODAL LOGIC (UNCHANGED)
+    ----------------------------- */
 
-                // After iframe loads, hide header/footer
-                const iframe = modalBody.querySelector('iframe');
-                iframe.onload = function () {
-                    const innerDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    setTimeout(() => {
-                        const header = innerDoc.querySelector('header') || innerDoc.querySelector('.site-header') || innerDoc.querySelector('.navbar');
-                        const footer = innerDoc.querySelector('footer') || innerDoc.querySelector('.site-footer');
-                        if (header) header.style.display = 'none';
-                        if (footer) footer.style.display = 'none';
+    document.body.addEventListener('click', function (e) {
+        const videoBtn = e.target.closest('.video-link');
+        const productBtn = e.target.closest('.view-product-in-video-btn');
+        const modalElement = document.getElementById('videoModal');
+        const modal = new bootstrap.Modal(modalElement);
+        const modalBody = document.getElementById('videoModalBody');
 
-                        const style = document.createElement('style');
-                        style.textContent = `
-            header, .site-header, .navbar, footer, .site-footer {
-              display: none !important;
-              visibility: hidden !important;
-              height: 0 !important;
-              overflow: hidden;
-            }
-          `;
-                        innerDoc.head.appendChild(style);
-                    }, 100);
-                };
+        // Product modal split layout
+        if (productBtn) {
+            e.preventDefault();
+            const productUrl = productBtn.getAttribute('data-url');
+            const videoUrl = productBtn.closest('.product')?.getAttribute('data-video-url') || '';
 
-                modal.show();
+            // Mobile → No modal
+            if (window.innerWidth <= 480) {
+                const url = new URL(productUrl, window.location.origin);
+                url.searchParams.delete('from_video');
+                window.location.href = url.pathname;
+                return;
             }
 
-            // Optional: Load full video via AJAX (not in split layout)
-            if (videoBtn) {
-                e.preventDefault();
-                const videoId = videoBtn.getAttribute('data-id');
+            modalBody.innerHTML = `
+                <div class="modal-split-layout">
+                  <div class="left-video">
+                    <video controls autoplay muted playsinline>
+                      <source src="${videoUrl}" type="video/mp4" />
+                    </video>
+                  </div>
+                  <div class="right-iframe">
+                    <iframe id="videoModalIframe" src="${productUrl}" allowfullscreen></iframe>
+                  </div>
+                </div>`;
 
-                fetch(`/video/${videoId}/`)
-                    .then(response => response.text())
-                    .then(html => {
-                        modalBody.innerHTML = html;
-                        modal.show();
-                    })
-                    .catch(err => {
-                        modalBody.innerHTML = `<div class="p-3 text-danger">Error loading video content.</div>`;
-                        modal.show();
-                        console.error(err);
-                    });
-            }
-        });
+            const iframe = modalBody.querySelector('iframe');
+            iframe.onload = function () {
+                const innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+                setTimeout(() => {
+                    const header = innerDoc.querySelector('header') || innerDoc.querySelector('.site-header') || innerDoc.querySelector('.navbar');
+                    const footer = innerDoc.querySelector('footer') || innerDoc.querySelector('.site-footer');
 
-        // Cleanup when modal closes
-        const videoModal = document.getElementById('videoModal');
-        videoModal.addEventListener('hidden.bs.modal', () => {
-            const iframe = document.getElementById('videoModalIframe');
-            if (iframe) iframe.remove();
-            document.getElementById('videoModalBody').innerHTML = '';
-            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
-        });
+                    if (header) header.style.display = 'none';
+                    if (footer) footer.style.display = 'none';
+
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        header, .site-header, .navbar, footer, .site-footer {
+                          display: none !important;
+                          visibility: hidden !important;
+                          height: 0 !important;
+                          overflow: hidden;
+                        }`;
+                    innerDoc.head.appendChild(style);
+                }, 100);
+            };
+
+            modal.show();
+        }
+
+        // Load full video
+        if (videoBtn) {
+            e.preventDefault();
+            const videoId = videoBtn.getAttribute('data-id');
+
+            fetch(`/video/${videoId}/`)
+                .then(response => response.text())
+                .then(html => {
+                    modalBody.innerHTML = html;
+                    modal.show();
+                })
+                .catch(err => {
+                    modalBody.innerHTML = `<div class="p-3 text-danger">Error loading video content.</div>`;
+                    modal.show();
+                });
+        }
     });
+
+    // Cleanup modal
+    const videoModal = document.getElementById('videoModal');
+    videoModal.addEventListener('hidden.bs.modal', () => {
+        const iframe = document.getElementById('videoModalIframe');
+        if (iframe) iframe.remove();
+        document.getElementById('videoModalBody').innerHTML = '';
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+
+});
 </script>
 
 
@@ -3723,21 +3756,27 @@ if (carousel) {   // <--- FIX
   </script> -->
 
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const row = document.getElementById('bestSellingScrollRow');
-        const prev = document.getElementById('bestSellingPrev');
-        const next = document.getElementById('bestSellingNext');
-        const scrollAmount = 340; // Adjust to your card width + gap
+<!-- <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const row  = document.getElementById('bestSellingScrollRow');
+    const prev = document.getElementById('bestSellingPrev');
+    const next = document.getElementById('bestSellingNext');
+    const scrollAmount = 340;
 
+    if (prev && row) {
         prev.addEventListener('click', () => {
             row.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
         });
+    }
+
+    if (next && row) {
         next.addEventListener('click', () => {
             row.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         });
-    });
-</script>
+    }
+});
+</script> -->
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
