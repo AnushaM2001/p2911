@@ -65,13 +65,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    "admin_panel",
+    "admin_panel.app.AdminPanelConfig",
     "user_panel",
     "django_celery_beat",
     'crispy_forms',
     'crispy_bootstrap5',
     'storages',
-    'compressor',
 ]
 
 
