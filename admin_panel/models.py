@@ -9,6 +9,8 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models.fields.files import ImageFieldFile
 # from admin_panel.utils import compress_image
 
+
+
 class AutoCompressImagesMixin(models.Model):
     """
     Mixin to automatically compress all ImageFields in a model on save.
