@@ -310,10 +310,8 @@ html, body {
       {% for item in cart_items %}
       <div class="d-flex p-3 mb-3">
         {% if item.product %}
-       {% if item.product.image1 %}
         <a href="{% url 'product_detail' item.product.id %}"><img src="{{ item.product.image1.url }}" class="img-thumbnail" style="width: 150px; height:auto; border:none; border-radius: 10px;" alt="Product Image"></a>
         {% endif %}
-       {% endif %}
         <div class="ms-4 mt-4">
           <h6>{{ item.product.name }}</h6>
            {% if item.flavour_names %}
@@ -601,7 +599,7 @@ html, body {
 <div class="p-3 custom-box shadow-sm">
     <h6>Order Details</h6>
     <div class="d-flex justify-content-between mb-2">
-        <span> product{% if total_items > 1 %}s{% endif %}<span data-item-count>({{ total_items }})</span></span>
+        <span> Price(Products)</span>
         <span data-price="subtotal">₹{{ amount|floatformat:2 }}</span>
     </div>
     <div class="d-flex justify-content-between mb-2">
@@ -650,8 +648,12 @@ html, body {
     Item removed from cart
   </div>
 </div>
+
+
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle Remove Item
     document.querySelectorAll('.remove-form').forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -667,21 +669,29 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-
-                    // FIX: remove whole cart item wrapper
+                    // Remove whole cart item wrapper
                     const cartItem = document.querySelector(
                         `.cart-item[data-item-id="${this.dataset.itemId}"]`
                     );
 
                     if (cartItem) {
                         const wrapper = cartItem.closest('.d-flex.p-3.mb-3');
-                        if (wrapper) wrapper.remove();
+                        if (wrapper) {
+                            wrapper.style.opacity = '0';
+                            wrapper.style.transform = 'translateX(30px)';
+                            setTimeout(() => wrapper.remove(), 300);
+                        }
                     }
 
                     // Update cart count
                     document.querySelectorAll('.cart-count').forEach(el => {
                         el.textContent = data.cart_count;
                     });
+
+                    // Recalculate prices after removal
+                    setTimeout(() => {
+                        recalculateCartPrices();
+                    }, 350);
 
                     showToast('Item removed from cart');
 
@@ -700,15 +710,178 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Handle Quantity Updates
+    document.querySelectorAll('.update-quantity-form').forEach(form => {
+        const quantityDisplay = form.querySelector('.quantity-display');
+        const itemId = form.dataset.itemId;
+        
+        form.querySelector('.increase-btn').addEventListener('click', function() {
+            updateQuantity(form, itemId, 'increase', quantityDisplay);
+        });
+        
+        form.querySelector('.decrease-btn').addEventListener('click', function() {
+            const currentQty = parseInt(quantityDisplay.textContent);
+            if (currentQty > 1) {
+                updateQuantity(form, itemId, 'decrease', quantityDisplay);
+            }
+        });
+    });
+    
+    function updateQuantity(form, itemId, action, quantityDisplay) {
+        const formData = new FormData(form);
+        formData.append('action', action);
+        
+        // Show loading state
+        quantityDisplay.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                // Update quantity display
+                quantityDisplay.textContent = data.new_quantity;
+                
+                // Update cart count in header
+                document.querySelectorAll('.cart-count').forEach(el => {
+                    el.textContent = data.cart_count;
+                });
+                
+                // Recalculate all prices with discounts
+                recalculateCartPrices();
+                
+                // Flash effect
+                const wrapper = form.closest('.d-flex.p-3.mb-3');
+                if (wrapper) {
+                    wrapper.style.transition = 'background-color 0.3s';
+                    wrapper.style.backgroundColor = '#f0f8ff';
+                    setTimeout(() => {
+                        wrapper.style.backgroundColor = '';
+                    }, 300);
+                }
+            } else {
+                showToast('Error: ' + (data.message || 'Failed to update quantity'));
+                // Revert quantity on error
+                const originalQuantity = form.querySelector('[name=quantity]')?.value;
+                if (originalQuantity) {
+                    quantityDisplay.textContent = originalQuantity;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error updating quantity');
+            // Revert to original quantity if error occurs
+            const originalQuantity = form.querySelector('[name=quantity]')?.value;
+            if (originalQuantity) {
+                quantityDisplay.textContent = originalQuantity;
+            }
+        });
+    }
+    
+    // Recalculate cart prices from DOM
+    function recalculateCartPrices() {
+        const allCartItems = document.querySelectorAll('.d-flex.p-3.mb-3');
+        
+        let subtotal = 0;
+        let totalPlatformFee = 0;
+        let totalItems = 0;
+        
+        allCartItems.forEach(itemWrapper => {
+            const quantityDisplay = itemWrapper.querySelector('.quantity-display');
+            const quantity = parseInt(quantityDisplay?.textContent || 0);
+            
+            // Get the discounted price (green text with class text-success)
+            const discountedPriceEl = itemWrapper.querySelector('.text-success.font-weight-bold');
+            let itemPrice = 0;
+            
+            if (discountedPriceEl) {
+                // Has discount - use discounted price
+                const priceText = discountedPriceEl.textContent.replace(/[^\d.]/g, '');
+                itemPrice = parseFloat(priceText) || 0;
+            } else {
+                // No discount - use regular price
+                const priceEl = itemWrapper.querySelector('.price-text');
+                if (priceEl) {
+                    const priceText = priceEl.textContent.replace(/[^\d.]/g, '');
+                    itemPrice = parseFloat(priceText) || 0;
+                }
+            }
+            
+            // Calculate item total
+            const itemTotal = itemPrice * quantity;
+            subtotal += itemTotal;
+            totalItems += quantity;
+            
+            // Get platform fee from data attribute or product
+            const platformFee = parseFloat(itemWrapper.getAttribute('data-platform-fee')) || 0;
+            totalPlatformFee += platformFee;
+        });
+        
+        // Delivery charge is always 100 if cart has items
+        const deliveryCharge = totalItems > 0 ? 100 : 0;
+        
+        // Calculate total
+        const total = subtotal + deliveryCharge + totalPlatformFee;
+        
+        // Update order summary
+        updateOrderSummary({
+            subtotal: subtotal,
+            delivery_charge: deliveryCharge,
+            platform_fee: totalPlatformFee,
+            total_price: total,
+            cart_count: totalItems
+        });
+    }
+    
+    // Update Order Summary
+    window.updateOrderSummary = function(prices) {
+        const formatCurrency = (amount) => '₹' + parseFloat(amount).toFixed(2);
+
+        const updatePriceElement = (selector, value) => {
+            const el = document.querySelector(`[data-price="${selector}"]`);
+            if (el) el.textContent = formatCurrency(value);
+        };
+
+        updatePriceElement('subtotal', prices.subtotal);
+        updatePriceElement('delivery', prices.delivery_charge);
+        updatePriceElement('platform_fee', prices.platform_fee);
+        
+        if ('discount' in prices) updatePriceElement('discount', -Math.abs(prices.discount));
+        if ('gift_wrap' in prices) updatePriceElement('gift_wrap', prices.gift_wrap);
+        if ('premium_discount' in prices) updatePriceElement('premium_discount', -Math.abs(prices.premium_discount));
+
+        updatePriceElement('total', prices.total_price);
+
+        // Update item count
+        if ('cart_count' in prices) {
+            const countEl = document.querySelector('[data-item-count]');
+            if (countEl) countEl.textContent = prices.cart_count;
+        }
+    }
+    
     function showToast(message) {
         const toast = document.getElementById('toast');
-        toast.querySelector('.toast-body').textContent = message;
-        toast.style.display = "block";
-        setTimeout(() => { toast.style.display = "none" }, 2000);
+        if (toast) {
+            toast.querySelector('.toast-body').textContent = message;
+            toast.style.display = "block";
+            setTimeout(() => { toast.style.display = "none" }, 2000);
+        }
     }
+    
+    // Initial calculation on page load
+    recalculateCartPrices();
 });
 </script>
-
 
 
 
@@ -1001,93 +1174,7 @@ function showToast(message) {
 </script>
 
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Handle quantity updates
-  document.querySelectorAll('.update-quantity-form').forEach(form => {
-    const quantityDisplay = form.querySelector('.quantity-display');
-    const itemId = form.dataset.itemId;
-    
-    form.querySelector('.increase-btn').addEventListener('click', function() {
-      updateQuantity(form, itemId, 'increase', quantityDisplay);
-    });
-    
-    form.querySelector('.decrease-btn').addEventListener('click', function() {
-      updateQuantity(form, itemId, 'decrease', quantityDisplay);
-    });
-  });
-  
-  function updateQuantity(form, itemId, action, quantityDisplay) {
-    const formData = new FormData(form);
-    formData.append('action', action);
-    
-    // Show loading state
-    quantityDisplay.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-    
-    fetch(form.action, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-    .then(response => {
-      if (!response.ok) throw new Error('Network response was not ok');
-      return response.json();
-    })
-    .then(data => {
-      if (data.status === 'success') {
-        // Update quantity display
-        quantityDisplay.textContent = data.new_quantity;
-        
-        // Update cart count in header
-        document.querySelectorAll('.cart-count').forEach(el => {
-          el.textContent = data.cart_count;
-        });
-        
-        // Update order summary prices
-        updateOrderSummary(data.prices);
-      } else {
-        showToast('Error: ' + (data.message || 'Failed to update quantity'));
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      showToast('Error updating quantity');
-      // Revert to original quantity if error occurs
-      quantityDisplay.textContent = form.querySelector('[name=quantity]').value;
-    });
-  }
-  
-  function updateOrderSummary(prices) {
-    const formatCurrency = (amount) => '₹' + parseFloat(amount).toFixed(2);
 
-    // Update individual amounts
-    const updatePriceElement = (selector, value) => {
-      const el = document.querySelector(`[data-price="${selector}"]`);
-      if (el) el.textContent = formatCurrency(value);
-    };
-
-    updatePriceElement('subtotal', prices.subtotal);
-    updatePriceElement('delivery', 100); // Always set delivery charge to 100
-    updatePriceElement('platform_fee', prices.platform_fee);
-    
-    if ('discount' in prices) updatePriceElement('discount', -Math.abs(prices.discount));
-    if ('gift_wrap' in prices) updatePriceElement('gift_wrap', prices.gift_wrap);
-    if ('premium_discount' in prices) updatePriceElement('premium_discount', -Math.abs(prices.premium_discount));
-
-    // Use backend-calculated total
-    updatePriceElement('total', prices.total_price);
-
-    // Update item count
-    if ('cart_count' in prices) {
-      const countEl = document.querySelector('[data-item-count]');
-      if (countEl) countEl.textContent = prices.cart_count;
-    }
-  }
-});
-</script>
 
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti"></script>
 
