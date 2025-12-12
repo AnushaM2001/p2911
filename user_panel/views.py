@@ -442,7 +442,7 @@ def _to_int_list(raw):
             continue
     return out
 
-def ajax_filter_products_fast(request):
+def ajax_filter_products(request):
     start_ts = time.time()
     if settings.DEBUG:
         before_queries = len(connection.queries)
