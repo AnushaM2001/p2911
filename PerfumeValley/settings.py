@@ -47,7 +47,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-X_FRAME_OPTIONS = 'ALLOWALL'
+X_FRAME_OPTIONS = "SAMEORIGIN"
+
 
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=31536000, public',
@@ -182,7 +183,10 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 524288000
+
+
 CSRF_TRUSTED_ORIGINS = [
     "https://perfumevalleyworld.com",
     "https://www.perfumevalleyworld.com",
