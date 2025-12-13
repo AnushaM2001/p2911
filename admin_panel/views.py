@@ -1960,6 +1960,7 @@ def export_orders_excel(request):
         "Customer Name",
         "Email",
         "Phone",
+        "Address"
         "Order Date",
         "Status",
         "Payment Status",
@@ -2023,12 +2024,19 @@ def export_orders_excel(request):
                 size = f"Set: {item.gift_set.set_name}" if item.gift_set else "-"
                 bottle = flavour_names or "Not Set"
 
+            if order.address:
+                address_full=[order.address.location,order.address.City,order.address.State,order.address.Pincode]
+                full_address = ", ".join(str(p) for p in address_full if p)
+            else:
+                full_address = "No Adress"
+
             ws.append([
                 # Order details
                 order.id,
                 order.address.Name if order.address else "-",
                 order.user.username,
                 order.address.MobileNumber if order.address else "-",
+                full_address if order.address else "-",
                 order.created_at.strftime("%Y-%m-%d"),
                 order.shiprocket_tracking_status or "No status",
                 "Paid" if order.total_price else "Unpaid",
@@ -2053,4 +2061,6 @@ def export_orders_excel(request):
 
     wb.save(response)
     return response
+
+
 
