@@ -1571,7 +1571,7 @@ def subscription_list(request):
         'query': query,
         'selected_date': selected_date,
     })
-from user_panel.models import ContactMessage,InternationalOrder
+from user_panel.models import ContactMessage,AddressModel
 
 
 def contact_list(request):
@@ -1603,30 +1603,36 @@ def contact_list(request):
         'selected_date': selected_date,
     })
 
+from django.core.paginator import Paginator
+from django.db.models import Q
+from datetime import datetime
+
 def International_orders(request):
-    inter_orders = InternationalOrder.objects.all()
+    # ✅ correct category value
+    inter_orders = AddressModel.objects.filter(address_category='international')
 
     query = request.GET.get('q', '')
     selected_date = request.GET.get('date', '')
 
+    # 🔍 Search filter
     if query:
         inter_orders = inter_orders.filter(
             Q(Name__icontains=query) |
             Q(MobileNumber__icontains=query) |
-            Q(Country__icontains=query) |
-            Q(State__icontains=query) |
             Q(City__icontains=query) |
-            Q(Pincode__icontains=query) 
-            
+            Q(State__icontains=query) |
+            Q(Pincode__icontains=query)
         )
 
+    # 📅 Date filter (using created_at)
     if selected_date:
         try:
             date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
-            inter_orders = inter_orders.filter(start_date__date=date_obj)
+            inter_orders = inter_orders.filter(created_at__date=date_obj)
         except ValueError:
             pass
 
+    # 📄 Pagination
     paginator = Paginator(inter_orders.order_by('-id'), 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)

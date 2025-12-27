@@ -1,4 +1,5 @@
 from datetime import datetime
+from sre_parse import State
 from django import forms
 from .models import *
 class OTPForm(forms.Form):
@@ -7,22 +8,49 @@ class OTPForm(forms.Form):
     otp = forms.CharField(max_length=6, widget=forms.TextInput(attrs={'placeholder': 'Enter OTP'}))
 
 
+from django import forms
+from .models import AddressModel
+
 class AddressForm(forms.ModelForm):
     class Meta:
         model = AddressModel
-        fields = '__all__'
-        exclude=['user','is_blocked']
+        exclude = ['user', 'is_blocked']
         widgets = {
+            'address_category': forms.Select(attrs={'class': 'form-select'}),
             'Name': forms.TextInput(attrs={'placeholder': 'Enter Name', 'class': 'form-control'}),
             'MobileNumber': forms.TextInput(attrs={'placeholder': 'Enter Mobile Number', 'class': 'form-control'}),
             'Alternate_MobileNumber': forms.TextInput(attrs={'placeholder': 'Enter Alternate Mobile Number', 'class': 'form-control'}),
             'Pincode': forms.TextInput(attrs={'placeholder': 'Enter Pincode', 'class': 'form-control'}),
             'City': forms.TextInput(attrs={'placeholder': 'Enter City', 'class': 'form-control'}),
             'State': forms.TextInput(attrs={'placeholder': 'Enter State', 'class': 'form-control'}),
-            'location': forms.TextInput(attrs={'placeholder': 'Enter Location/Area/Street', 'class': 'form-control'}),
-            'Building': forms.TextInput(attrs={'placeholder': 'Enter Building Name/Flat No./House No.', 'class': 'form-control'}),
+            'location': forms.TextInput(attrs={'placeholder': 'Enter Location / Area / Street', 'class': 'form-control'}),
             'Landmark': forms.TextInput(attrs={'placeholder': 'Enter Landmark', 'class': 'form-control'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        address_category = cleaned_data.get('address_category')
+        pincode = cleaned_data.get('Pincode')
+        state = cleaned_data.get('State')
+
+        if address_category == 'national':
+            if not pincode:
+                self.add_error('Pincode', 'Pincode is required for national address.')
+            elif not pincode.isdigit() or len(pincode) != 6:
+                self.add_error('Pincode', 'National pincode must be exactly 6 digits.')
+
+            if not state:
+                self.add_error('State', 'State is required for national address.')
+
+        elif address_category == 'international':
+            if not pincode:
+                self.add_error('Pincode', 'Postal code is required for international address.')
+            # Any letters or digits allowed, any length
+            elif not all(c.isalnum() for c in pincode):
+                self.add_error('Pincode', 'International postal code can only contain letters and digits.')
+
+        return cleaned_data
+
 
 class ContactForm(forms.ModelForm):
     class Meta:

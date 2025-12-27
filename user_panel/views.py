@@ -1246,6 +1246,7 @@ def ajax_filter_products(request):
     
     return JsonResponse(response_data, json_dumps_params={'ensure_ascii': False})
     
+@login_required(login_url='email_login')    
 def product_detail(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     reviews = Review.objects.filter(product=product).order_by('-created_at')
@@ -1725,32 +1726,14 @@ def sync_redis_cart(request):
         return JsonResponse({"status": "error"}, status=405)
 
     try:
-        r = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            db=settings.REDIS_DB
-        )
-
-        redis_key = f"cart:{request.user.id}"
-        body = json.loads(request.body or "{}")
-
-        item_key = body.get("key")
-        new_qty = body.get("quantity")
-
-        if item_key and new_qty is not None:
-            existing = r.hget(redis_key, item_key)
-            if existing:
-                data = json.loads(existing)
-                data["quantity"] = int(new_qty)
-                r.hset(redis_key, item_key, json.dumps(data))
-            else:
-                r.hset(redis_key, item_key, json.dumps({
-                    "quantity": int(new_qty),
-                    "product_id": item_key
-                }))
-
-        # ✅ SINGLE SOURCE OF TRUTH
         totals = calculate_cart_totals(request)
+
+        cart_items = Cart.objects.filter(user=request.user).values("id", "quantity")
+
+        quantities = {
+            str(item["id"]): item["quantity"]
+            for item in cart_items
+        }
 
         return JsonResponse({
             "status": "success",
@@ -1764,6 +1747,7 @@ def sync_redis_cart(request):
                 "total": float(totals["final_total"]),
             },
             "cart_count": totals["cart_count"],
+            "quantities": quantities   # ✅ IMPORTANT
         })
 
     except Exception as e:
@@ -1953,59 +1937,51 @@ def cart_count(request):
         })
 
 
+@require_POST
+@login_required(login_url='email_login')
 def apply_coupon(request):
-    if request.method == 'POST':
-        coupon_code = request.POST.get('code')
-        print("Coupon code entered:", coupon_code)
+    code = request.POST.get('code')
 
-        try:
-            coupon = Coupon.objects.get(code=coupon_code, is_active=True)
-            
-            if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
-                messages.error(request, 'Coupon already used.')
-            else:
-                request.session['applied_coupon'] = coupon.code
-                # messages.success(request, f'Coupon {coupon.discount} applied successfully!')
+    try:
+        coupon = Coupon.objects.get(code=code, is_active=True)
 
-        except Coupon.DoesNotExist:
-            messages.error(request, 'Invalid coupon code.')
+        if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
+            return JsonResponse({
+                "status": "error",
+                "message": "Coupon already used"
+            })
 
-    # Stay on the same page
-    return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
+        request.session['applied_coupon'] = coupon.code
+        request.session['applied_coupon_discount'] = float(coupon.discount)
 
+        totals = calculate_cart_totals(request)
 
+        return JsonResponse({
+            "status": "success",
+            "message": "Coupon applied",
+            "totals": totals
+        })
+
+    except Coupon.DoesNotExist:
+        return JsonResponse({
+            "status": "error",
+            "message": "Invalid coupon"
+        })
 @require_POST
 @login_required(login_url='email_login')
 def remove_coupon(request):
-    # Remove applied coupon from session
     request.session.pop('applied_coupon', None)
-    print('Coupon removed successfully.')
+    request.session.pop('applied_coupon_discount', None)
 
-    item_id = request.POST.get('item_id')
-    if item_id:
-        return redirect('view_cart')
-    return redirect('view_cart')
-from decimal import Decimal
+    totals = calculate_cart_totals(request)
 
-def recalculate_cart_total(request):
-    cart_items = Cart.objects.filter(user=request.user)
-    total = Decimal('0.00')
-
-    for item in cart_items:
-        price = item.price or item.product_variant.price or item.product.price
-        total += price * item.quantity
-
-    delivery = max((item.product.delivery_charges or 0) for item in cart_items) if cart_items else 0
-    platform = max((item.product.platform_fee or 0) for item in cart_items) if cart_items else 0
+    return JsonResponse({
+        "status": "success",
+        "message": "Coupon removed",
+        "totals": totals
+    })
 
 
-    premium_discount = Decimal(request.session.get('premium_offer_percentage', 0))
-    premium_discount_amount = (total + delivery + platform) * premium_discount / 100 if premium_discount else Decimal('0.00')
-
-    total_price = total + delivery + platform - premium_discount_amount
-    total_price = max(total_price, Decimal('0.00'))
-
-    return total_price, premium_discount_amount
 
 
 @login_required(login_url='email_login')
@@ -2021,7 +1997,7 @@ def apply_premium_offer(request):
             request.session['premium_offer_percentage'] = float(offer.percentage)
             PremiumOfferUsage.objects.create(user=request.user, offer_code=offer.code)
 
-            total_price, premium_discount = recalculate_cart_total(request)
+            total_price, premium_discount = calculate_cart_totals(request)
 
             return JsonResponse({
                 'status': 'success',
@@ -2044,7 +2020,7 @@ def remove_premium_offer(request):
             request.session.pop('premium_offer_percentage', None)
             request.session.pop(f"premium_offer_used_{code}", None)
 
-            total_price, premium_discount = recalculate_cart_total(request)
+            total_price, premium_discount = calculate_cart_totals(request)
 
             return JsonResponse({
                 'status': 'success',
