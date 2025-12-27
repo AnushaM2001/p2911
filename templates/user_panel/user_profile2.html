@@ -1,0 +1,2127 @@
+{% extends 'layouts/main.html' %}
+{% load static %}
+
+{% block extra_css %}
+<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"> -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" />
+
+{% endblock extra_css %}
+
+
+
+{% block content %}
+
+<div class="container py-4">
+    <div class="row">
+        <!-- Left Column: Profile Card -->
+        <div class="col-lg-4 col-12 mb-3">
+            <!-- Profile Header -->
+      <div class="card user-card" style="cursor: pointer;">
+            <div class="card-body text-md-start">
+              <div class="d-flex flex-column flex-md-row align-items-center">
+                <!-- Profile Image -->
+                <img src="{% if profile.profile_image %}{{ profile.profile_image.url }}{% else %}{% static 'images2/im1.png' %}{% endif %}"
+                    alt="User Image" loading="lazy" decoding="async"
+                    class="rounded-circle profile-img mb-2 mb-md-0"
+                    style="width: 100px; height: 100px;">
+
+                <!-- Name + Edit Layout -->
+                <div class="ms-md-3 mt-2 w-100">
+                  {% with addresses|dictsortreversed:"id"|first as latest_address %}
+                  <!-- Name -->
+                  <h4 class="user-name">{{ latest_address.Name|default:display_name }}</h4>
+
+                  <!-- HR and Edit in one row -->
+                  <div class="d-flex align-items-center flex-wrap">
+                    <hr class="flex-grow-1 mx-auto mx-md-0" style="width: 12rem; max-width: 70%;"/>
+                    <button class="profile-edit-btn"
+                      style="  font-family: Jomolhari, serif; font-size: 16px; color: #6D3F0B; outline: none; border: none; background-color: #FBF0EF;"
+                      onclick="showProfileSection()">Edit</button>
+                  </div>
+
+                  <!-- Mobile Number -->
+                  <p class="user-name text-secondary mt-1">{{ latest_address.MobileNumber|default:"No phone number" }}</p>
+                  {% endwith %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+            <!-- Navigation Cards -->
+             <div class="card user-card mt-3 mb-3">
+                <div class="card-body">
+                    <!-- Orders -->
+                    <div class="d-flex justify-content-between align-items-center user-menu-link" data-section="orders-section" style="cursor: pointer;">
+                        <div class="incard">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <mask id="mask0_144_261" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+                                    <rect width="24" height="24" fill="#D9D9D9"/>
+                                </mask>
+                                <g mask="url(#mask0_144_261)">
+                                    <path d="M3.9997 18V7.09999L2.4497 3.74999C2.33303 3.49999 2.3247 3.24582 2.4247 2.98749C2.5247 2.72915 2.6997 2.54165 2.9497 2.42499C3.1997 2.30832 3.45387 2.29582 3.7122 2.38749C3.97053 2.47915 4.15803 2.64999 4.2747 2.89999L6.1997 7.04999H17.7997L19.7247 2.89999C19.8414 2.64999 20.0289 2.47499 20.2872 2.37499C20.5455 2.27499 20.7997 2.29165 21.0497 2.42499C21.2997 2.54165 21.4747 2.72915 21.5747 2.98749C21.6747 3.24582 21.6664 3.49999 21.5497 3.74999L19.9997 7.09999V18C19.9997 18.55 19.8039 19.0208 19.4122 19.4125C19.0205 19.8042 18.5497 20 17.9997 20H5.9997C5.4497 20 4.97887 19.8042 4.5872 19.4125C4.19553 19.0208 3.9997 18.55 3.9997 18ZM9.9997 13H13.9997C14.283 13 14.5205 12.9042 14.7122 12.7125C14.9039 12.5208 14.9997 12.2833 14.9997 12C14.9997 11.7167 14.9039 11.4792 14.7122 11.2875C14.5205 11.0958 14.283 11 13.9997 11H9.9997C9.71637 11 9.47887 11.0958 9.2872 11.2875C9.09553 11.4792 8.9997 11.7167 8.9997 12C8.9997 12.2833 9.09553 12.5208 9.2872 12.7125C9.47887 12.9042 9.71637 13 9.9997 13ZM5.9997 18H17.9997V9.04999H5.9997V18Z" fill="#981945"/>
+                                </g>
+                                </svg>
+                            <h5 class="incard-name card-title mt-2">Orders</h5>
+                        </div>
+                        <i class="bi bi-chevron-right fs-6 text-dark"></i>
+                    </div>
+
+                    <!-- Wishlist -->
+                    <div class="d-flex justify-content-between align-items-center mt-4 user-menu-link" style="cursor: pointer;" data-section="wishlist-section">
+                      <div class="incard">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <mask id="mask0_144_270" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+                              <rect width="24" height="24" fill="#D9D9D9"/>
+                            </mask>
+                            <g mask="url(#mask0_144_270)">
+                              <path d="M12 21.325C11.7667 21.325 11.5292 21.2834 11.2875 21.2C11.0458 21.1167 10.8333 20.9834 10.65 20.8L8.925 19.225C7.15833 17.6084 5.5625 16.0042 4.1375 14.4125C2.7125 12.8209 2 11.0667 2 9.15002C2 7.58336 2.525 6.27502 3.575 5.22502C4.625 4.17502 5.93333 3.65002 7.5 3.65002C8.38333 3.65002 9.21667 3.83752 10 4.21252C10.7833 4.58752 11.45 5.10002 12 5.75002C12.55 5.10002 13.2167 4.58752 14 4.21252C14.7833 3.83752 15.6167 3.65002 16.5 3.65002C18.0667 3.65002 19.375 4.17502 20.425 5.22502C21.475 6.27502 22 7.58336 22 9.15002C22 11.0667 21.2917 12.825 19.875 14.425C18.4583 16.025 16.85 17.6334 15.05 19.25L13.35 20.8C13.1667 20.9834 12.9542 21.1167 12.7125 21.2C12.4708 21.2834 12.2333 21.325 12 21.325ZM11.05 7.75002C10.5667 7.06669 10.05 6.54586 9.5 6.18752C8.95 5.82919 8.28333 5.65002 7.5 5.65002C6.5 5.65002 5.66667 5.98336 5 6.65002C4.33333 7.31669 4 8.15002 4 9.15002C4 10.0167 4.30833 10.9375 4.925 11.9125C5.54167 12.8875 6.27917 13.8334 7.1375 14.75C7.99583 15.6667 8.87917 16.525 9.7875 17.325C10.6958 18.125 11.4333 18.7834 12 19.3C12.5667 18.7834 13.3042 18.125 14.2125 17.325C15.1208 16.525 16.0042 15.6667 16.8625 14.75C17.7208 13.8334 18.4583 12.8875 19.075 11.9125C19.6917 10.9375 20 10.0167 20 9.15002C20 8.15002 19.6667 7.31669 19 6.65002C18.3333 5.98336 17.5 5.65002 16.5 5.65002C15.7167 5.65002 15.05 5.82919 14.5 6.18752C13.95 6.54586 13.4333 7.06669 12.95 7.75002C12.8333 7.91669 12.6917 8.04169 12.525 8.12502C12.3583 8.20836 12.1833 8.25002 12 8.25002C11.8167 8.25002 11.6417 8.20836 11.475 8.12502C11.3083 8.04169 11.1667 7.91669 11.05 7.75002Z" fill="#981945"/>
+                            </g>
+                          </svg>
+                        <h5 class="incard-name card-title mt-2">Wishlist</h5>
+                      </div>
+                      <i class="bi bi-chevron-right fs-6 text-dark"></i>
+                    </div>
+
+                    <!-- Help Center -->
+                    <div class="d-flex justify-content-between align-items-center mt-4 user-menu-link" data-section="help-section" style="cursor: pointer;">
+                        <div class="incard">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <mask id="mask0_144_279" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+                                  <rect width="24" height="24" fill="#D9D9D9"/>
+                                </mask>
+                                <g mask="url(#mask0_144_279)">
+                                  <path d="M6 18L3.7 20.3C3.38333 20.6167 3.02083 20.6875 2.6125 20.5125C2.20417 20.3375 2 20.025 2 19.575V4C2 3.45 2.19583 2.97917 2.5875 2.5875C2.97917 2.19583 3.45 2 4 2H20C20.55 2 21.0208 2.19583 21.4125 2.5875C21.8042 2.97917 22 3.45 22 4V16C22 16.55 21.8042 17.0208 21.4125 17.4125C21.0208 17.8042 20.55 18 20 18H6ZM5.15 16H20V4H4V17.125L5.15 16ZM7 14H13C13.2833 14 13.5208 13.9042 13.7125 13.7125C13.9042 13.5208 14 13.2833 14 13C14 12.7167 13.9042 12.4792 13.7125 12.2875C13.5208 12.0958 13.2833 12 13 12H7C6.71667 12 6.47917 12.0958 6.2875 12.2875C6.09583 12.4792 6 12.7167 6 13C6 13.2833 6.09583 13.5208 6.2875 13.7125C6.47917 13.9042 6.71667 14 7 14ZM7 11H17C17.2833 11 17.5208 10.9042 17.7125 10.7125C17.9042 10.5208 18 10.2833 18 10C18 9.71667 17.9042 9.47917 17.7125 9.2875C17.5208 9.09583 17.2833 9 17 9H7C6.71667 9 6.47917 9.09583 6.2875 9.2875C6.09583 9.47917 6 9.71667 6 10C6 10.2833 6.09583 10.5208 6.2875 10.7125C6.47917 10.9042 6.71667 11 7 11ZM7 8H17C17.2833 8 17.5208 7.90417 17.7125 7.7125C17.9042 7.52083 18 7.28333 18 7C18 6.71667 17.9042 6.47917 17.7125 6.2875C17.5208 6.09583 17.2833 6 17 6H7C6.71667 6 6.47917 6.09583 6.2875 6.2875C6.09583 6.47917 6 6.71667 6 7C6 7.28333 6.09583 7.52083 6.2875 7.7125C6.47917 7.90417 6.71667 8 7 8Z" fill="#981945"/>
+                                </g>
+                              </svg>
+                            <h5 class="incard-name card-title mt-2">Help Center</h5>
+                        </div>
+                        <i class="bi bi-chevron-right fs-6 text-dark"></i>
+                    </div>
+
+                    <!-- Saved Address -->
+                    <div class="d-flex justify-content-between align-items-center mt-4 user-menu-link" data-section="address-section" style="cursor: pointer;">
+                        <div class="incard">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <mask id="mask0_144_288" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+                                  <rect width="24" height="24" fill="#D9D9D9"/>
+                                </mask>
+                                <g mask="url(#mask0_144_288)">
+                                  <path d="M6 19H9V14C9 13.7167 9.09583 13.4792 9.2875 13.2875C9.47917 13.0958 9.71667 13 10 13H14C14.2833 13 14.5208 13.0958 14.7125 13.2875C14.9042 13.4792 15 13.7167 15 14V19H18V10L12 5.5L6 10V19ZM4 19V10C4 9.68333 4.07083 9.38333 4.2125 9.1C4.35417 8.81667 4.55 8.58333 4.8 8.4L10.8 3.9C11.15 3.63333 11.55 3.5 12 3.5C12.45 3.5 12.85 3.63333 13.2 3.9L19.2 8.4C19.45 8.58333 19.6458 8.81667 19.7875 9.1C19.9292 9.38333 20 9.68333 20 10V19C20 19.55 19.8042 20.0208 19.4125 20.4125C19.0208 20.8042 18.55 21 18 21H14C13.7167 21 13.4792 20.9042 13.2875 20.7125C13.0958 20.5208 13 20.2833 13 20V15H11V20C11 20.2833 10.9042 20.5208 10.7125 20.7125C10.5208 20.9042 10.2833 21 10 21H6C5.45 21 4.97917 20.8042 4.5875 20.4125C4.19583 20.0208 4 19.55 4 19Z" fill="#981945"/>
+                                </g>
+                              </svg>
+                            <h5 class="incard-name card-title mt-2">Saved Address</h5>
+                        </div>
+                        <i class="bi bi-chevron-right fs-6 text-dark"></i>
+                    </div>
+
+                     <!--Terms and Conditions-->
+                    <div class="d-flex justify-content-between align-items-center user-menu-link" data-section="terms-section" style="cursor: pointer;">
+                        <div class="incard mt-4">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M2 18C1.45 18 0.979167 17.8042 0.5875 17.4125C0.195833 17.0208 0 16.55 0 16V2C0 1.45 0.195833 0.979167 0.5875 0.5875C0.979167 0.195833 1.45 0 2 0H12.175C12.4417 0 12.6958 0.05 12.9375 0.15C13.1792 0.25 13.3917 0.391667 13.575 0.575L17.425 4.425C17.6083 4.60833 17.75 4.82083 17.85 5.0625C17.95 5.30417 18 5.55833 18 5.825V16C18 16.55 17.8042 17.0208 17.4125 17.4125C17.0208 17.8042 16.55 18 16 18H2ZM2 16H16V6H13C12.7167 6 12.4792 5.90417 12.2875 5.7125C12.0958 5.52083 12 5.28333 12 5V2H2V16ZM13 14C13.2833 14 13.5208 13.9042 13.7125 13.7125C13.9042 13.5208 14 13.2833 14 13C14 12.7167 13.9042 12.4792 13.7125 12.2875C13.5208 12.0958 13.2833 12 13 12H5C4.71667 12 4.47917 12.0958 4.2875 12.2875C4.09583 12.4792 4 12.7167 4 13C4 13.2833 4.09583 13.5208 4.2875 13.7125C4.47917 13.9042 4.71667 14 5 14H13ZM8 6C8.28333 6 8.52083 5.90417 8.7125 5.7125C8.90417 5.52083 9 5.28333 9 5C9 4.71667 8.90417 4.47917 8.7125 4.2875C8.52083 4.09583 8.28333 4 8 4H5C4.71667 4 4.47917 4.09583 4.2875 4.2875C4.09583 4.47917 4 4.71667 4 5C4 5.28333 4.09583 5.52083 4.2875 5.7125C4.47917 5.90417 4.71667 6 5 6H8ZM13 10C13.2833 10 13.5208 9.90417 13.7125 9.7125C13.9042 9.52083 14 9.28333 14 9C14 8.71667 13.9042 8.47917 13.7125 8.2875C13.5208 8.09583 13.2833 8 13 8H5C4.71667 8 4.47917 8.09583 4.2875 8.2875C4.09583 8.47917 4 8.71667 4 9C4 9.28333 4.09583 9.52083 4.2875 9.7125C4.47917 9.90417 4.71667 10 5 10H13Z" fill="#981945"/>
+                          </svg>
+                            <h5 class="incard-name card-title mt-2">Terms And Conditions</h5>
+                        </div>
+                        <i class="bi bi-chevron-right fs-6 text-dark mt-3"></i>
+                    </div>
+
+                    <!-- Logout -->
+                  <a href="{% url 'logout' %}" class="phone-input mt-4 text-decoration-none"> 
+                        <div class="phone-number">Logout</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+
+        
+
+<!------------------------------------------------- Right Column: Content Sections ---------------------------------------------------------- -->
+
+
+        <div class="col-lg-8 col-12 mt-3">
+            <!-- Profile Details Section (Default) -->
+            <div id="profile-section" class="content-section">
+              <form method="post" enctype="multipart/form-data" id="profileForm">
+                    {% csrf_token %}
+                <div class="frame">
+                    <div class="profile-image position-relative">
+                      <img src="{% if profile.profile_image %}{{ profile.profile_image.url }}{% else %}{% static 'images2/im1.png' %}{% endif %}" 
+                        alt="User Image" class="rounded-circle profile-img" loading="lazy" decoding="async" id="preview-image">
+                      <div class="edit-icon-container position-absolute" style="bottom: 0; right: 0;">
+                        <label for="upload-image" style="cursor: pointer;">
+                          <img class="edit" src="{% static 'images2/edit.svg' %}" loading="lazy" decoding="async" alt="Edit" style="width: 24px; height: 24px;">
+                      </label>
+                      <input type="file" id="upload-image" name="profile_image" accept="image/*" style="display: none;">
+                      </div>
+                    </div>
+            
+                    {% if addresses %}
+                      {% with addresses|dictsortreversed:"id"|first as latest_address %}
+                      <div class="card input-card">
+                      <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Name</label>
+                      <input type="text" value="{{ latest_address.Name|default:user.username }}" style="outline: none;border: none;" class="form-control" readonly>
+                      </div>
+
+                      <div class="card input-card d-flex align-items-center justify-content-between">
+                      <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Phone Number</label>
+                      <div class="d-flex align-items-center justify-content-between w-100">
+                        <input type="text" value="{{ latest_address.MobileNumber|default:'No phone number' }}" style="outline: none;border: none;" class="form-control ms-2 me-2" readonly>
+                        <button type="button" class="me-2 mb-1" style="font-size: 16px;color: #6D3F0B;outline: none;border: none;background-color: white;" onclick="showPopup('updatePhonePopup')">Update</button>
+                      </div>
+                      </div>
+                      {% endwith %}
+                    {% else %}
+                      <p class="text-muted ms-2">No address added yet.</p>
+                    {% endif %}
+                    
+                    <div class="card input-card">
+                      <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Email</label>
+                      <input type="email" value="{{ user.email }}" style="outline: none;border: none;" class="form-control" readonly>
+                    </div>
+                    
+                     <div class="card input-card d-flex align-items-center justify-content-between">
+                          <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Date of Birth</label>
+                          <div class="d-flex align-items-center justify-content-between w-100">
+                              <input type="text" id="displayDob" value="{{ form.dob.value|date:'d-m-Y' }}" readonly 
+                                    style="border:none;font-size: 16px; outline: none; flex-grow: 1; background: none;">
+                              <input type="hidden" id="id_dob" name="dob" value="{{ form.dob.value|date:'Y-m-d' }}">
+
+                              <button type="button" class="me-2 mb-1" style="font-size: 16px;color: #6D3F0B;outline: none;border: none;background-color: white;" 
+                                      onclick="showPopup('editDobPopup')">Edit</button>
+                          </div>
+                      </div>
+          
+                      <div class="card input-card">
+                        <label for="gender" style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Gender</label>
+                        <div class="d-flex align-items-center justify-content-between p-2 flex-wrap">
+                           {{ form.gender }}
+                        </div>
+                      </div>
+            
+                    <button class="save-btn" type="submit">Save</button>
+                </div>
+              </form>
+            </div>
+            
+            <!------------------------------------- Orders Section --------------------------->
+                <div id="orders-section" class="content-section" style="display: none;">
+  <div class="section-body">
+    <h3 class="section-heading mb-4">Your Orders</h3>
+
+    <!-- Search + Filter -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <div class="input-group" style="max-width: 70%;">
+        <span class="input-group-text bg-white border-end-0" style="background-color: #FBF0EF;">
+          <img src="{% static 'images2/Search.svg' %}" alt="Search" loading="lazy" decoding="async" style="width: 20px; height: 20px;">
+        </span>
+        <input type="search" class="form-control border-start-0" placeholder="Search your order here" style="background-color: #FBF0EF;">
+      </div>
+      <img src="{% static 'images2/tune.svg' %}" alt="Filter" loading="lazy" decoding="async" onclick="showPopup('filterPopup')" class="ms-2" style="cursor: pointer; width: 24px; height: 24px;">
+    </div>
+
+    <!-- Order Loop -->
+    {% for order in orders %}
+    <div class="card p-3 mb-3 shadow-sm" onclick="showSection('expectDeliverySection-{{ order.shiprocket_order_id }}')" style="cursor: pointer;">
+      <div class="d-flex align-items-start">
+        <!-- Product Image -->
+        <img src="{{ order.items.first.product.image1.url }}" loading="lazy" decoding="async" alt="Product Image" class="rounded" style="width: 80px; height: 80px; object-fit: cover;">
+        <!-- Details -->
+        <div class="ms-3 w-100">
+          <small>#{{ order.shiprocket_order_id }}</small>
+          <h5>{{ order.id }}</h5>
+                    {% if order.status == 'awb_assigned' or order.status == 'Completed' %}
+                     
+          <!-- Not Yet Reviewed -->  
+<a href="#"
+   class="btn btn-outline-primary btn-sm"
+   style="float: right;">
+   Give Rating
+</a>
+
+          {% endif  %}
+          <!-- Status Heading -->
+          {% if order.shiprocket_tracking_info %}
+{% if order.shiprocket_tracking_status == 'awb_assigned' or order.shiprocket_tracking_status == 'Pickup Generated' %}
+{% with order.shiprocket_tracking_info.etd|slice:":10" as etd_date %}
+  <h6 class="text-dark fw-semibold mb-1">
+    Expected Delivery on {{ etd_date }}
+  </h6>
+{% endwith %}
+            {% elif order.shiprocket_tracking_status == 'Out for Delivery' or order.shiprocket_tracking_status == 'REACHED AT DESTINATION HUB' %}
+
+              <h6 class="text-success fw-semibold mb-1">Out for Delivery</h6>
+            {% elif order.shiprocket_tracking_status == 'Delivered' %}
+              <h6 class="text-muted fw-semibold mb-1">Delivered on {{ order.shiprocket_tracking_status_updated_at }}</h6>
+            {% endif %}
+
+            <!-- Product Name & Variant -->
+ {% with item=order.items.first %}
+  {% if item %}
+    <p class="mb-1 text-secondary small">
+      {{ item.product.name }},
+      {% if item.product_variant and item.product_variant.size %}
+        Size: {{ item.product_variant.size }}
+      {% elif item.gift_set %}
+        {% if item.gift_set.set_name %}
+          Set: {{ item.gift_set.set_name }}
+        {% endif %}
+
+      {% endif %}
+    </p>
+  {% endif %}
+{% endwith %}
+
+
+
+            <!-- Rating -->
+            {% for pid, data in avg_rating_dict.items %}
+              {% if pid == order.items.first.product.id %}
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <div class="stars-outer position-relative" style="font-size: 14px;">
+                  <div class="stars-inner position-absolute top-0 start-0 overflow-hidden" style="width: {{ data.percentage }}%;">★★★★★</div>
+                  ★★★★★
+                </div>
+                
+                <span class="text-muted small">({{ data.rating }} / 5)</span>
+              </div>
+              {% endif %}
+            {% endfor %}
+
+            <!-- Badge -->
+            <span class="badge bg-success mt-1">Status: {{ order.shiprocket_tracking_status }}</span>
+          {% endif %}
+        </div>
+        <i class="bi bi-chevron-right fs-6 text-dark mt-2"></i>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+            <!--------------------------------- order popup -------------------------------------->
+            <div id="filterPopup" class="popup" style="display: none;">
+              <div class="popup-content" style="position: relative; width: 80%; max-width: 400px; ">
+              <span class="close" onclick="closePopup('filterPopup')" style="color: white; position: absolute; top: 0; right: -30px; font-size: 28px; cursor: pointer;">&times;</span>
+              <h2 class="mb-2 text-center" style="font-family: Jomolhari, serif;">Filter</h2>
+              <h5 class="m-4" style="font-family: Jomolhari, serif;">Order Status</h5>
+
+              <input class="ms-4 mb-4 order-input" type="checkbox" id="onTheWay" name="orderStatus" value="On the Way">
+              <label for="onTheWay" class="filter-label">On the Way</label><br>
+
+              <input class="ms-4 mb-4 order-input" type="checkbox" id="delivered" name="orderStatus" value="Delivered">
+              <label for="delivered" class="filter-label">Delivered</label><br>
+
+              <input class="ms-4 mb-4 order-input" type="checkbox" id="cancelled" name="orderStatus" value="Cancelled">
+              <label for="cancelled" class="filter-label">Cancelled</label><br>
+
+              <input class="ms-4 mb-4 order-input" type="checkbox" id="returned" name="orderStatus" value="Returned">
+              <label for="returned" class="filter-label">Returned</label><br>
+
+              <h5 class="m-4" style="font-family: Jomolhari, serif;">Order Time</h5>
+
+              <input class="ms-4 mb-4 order-input" type="checkbox" id="last15days" name="orderTime" value="Last 15 days">
+              <label for="last15days" class="filter-label">Last 15 days</label><br>
+
+              <input class="ms-4 mb-4 order-input" type="checkbox" id="last30days" name="orderTime" value="Last 30 days">
+              <label for="last30days" class="filter-label">Last 30 days</label><br>
+
+              <input class="ms-4 order-input" type="checkbox" id="2024" name="orderTime" value="2024">
+              <label for="2024" class="filter-label">2024</label><br>
+              </div>
+            </div>
+
+            <!--------------------------------- order expected delivery section  -------------------------------------->
+               {% for order in orders %}
+
+            <div id="expectDeliverySection-{{ order.shiprocket_order_id}}" class="content-section" style="display: none;" >
+              <div class="section-body">
+                <h3 class="section-heading"> <i class="bi bi-arrow-left me-2" style="cursor: pointer;" onclick="showSection('orders-section')"></i> Order Details</h3>
+                <div class="expect-deliver-card d-flex flex-row" >
+                  <h4 class="ms-2 mt-1" style="color: #121111;font-family: Jomolhari, serif;font-size: 16px;" >Order ID</h4>
+                  <p class="ms-2 " style="color: #4D4D4D;font-family: Jomolhari, serif;font-size: 16px;margin-top: 10px;" >#{{ order.shiprocket_order_id }}</p>
+                </div>
+                
+                <div class="row">
+                  <!-- Product Details -->
+                   {% for item in order.items.all %}
+                  <div class="col-md-6 col-12 d-flex">
+                    <img src="{{ item.product.image1.url }}" loading="lazy" decoding="async" alt="Item Image" class="img-fluid expect-deliver-image me-3">
+                    <div class="d-flex flex-column">
+                      <h5 class="card-title mt-2" style="color: #0c0c0c; font-family: Jomolhari, serif; font-size: 18px;">{{ item.product.name }}</h5>
+                      <p class="card-text mb-0 mt-2" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 12px;">Brand: {{ item.product.subcategory }}</p>
+                      <div class="d-flex flex-row mt-2">
+{% if item.product_variant.size %}
+      <p class="card-text mb-0 me-2" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 14px;">
+        Size: {{ item.product_variant.size }}
+      </p>
+      {% else %}
+        {% if item.gift_set.set_name %}
+        <p class="card-text mb-0 me-2" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 14px;">
+        Set : {{ item.gift_set.set_name }}
+      </p>
+      {% endif %}
+      
+      {% endif %}
+                              <p class="card-text mb-0" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 14px; background-color: white;">Qty:{{ item.quantity }}</p>
+                      </div>
+{% if item.product_variant.price %}
+      <p class="card-text mb-0 mt-2" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 14px;">
+        Price:{{ item.product_variant.price }}
+      </p>
+      {% else %}
+        {% if item.gift_set.price %}
+        <p class="card-text mb-0 mt-2" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 14px;">
+        Price: {{ item.gift_set.price }},  {% if item.flavour_names %}
+      {{ item.flavour_names }}
+    {% endif %}
+
+      </p>
+      {% endif %}
+      
+      {% endif %}                    </div>
+                  </div>
+                  {% endfor %}
+                  
+
+                  <!-- Shipping Details -->
+                  <div class="col-md-6 col-12">
+                    {% if default_address %}
+
+                    <div class="shipping-card">
+                      <h5 class="card-title " style="color: #0c0c0c; font-family: Jomolhari, serif; font-size: 20px;">Shipping Details</h5>
+                      <div class="d-flex ">
+                        <p class="card-text mb-0 mt-2 me-2" style="color: #0f0f0f; font-family: Jomolhari, serif; font-size: 18px;">{{ default_address.Name|default:user.username }}</p> <span class="mt-2">|</span>
+                        <p class="card-text mb-0 mt-2 ms-2" style="color: #0f0e0e; font-family: Jomolhari, serif; font-size: 18px;">{{ default_address.MobileNumber|default:"No phone number" }}</p>
+                      </div>
+                      <p class="card-text mb-0 " style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">{{ default_address.location }} - {{ default_address.Pincode }}</p>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!--------------------------------- Order Status  -------------------------------------->
+
+               <div class="row">
+  <div class="status-card col-md-5 me-4 col-lg-4 col-12 d-flex flex-column">
+  <h5 class="card-title mb-3" style="color: #0c0c0c; font-family: Jomolhari, serif; font-size: 20px;">Order Status</h5>
+
+  <!-- Timeline -->
+  <div class="order-timeline position-relative">
+    <div class="timeline-line"></div>
+
+    <!-- Step 1: Order Confirmed -->
+    <div class="timeline-step {% if order.shiprocket_tracking_status in 'Order Confirmed,AWB Assigned,Shipped,Pickup Generated,Out for Pickup,REACHED AT DESTINATION HUB, In Transit,Delivered,Pickup Exception' %}active{% endif %}">
+      <div class="timeline-icon"><i class="bi bi-check2"></i></div>
+      <span>Order Confirmed<br><small>{{ order.created_at|date:"F j, Y" }}</small></span>
+    </div>
+
+    <!-- Step 2: Processed by Seller -->
+    <div class="timeline-step {% if order.shiprocket_tracking_status in 'Shipped,Pickup Generated,Out for Pickup,Delivered,REACHED AT DESTINATION HUB, In Transit,Pickup Exception' %}active{% endif %}">
+      <div class="timeline-icon"><i class="bi bi-box"></i></div>
+      <span>Pickup is Generated<br><small>{{ order.shiprocket_tracking_status_updated_at|date:"F j, Y" }}</small><p>{{ order.shiprocket_tracking_status.location}}</p></span>
+    </div>
+
+    <!-- Step 3: Shipped -->
+    <div class="timeline-step {% if order.shiprocket_tracking_status in 'Shipped,Out for Pickup,REACHED AT DESTINATION HUB, In Transit,Delivered' %}active{% endif %}">
+      <div class="timeline-icon"><i class="bi bi-truck"></i></div>
+      <span>Shipped<br><small>{{ order.shiprocket_tracking_status_updated_at|date:"F j, Y" }}</small></span>
+    </div>
+
+    <!-- Step 4: Out for Delivery / Delivered -->
+    <div class="timeline-step {% if order.shiprocket_tracking_status == 'Delivered' %}active{% endif %}">
+      <div class="timeline-icon"><i class="bi bi-bag-check"></i></div>
+      <span>
+        {% if order.shiprocket_tracking_status == 'Delivered' and order.shiprocket_tracking_status_updated_at %}
+          Delivered on {{ order.shiprocket_tracking_status_updated_at|date:"F j, Y" }}
+        {% elif order.shiprocket_tracking_status_updated_at %}
+          Status updated on {{ order.shiprocket_tracking_status_updated_at|date:"F j, Y" }}
+        {% elif order.shiprocket_tracking_info.etd %}
+          {% with order.shiprocket_tracking_info.etd|slice:":10" as etd_date %}
+            Expected Delivery on {{ etd_date }}
+          {% endwith %}
+        {% elif order.shiprocket_tracking_info.edd %}
+          (Est.) {{ order.shiprocket_tracking_info.edd|date:"F j, Y" }}
+        {% else %}
+          --
+        {% endif %}
+      </span>
+    </div>
+
+    <!-- Pickup Exception -->
+    {% if order.shiprocket_tracking_status == "Pickup Exception" %}
+    <div class="timeline-step active">
+      <div class="timeline-icon bg-danger text-white"><i class="bi bi-x-circle"></i></div>
+      <span class="text-danger">Cancelled</span>
+      <p class="text-muted small">Status: {{ order.shiprocket_tracking_status }}</p>
+    </div>
+    {% endif %}
+{% if order.tracking_url %}
+            <p><a href="{{ order.tracking_url }}" target="_blank">Track your order</a></p>
+            <p>{{ order.shiprocket_tracking_info.track_url.status }}</p>
+        {% else %}
+            <p>No tracking URL available.</p>
+        {% endif %}
+  </div>
+
+  <!-- ⬇ Tracking History Section -->
+   <!-- {% if order.shipment_activities %}
+  <div class="card mt-4 p-3 shadow-sm">
+    <h6 class="mb-3">Tracking History</h6>
+    <div class="tracking-history position-relative">
+      {% for act in order.shipment_activities %}
+        <div class="tracking-step mb-3">
+          <div class="tracking-dot"></div>
+          <div class="tracking-info ms-3">
+            <div><strong>Activity:</strong> {{ act.activity }}</div>
+            <div><strong>Location:</strong> {{ act.location }}</div>
+            <div class="text-muted small">
+              {{ act.date|date:"d M Y" }} at {{ act.date|time:"h:i A" }}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}   -->
+</div>
+
+  <style>
+.timeline-line {
+  position: absolute;
+  left: 18px;
+  top: 15px;
+  bottom: 15px;
+  width: 2px;
+  background-color: #dee2e6;
+}
+
+.timeline-step {
+  position: relative;
+  margin-bottom: 25px;
+  padding-left: 40px;
+}
+
+.timeline-icon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  background-color: #dee2e6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-step.active .timeline-icon {
+  background-color: maroon;
+  color: white;
+}
+
+.tracking-history {
+  border-left: 2px solid maroon;
+  padding-left: 20px;
+}
+
+.tracking-step {
+  position: relative;
+  padding-left: 15px;
+}
+
+.tracking-dot {
+  position: absolute;
+  left: -8px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  background-color: #0d6efd;
+  border-radius: 50%;
+}
+
+  .stars-outer {
+    position: relative;
+    display: inline-block;
+    font-size: 22px;
+    color: #ccc;
+    
+  }
+
+  .stars-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    color: #AF9164;
+  }
+
+</style>
+
+
+                  <!--------------------------------- Order Details  -------------------------------------->
+
+                  <div class="order-details-card col-md-6  col-12 d-flex flex-column">
+                    <h5 class="card-title mt-3" style="color: #0c0c0c; font-family: Jomolhari, serif; font-size: 20px;">Order Details</h5>
+                                                     {% for item in order.items.all %}
+
+                    <div class="d-flex flex-row justify-content-between mt-3  ">
+
+                      <p class="card-text mb-0" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">Price ({{ item.quantity }})</p>
+                      <p class="card-text mb-0" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">₹{{ item.price }}
+</p>
+                    </div>
+                    {% endfor %}
+
+                    <div class="d-flex flex-row justify-content-between mt-3 ">
+                      <p class="card-text mb-0" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">Delivery Charge</p>
+                      <p class="card-text mb-0" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">₹{{ order.items.first.product.delivery_charges}}</p>
+                    </div>
+                    
+                    <div class="d-flex flex-row justify-content-between mt-3 ">
+                      <p class="card-text mb-0" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">Platform Fee</p>
+                      <p class="card-text mb-0" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">₹{{ order.items.first.product.platform_fee | default:"0.0" }}</p>
+                    </div>
+                    {% if order.items.first.discount_amount %}
+
+                    <div class="d-flex flex-row justify-content-between mt-3 ">
+                      <p class="card-text mb-0" style="color: #128807; font-family: Jomolhari, serif; font-size: 16px;">Coupon Applied</p>
+                      <p class="card-text mb-0" style="color: #128807; font-family: Jomolhari, serif; font-size: 16px;">-₹{{ order.items.first.discount_amount }}</p>
+                    </div>
+                    {% endif %}
+                    {% if order.items.first.gift_wrap %}
+                     <div class="d-flex flex-row justify-content-between mt-3 ">
+                      <p class="card-text mb-0" style="color: #128807; font-family: Jomolhari, serif; font-size: 16px;">Gift Wrap</p>
+                      <p class="card-text mb-0" style="color: #128807; font-family: Jomolhari, serif; font-size: 16px;">+₹150</p>
+                    </div>
+                    {% endif %}
+                    <hr>
+
+                    <div class="d-flex flex-row justify-content-between  ">
+                      <p class="card-text mb-0" style="color: #101010; font-family: Jomolhari, serif; font-size: 20px;">Amount Payable </p>
+                      <p class="card-text mb-0" style="color: #0f0e0e; font-family: Jomolhari, serif; font-size: 18px;">₹{{ order.total_price }}</p>
+                    </div>
+
+                  </div>
+                    
+  {% if order.status == 'awb_assigned' or order.status == 'Completed' %}
+  <div class="row mt-4">
+    {% for item in order.items.all %}
+      <div class="col-md-6 col-12 d-flex flex-column mt-3">
+        <div class="d-flex align-items-center mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="20" viewBox="0 0 18 20" fill="none">
+            <path d="M8.25 17.5692V10.4307L2 6.81147V13.777C2 13.8281 2.01283 13.8762 2.0385 13.9212C2.06417 13.9661 2.10258 14.0045 2.15375 14.0365L8.25 17.5692ZM9.75 17.5692L15.8462 14.0365C15.8974 14.0045 15.9358 13.9661 15.9615 13.9212C15.9872 13.8762 16 13.8281 16 13.777V6.81147L9.75 10.4307V17.5692ZM8.09625 19.2057L1.404 15.3537C1.11933 15.1897 0.8975 14.9706 0.7385 14.6962C0.5795 14.4217 0.5 14.1204 0.5 13.7922V6.20772C0.5 5.87956 0.5795 5.57822 0.7385 5.30372C0.8975 5.02939 1.11933 4.81022 1.404 4.64622L8.09625 0.794225C8.38075 0.630058 8.682 0.547974 9 0.547974C9.318 0.547974 9.61925 0.630058 9.90375 0.794225L16.596 4.64622C16.8807 4.81022 17.1025 5.02939 17.2615 5.30372C17.4205 5.57822 17.5 5.87956 17.5 6.20772V13.7922C17.5 14.1204 17.4205 14.4217 17.2615 14.6962C17.1025 14.9706 16.8807 15.1897 16.596 15.3537L9.90375 19.2057C9.61925 19.3699 9.318 19.452 9 19.452C8.682 19.452 8.38075 19.3699 8.09625 19.2057ZM12.8558 6.89997L15.175 5.56922L9.15375 2.08647C9.10258 2.05447 9.05133 2.03847 9 2.03847C8.94867 2.03847 8.89742 2.05447 8.84625 2.08647L6.675 3.33647L12.8558 6.89997ZM9 9.13847L11.325 7.79222L5.15 4.22297L2.825 5.56922L9 9.13847Z" fill="#1C1B1F"/>
+          </svg>
+          <p class="ms-2 mb-0" style="color: #161616; font-family: Jomolhari, serif; font-size: 18px;">Rating</p>
+        </div>
+
+        {% if item.product.id not in reviewed_product_ids %}
+          <!-- Not Yet Reviewed -->
+          <div class="card border-primary">
+            <div class="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <a href="{% url 'write_review' item.product.id %}" style="text-decoration: none;"><strong>{{ item.product.name }}</strong><br>
+                <small style="color: maroon; font-size: large;">★★★★★</small></a>
+              </div>
+<a href="#"
+   class="btn btn-outline-primary btn-sm"
+   style="float: right;"
+   data-bs-toggle="modal"
+   data-bs-target="#reviewModal"
+   data-product-id="{{ item.product.id }}">
+   Give Rating
+</a>            </div>
+          </div>
+        {% else %}
+          <!-- Already Reviewed -->
+          <div class="card border-success">
+            <div class="card-body d-flex justify-content-between align-items-center">
+              <div>
+                <strong>{{ item.product.name }}</strong><br>
+                <small class="text-success">Already Reviewed</small>
+              </div>
+              <i class="bi bi-check-circle-fill text-success fs-5"></i>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+                    {% if order.shiprocket_tracking_status == 'Delivered' %}
+
+                      <div class="col-md-6 col-12 d-flex flex-column mt-3">
+
+                        <div class="d-flex flex-row">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="25" height="24" viewBox="0 0 25 24" fill="none">
+                            <mask id="mask0_176_1125" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="25" height="24">
+                              <rect x="0.5" width="24" height="24" fill="#D9D9D9"/>
+                            </mask>
+                            <g mask="url(#mask0_176_1125)">
+                              <path d="M5.80775 20.5C5.30258 20.5 4.875 20.325 4.525 19.975C4.175 19.625 4 19.1974 4 18.6923V5.30775C4 4.80258 4.175 4.375 4.525 4.025C4.875 3.675 5.30258 3.5 5.80775 3.5H19.1923C19.6974 3.5 20.125 3.675 20.475 4.025C20.825 4.375 21 4.80258 21 5.30775V18.6923C21 19.1974 20.825 19.625 20.475 19.975C20.125 20.325 19.6974 20.5 19.1923 20.5H5.80775ZM5.80775 19H19.1923C19.2692 19 19.3398 18.9679 19.4038 18.9038C19.4679 18.8398 19.5 18.7692 19.5 18.6923V5.30775C19.5 5.23075 19.4679 5.16025 19.4038 5.09625C19.3398 5.03208 19.2692 5 19.1923 5H5.80775C5.73075 5 5.66025 5.03208 5.59625 5.09625C5.53208 5.16025 5.5 5.23075 5.5 5.30775V18.6923C5.5 18.7692 5.53208 18.8398 5.59625 18.9038C5.66025 18.9679 5.73075 19 5.80775 19ZM8.5 16.75H13.5C13.7128 16.75 13.891 16.6782 14.0345 16.5345C14.1782 16.391 14.25 16.2128 14.25 16C14.25 15.7872 14.1782 15.609 14.0345 15.4655C13.891 15.3218 13.7128 15.25 13.5 15.25H8.5C8.28717 15.25 8.109 15.3218 7.9655 15.4655C7.82183 15.609 7.75 15.7872 7.75 16C7.75 16.2128 7.82183 16.391 7.9655 16.5345C8.109 16.6782 8.28717 16.75 8.5 16.75ZM8.5 12.75H16.5C16.7128 12.75 16.891 12.6782 17.0345 12.5345C17.1782 12.391 17.25 12.2128 17.25 12C17.25 11.7872 17.1782 11.609 17.0345 11.4655C16.891 11.3218 16.7128 11.25 16.5 11.25H8.5C8.28717 11.25 8.109 11.3218 7.9655 11.4655C7.82183 11.609 7.75 11.7872 7.75 12C7.75 12.2128 7.82183 12.391 7.9655 12.5345C8.109 12.6782 8.28717 12.75 8.5 12.75ZM8.5 8.75H16.5C16.7128 8.75 16.891 8.67817 17.0345 8.5345C17.1782 8.391 17.25 8.21283 17.25 8C17.25 7.78717 17.1782 7.609 17.0345 7.4655C16.891 7.32183 16.7128 7.25 16.5 7.25H8.5C8.28717 7.25 8.109 7.32183 7.9655 7.4655C7.82183 7.609 7.75 7.78717 7.75 8C7.75 8.21283 7.82183 8.391 7.9655 8.5345C8.109 8.67817 8.28717 8.75 8.5 8.75Z" fill="#1C1B1F"/>
+                            </g>
+                          </svg>
+
+                          <p class="card-text mb-0 ms-2" style="color: #161616; font-family: Jomolhari, serif; font-size: 18px;">Invoice</p> 
+                        </div>
+
+                          <div class="d-flex flex-column mt-2">
+                                      <a href="{% url 'download_invoice' order.id %}" target="_blank" class="btn order-btn">Download Invoice</a>
+                          </div>
+                        </div>
+                                                  {% endif %}
+
+  </div>
+{% endif %}
+
+                      </div>
+
+                </div>
+              </div>
+              {% endfor %}
+
+           
+
+<!------------------------------------------------------ Wishlist Section ------------------------------------------------------------------------>
+           <!-- Wishlist Section -->
+<div id="wishlist-section" class="content-section" style="display: none;">
+  <div class="section-body container">
+    <h4 class="section-heading text-center fw-bold mb-4" style="font-family: 'Jomolhari', serif;">
+      ❤️ Your Wishlist
+    </h4>
+
+    <div class="wishlist-items row g-4">
+      {% for item in wishlist %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="card wishlist-card h-100 shadow-sm border-0 rounded-3 position-relative" 
+             style="background-color: #fff;" data-product-id="{{ item.product.id }}">
+
+          <!-- Wishlist Image -->
+	  {% if item.product.image1 %}
+          <div class="wishlist-image-container position-relative">
+            <img src="{{ item.product.image1.url }}" loading="lazy" decoding="async" alt="Item Image" class="wishlist-image img-fluid rounded-top">
+          </div>
+	  {% endif %}
+
+          <!-- Product Info -->
+          <div class="card-body text-center">
+            <h6 class="card-title mb-1 text-truncate" style="color:#333; font-family: Jomolhari, serif;">
+              {{ item.product.name|truncatechars:25 }}
+            </h6>
+           {% if item.variant_price %}
+<div class="d-flex align-items-center gap-2 mb-1">
+    <span class="fw-bold" style="color:#DC3545; font-size:15px;">
+        ₹{{ item.variant_price }}
+    </span>
+
+    {% if item.variant_original_price %}
+        <span class="text-decoration-line-through text-muted" style="font-size:13px;">
+            ₹{{ item.variant_original_price }}
+        </span>
+    {% endif %}
+</div>
+{% endif %}
+
+
+
+            <!-- Remove Button -->
+            <span class="remove-wishlist text-danger small d-inline-flex align-items-center gap-1" 
+                  style="cursor:pointer;">
+              <i class="bi bi-trash3"></i> Remove
+            </span>
+          </div>
+
+        </div>
+      </div>
+      {% empty %}
+      <div class="text-center py-5">
+        <img src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png" loading="lazy" decoding="async" alt="Empty Wishlist"
+             style="width:120px; opacity:0.7;">
+        <h6 class="mt-3 text-muted">Your wishlist is empty</h6>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<style>
+/* Wishlist Styles */
+.wishlist-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.wishlist-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.wishlist-image-container {
+  background: #f8f8f8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
+.wishlist-image {
+  max-height: 180px;
+  object-fit: contain;
+}
+
+.remove-wishlist:hover {
+  text-decoration: underline;
+}
+</style>
+
+<!-------------------------------------------- Help Center Section ------------------------------------------------------------------------------->
+            
+              <div id="help-section" class="content-section" style="display: none;">
+                <div class="section-body">
+                   <h3 class="section-heading">Help Center</h3>
+                  <div class="card d-flex flex-column" style="background-color: #FBF0EF;border-radius: 10px;">
+
+                   <div class="d-flex  justify-content-between mt-3 user-menu-link" data-section="accountProfile" style="cursor: pointer;" >
+                    <h3 class="help-heading ms-3 "> Account and Profile</h3>
+                    <i class="bi bi-chevron-right me-3" style="color: #090909; font-size: 18px;"></i>
+                   
+                   </div>
+                  <hr>
+                   <div class="d-flex  justify-content-between mt-2 user-menu-link" data-section="generalInfo" style="cursor: pointer;">
+                    <h3 class="help-heading ms-3 "> General Information</h3>
+                    <i class="bi bi-chevron-right me-3" style="color: #090909; font-size: 18px;"></i>
+                    
+                   </div>
+                  <hr>
+
+                  <div class="d-flex justify-content-between mt-2 user-menu-link" data-section="payIssues" style="cursor: pointer;">
+                    <h3 class="help-heading ms-3 ">Payment and Fare Issues</h3>
+                    <i class="bi bi-chevron-right me-3" style="color: #090909; font-size: 18px;"></i>
+                   </div>
+                  <hr>
+
+                  <div class="d-flex  justify-content-between mt-2 user-menu-link" data-section="safetySecurity" style="cursor: pointer;">
+                    <h3 class="help-heading ms-3 "> Saftey and Security </h3>
+                    <i class="bi bi-chevron-right me-3" style="color: #090909; font-size: 18px;"></i>
+                   </div>
+                     <hr>
+
+                  <div class="d-flex  justify-content-between mt-2  user-menu-link" data-section="rideBookIssues" style="cursor: pointer;">
+                    <h3 class="help-heading ms-3 "> Booking Issues </h3>
+                    <i class="bi bi-chevron-right me-3" style="color: #090909; font-size: 18px;"></i>   
+                   </div>
+              <hr>     
+
+              <h3 class="help-heading ms-3 mb-4">Recent Queries</h3>
+
+              <div class="card recent-queries-card">
+              {% for query in help_queries %}
+                <div class="chat-list-item"
+                    data-id="{{ query.id }}"
+                    data-subject="{{ query.subject }}">
+                    
+                  <div class="chat-avatar">
+                    {{ query.subject|slice:":1"|upper }}
+                  </div>
+
+                  <div class="chat-list-center">
+                    <div class="chat-title-row">
+                      <strong class="chat-subject">{{ query.subject }}</strong>
+
+                      <!-- {% if query.status == 'Solved' %}
+                        <span class="status solved">Solved</span>
+                      {% else %}
+                        <span class="status pending">Pending</span>
+                      {% endif %} -->
+                    </div>
+
+                    <p class="chat-preview">
+                      {% if query.messages.all|length %}
+                        {{ query.messages.last.text|truncatewords:10 }}
+                      {% else %}
+                        No messages yet
+                      {% endif %}
+                    </p>
+                  </div>
+
+                  <div class="chat-arrow">›</div>
+                </div>
+              {% endfor %}
+              </div>
+                  
+                      </div>
+
+                              </div>
+                            </div>
+
+
+<div id="queryChatContainer" class="content-section" style="display:none;">
+  <div class="chat-header">
+    <button class="chat-back-btn" onclick="closeChat()">←</button>
+    <span id="chatSubject"></span>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    {% for query in help_queries %}
+      <div id="messages-{{ query.id }}" class="d-none">
+        {% for msg in query.messages.all %}
+          <div class="chat-bubble {% if msg.sender == 'User' %}user{% else %}admin{% endif %}">
+            {{ msg.text }}
+            <div class="time">{{ msg.created_at|date:"H:i" }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="chat-input">
+    <input type="text" id="chatInput">
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+
+
+<style>
+  html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+</style>
+    
+<style>
+
+  .chat-back-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+
+  .recent-queries-card {
+  background: #FBF0EF;
+  border-radius: 14px;
+  padding: 6px;
+}
+
+/* LIST ITEM */
+.chat-list-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.chat-list-item:not(:last-child) {
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.chat-list-item:hover {
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* AVATAR */
+.chat-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #E97626, #6D3F0B);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* CENTER CONTENT */
+.chat-list-center {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-subject {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+/* STATUS */
+.status {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.status.solved {
+  background: #E6F7ED;
+  color: #2BA24C;
+}
+
+.status.pending {
+  background: #FFF3E6;
+  color: #E97626;
+}
+
+/* PREVIEW TEXT */
+.chat-preview {
+  font-size: 13px;
+  color: #666;
+  margin: 4px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* RIGHT ARROW */
+.chat-arrow {
+  font-size: 20px;
+  color: #bbb;
+}
+
+/* MOBILE */
+@media (max-width: 576px) {
+  .chat-subject {
+    max-width: 100%;
+  }
+}
+
+  </style>
+
+{# ================= STYLES ================= #}
+<style>
+.chat-list-item { display:flex; align-items:center; padding:10px; cursor:pointer; gap:12px; }
+.chat-list-item:hover { background:#f2f2f2; }
+.chat-avatar { width:44px;height:44px;border-radius:50%;background:#d1d1d1;display:flex;align-items:center;justify-content:center;font-weight:bold;}
+.chat-list-center { flex:1; }
+.chat-name { margin:0; font-size:16px; font-weight:600; }
+.chat-preview { margin:0; font-size:13px; color:#555; }
+.chat-list-right { text-align:right; min-width:80px; }
+.chat-status.pending { color:#E97626; font-size:12px; }
+.chat-status.solved { color:#2BA24C; font-size:12px; }
+
+.chat-header { background:#075E54; color:white; padding:10px; display:flex; align-items:center; gap:10px; }
+.chat-messages { background:#ECE5DD; padding:12px; height:60vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.chat-bubble { max-width:70%; padding:10px 12px; border-radius:12px; font-size:14px; }
+.chat-bubble.user { background:#DCF8C6; align-self:flex-end; border-bottom-right-radius:3px; }
+.chat-bubble.admin { background:#ffffff; align-self:flex-start; border-bottom-left-radius:3px; }
+.time { font-size:11px; color:#666; margin-top:6px; }
+.chat-input { display:flex; padding:10px; border-top:1px solid #ddd; background:#fff; gap:8px; }
+.chat-input input { flex:1; padding:10px 12px; border-radius:20px; border:1px solid #ddd; }
+.chat-input button { background:#075E54; border:none; color:#fff; padding:8px 12px; border-radius:50%; }
+</style>
+
+
+{# ================= JAVASCRIPT ================= #}
+<script>
+let socket = null;
+let activeQueryId = null;
+const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+
+/* ===== SECTION CONTROL ===== */
+function hideAllSections() {
+  document.querySelectorAll('.content-section').forEach(sec => {
+    sec.style.display = 'none';
+  });
+}
+
+/* ===== OPEN CHAT (NEW SECTION) ===== */
+function openChat(id, subject) {
+  activeQueryId = id;
+
+  // hide help center
+  hideAllSections();
+
+  // show chat section
+  const chatSection = document.getElementById('queryChatContainer');
+  chatSection.style.display = 'block';
+
+  document.getElementById('chatSubject').innerText = subject;
+
+  const chatBox = document.getElementById('chatMessages');
+  chatBox.innerHTML = document.getElementById('messages-' + id).innerHTML;
+
+  if (socket) socket.close();
+
+  socket = new WebSocket(
+    wsProtocol + '://' + location.host + '/ws/help-query/' + id + '/'
+  );
+
+  socket.onmessage = function (e) {
+    const data = JSON.parse(e.data);
+    const cls = data.sender === 'User' ? 'user' : 'admin';
+
+    const html = `
+      <div class="chat-bubble ${cls}">
+        ${data.message}
+        <div class="time">${data.time}</div>
+      </div>
+    `;
+
+    // visible chat
+    chatBox.insertAdjacentHTML('beforeend', html);
+
+    // hidden storage (refresh safe)
+    document.getElementById('messages-' + activeQueryId)
+            .insertAdjacentHTML('beforeend', html);
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+  };
+}
+
+/* ===== CLOSE CHAT (BACK TO HELP) ===== */
+function closeChat() {
+  if (socket) socket.close();
+  hideAllSections();
+  document.getElementById('help-section').style.display = 'block';
+}
+
+/* ===== SEND MESSAGE ===== */
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  if (!input.value.trim()) return;
+  socket.send(JSON.stringify({ message: input.value }));
+  input.value = '';
+}
+
+/* ===== CLICK HANDLER ===== */
+document.querySelectorAll('.chat-list-item').forEach(item => {
+  item.onclick = () => openChat(item.dataset.id, item.dataset.subject);
+});
+</script>
+
+
+
+
+
+            <!--------------------------------- Account Profile Section ----------------------------->
+            <div id="accountProfile" class="content-section" style="display: none;">
+                <div class="section-body">
+                    <div class="d-flex flex-row  justify-content-between mt-3">
+                    <h3 class="section-heading"><i class="bi bi-arrow-left me-2" style="cursor: pointer;" onclick="showSection('help-section')"></i>Account Profile</h3>
+ <button class="query-btn" style="background: linear-gradient(135deg, #981942, #CC3D70, #981942); color: white; border: none; padding: 10px 20px; border-radius: 50px; cursor: pointer; font-family: Jomolhari, serif; font-size: 20px;" onclick="showSection('sendQuery')">Send us your query</button>                    </div>
+                    <div class="card d-flex flex-column" style="background-color: #FBF0EF;border-radius: 10px;">
+
+                      <div class="d-flex justify-content-between mt-3" onclick="toggleInfo(this)" style="cursor: pointer;">
+                        <h3 class="help-heading ms-3">Updating profile Information</h3>
+                        <i class="bi bi-chevron-right me-4 toggle-icon" style="color: #090909; font-size: 18px;"></i>
+                      </div>
+                      <div class="info-content" style="display: none; margin-left: 20px; color: #595959;">
+                        <p>Keeping your profile up to date is easy! To update your name, email, phone number, or other details, 
+                          simply go to the "Account" section in the app. Tap on "Edit Profile," make the necessary changes, and save.
+                           Ensure your information is accurate for a seamless ride experience and better communication with drivers.</p>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+<div id="generalInfo" class="content-section" style="display: none;">
+  <div class="section-body">
+    <i class="bi bi-arrow-left me-2" style="cursor: pointer;" onclick="showSection('help-section')"> <span style="cursor: pointer;font-weight: 600;font-family: 'Jomolhari'; ">Back</span> </i>
+    
+              
+<div class="table-responsive">
+  <p style="font-style: 'Lato';">
+      At <span style="font-weight:bold;">Perfume Valley</span>, we take pride in being a leading perfume brand with over <span style="font-weight:bold;">1,000 premium varieties</span>. Our showrooms, located in the heart of <span style="font-weight:bold;">Hyderabad</span>, cater to diverse preferences, with a special focus on <span style="font-weight:bold;">French</span>, <span style="font-weight:bold;">Arabian fragrances</span> and rich <span style="font-weight:bold;">Oud</span>. This expertise and passion form the foundation of our strong connection with perfume lovers across India. <br>
+      We are committed to delivering <span style="font-weight:bold;">high-quality inspired perfumes</span> that provide a <span style="font-weight:bold;">luxurious fragrance experience</span> without the heavy price. Our mission is simple: to make <span style="font-weight:bold;">premium scents accessible</span> to everyone, while maintaining the highest standards of <span style="font-weight:bold;">quality</span> and <span style="font-weight:bold;">authenticity</span>. <br>
+      What sets Perfume Valley apart is our promise to offer <span style="font-weight:bold;">genuine fragrances</span> at <span style="font-weight:bold;">competitive prices</span>, with transparent product information, <span style="font-weight:bold;">secure payment options</span>, and reliable delivery across India.
+
+    </p>
+  <table class="table custom-ecom-table mt-4 mb-0">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>Product Quality</th>
+        <td>All our perfumes are crafted with care using  <span style="font-weight: bold;"> premium ingredients</span>  to ensure long-lasting fragrance and excellent performance.</td>
+      </tr>
+      <tr>
+        <th>Authenticity &amp; Safety</th>
+        <td>We guarantee that all products are <span style="font-weight: bold;" > safe for use, non-toxic,</span> and meet relevant safety standards.</td>
+      </tr>
+      <tr>
+        <th>Customer Support</th>
+        <td>Our friendly support team is available to help with questions about products, orders, or deliveries.</td>
+      </tr>
+      <tr>
+        <th>Information Accuracy</th>
+        <td>We strive to provide accurate product descriptions and images. Note that fragrance intensity and color may slightly vary due to device differences.</td>
+      </tr>
+      <tr>
+        <th>Contact Us</th>
+        <td>Reach out via our website, email, or phone. Your satisfaction is our priority.</td>
+      </tr>
+    </tbody>
+  </table>
+<br>
+  <span>
+    ✨ <span style="font-weight: bold;">PERFUME VALLEY</span>is committed to offering <span style="font-weight: bold;"> reliable service, high-quality fragrances, and a seamless shopping experience </span> for every customer.
+  </span>
+
+</div>
+<style>
+.custom-ecom-table {
+  background-color: #FBF0EF;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(175, 145, 100, 0.07);
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: 'Jomolhari', serif;
+}
+.custom-ecom-table thead th {
+  background: #f5e3db;
+  color: #6D3F0B;
+  font-size: 1.08rem;
+  font-weight: 600;
+  border-bottom: 2px solid #e3cfc2;
+  padding: 14px 18px;
+  letter-spacing: 0.5px;
+  font-size: 18px;
+}
+.custom-ecom-table tbody tr {
+  transition: background 0.2s;
+}
+.custom-ecom-table tbody tr:hover {
+  background: #f3e6e0;
+}
+.custom-ecom-table th, .custom-ecom-table td {
+  border: none;
+  padding: 14px 18px;
+  vertical-align: middle;
+  font-size: 1rem;
+}
+.custom-ecom-table th {
+  color: #981945;
+  background: transparent;
+  font-weight: 600;
+  width: 180px;
+  border-right: 1px solid #e3cfc2;
+}
+.custom-ecom-table td {
+  color: #4D4D4D;
+  background: transparent;
+}
+@media (max-width: 767px) {
+  .custom-ecom-table th, .custom-ecom-table td {
+    padding: 10px 8px;
+    font-size: 0.97rem;
+  }
+  .custom-ecom-table th {
+    width: 120px;
+  }
+}
+.term-item h6 {
+    margin: 0; /* remove default top & bottom margin */
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.term-item p {
+    margin: 0 0 4px 0; /* optional: tiny space after paragraph */
+    line-height: 1.5;
+    color: #666;
+    font-family: Jomolhari, serif;
+    font-size: 16px;
+}
+
+</style>
+
+</div>
+</div>
+<!-----end of general info section------> 
+
+
+<div id="payIssues" class="content-section" style="display: none;">
+  <div class="section-body">
+    <i class="bi bi-arrow-left me-2" style="cursor: pointer;" onclick="showSection('help-section')"> <span style="cursor: pointer;font-weight: 600;font-family: 'Jomolhari'; ">Back</span> </i>
+
+    
+
+    
+<div class="table-responsive">
+  <p style="font-style: 'Lato';">
+      At Perfume Valley, we prioritize secure and hassle-free payment experiences for all our customers.
+    </p>
+  <table class="table custom-ecom-table mt-4 mb-0">
+    <thead>
+      <tr>
+        <th>Payment & Fares Issues</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>Accepted Payment Methods</th>
+        <td>We accept payments via <span style="font-weight: bold;"> credit/debit cards, UPI, net banking, and digital wallets.</span></td>
+      </tr>
+      <tr>
+        <th>Payment Failures</th>
+        <td>If your payment fails during checkout, please try again or use an alternative payment method. For persistent issues, contact our <span style="font-weight: bold;">customer support team </span> for assistance.</td>
+      </tr>
+      <tr>
+        <th>Fare / Pricing Issues</th>
+        <td>All prices displayed on the website are <span style="font-weight: bold;">inclusive of applicable taxes</span> . In case of any discrepancies in pricing or surcharges for remote areas, our team will notify you <span style="font-weight: bold;"> before order confirmation.</span></td>
+      </tr>
+      <tr>
+        <th>Refunds for Payment Issues</th>
+        <td>If an amount is deducted but the order is not confirmed, <span style="font-weight: bold;"> please call our support team</span>. Refunds will be processed to the original payment method, typically within <span style="font-weight: bold;"> 3–10 business days</span>, depending on your bank or payment provider.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+  <br>
+  <span>For any  <span style="font-weight: bold;"> payment or pricing concerns</span>, our dedicated support team is always ready to assist you and ensure a smooth shopping experience.</span>
+
+</div>
+</div>
+<!---end of pay issues-->
+
+<div id="safetySecurity" class="content-section" style="display: none;">
+  <div class="section-body">
+    <i class="bi bi-arrow-left me-2" style="cursor: pointer;" onclick="showSection('help-section')"> <span style="cursor: pointer;font-weight: 600;font-family: 'Jomolhari'; ">Back</span> </i>
+
+   
+   
+   
+<div class="table-responsive">
+   <p style="font-style: 'Lato';">
+      At <span style="font-weight: bold;"> Perfume Valley</span>, your safety and security are our top priorities. We are committed to providing a <span style="font-weight: bold;">  safe, trustworthy, and reliable shopping experience</span> for all our customers.
+    </p>
+  <table class="table custom-ecom-table mt-4 mb-0">
+    <thead>
+      <tr>
+        <th>Safety &amp; Security</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>Secure Transactions</th>
+        <td>
+          All payments on our website are processed through <span style="font-weight: bold;" >trusted and encrypted payment gateways</span> , ensuring your personal and financial information remains confidential and protected.
+        </td>
+      </tr>
+      <tr>
+        <th>Data Privacy</th>
+        <td>
+          Your information is handled with the <span style="font-weight: bold;"> highest level of privacy </span>and is never shared with third parties without your consent, except as required for order fulfillment.
+        </td>
+      </tr>
+      <tr>
+        <th>Product Safety</th>
+        <td>
+          All perfumes are carefully prepared and packaged to ensure <span style="font-weight: bold;"> quality, authenticity, and safety</span>  for our customers.
+        </td>
+      </tr>
+      <tr>
+        <th>Fraud Protection</th>
+        <td>
+          Our systems are continuously monitored to <span style="font-weight: bold;"> detect and prevent unauthorized activity</span>, keeping your account and transactions secure.
+        </td>
+      </tr>
+      <tr>
+        <th>Customer Support</th>
+        <td>
+          If you notice any suspicious activity or have concerns about security, our <span style="font-weight: bold;"> dedicated support team </span> is always ready to assist you.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<span>✨ Shop with confidence at  <span style="font-weight: bold;">Perfume Valley</span> , knowing that your information and purchases are safe and secure.</span>
+
+  </div>
+</div>
+<!---end of saftey security-->
+
+<div id="rideBookIssues" class="content-section" style="display:none;">
+  <div class="section-body">
+
+    <i class="bi bi-arrow-left me-2" style="cursor: pointer;" onclick="showSection('help-section')"> <span style="cursor: pointer;font-weight: 600;font-family: 'Jomolhari'; ">Back</span> </i>
+
+<div class="table-responsive">
+  <p style="font-style: 'Lato';">
+      At Perfume Valley, we aim to ensure that all deliveries are smooth, timely, and hassle-free. In case you experience any issues with ride or courier bookings, here’s how we handle them:
+    </p>
+  <table class="table custom-ecom-table mt-4 mb-0">
+    <thead>
+      <tr>
+        <th>Ride / Delivery Booking Issues</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>Delayed or Missed Pickups</th>
+        <td>
+          If your scheduled pickup or delivery is delayed, please contact our <span style="font-weight: bold;">delivery support team</span>. They will assist you immediately and provide updates on the <span style="font-weight: bold;">expected time of arrival</span>.
+        </td>
+      </tr>
+      <tr>
+        <th>Incorrect Address or Details</th>
+        <td>
+          Please <span style="font-weight: bold;">double-check</span> your delivery information during checkout. If you notice an error after placing the order, contact our <span style="font-weight: bold;">customer support team</span> immediately to correct it.
+        </td>
+      </tr>
+      <tr>
+        <th>Lost or Misplaced Shipments</th>
+        <td>
+          In the rare event that a courier <span style="font-weight: bold;">loses or misplaces</span> your order, we will either <span style="font-weight: bold;">resend your products</span> or issue a <span style="font-weight: bold;">full refund</span>, based on your preference.
+        </td>
+      </tr>
+      <tr>
+        <th>Communication Issues with Courier</th>
+        <td>
+          If you face difficulties contacting the delivery service, reach out to our <span style="font-weight: bold;">support team</span>. We will coordinate with the courier to <span style="font-weight: bold;">resolve the issue quickly</span>.
+        </td>
+      </tr>
+      <tr>
+        <th>Surcharge Areas</th>
+        <td>
+          Deliveries to <span style="font-weight: bold;">remote or surcharge areas</span> may incur additional fees. Our team will <span style="font-weight: bold;">notify you before dispatch</span> if this applies.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+  <br>
+    <span>
+      ✨ Our dedicated support team is always ready to assist with <span style="font-weight: bold;">any ride or delivery issues</span>  to ensure your perfumes reach you safely and on time.
+    </span>
+</div>
+</div>
+
+
+            <!--------------------------------- Account profile section toggle js----------------------------->
+            <script>
+              function toggleInfo(element) {
+                const infoContent = element.nextElementSibling;
+                const icon = element.querySelector('.toggle-icon');
+                
+                if (infoContent.style.display === 'none' || infoContent.style.display === '') {
+                  infoContent.style.display = 'block';
+                  icon.classList.remove('bi-chevron-right');
+                  icon.classList.add('bi-chevron-down');
+                } else {
+                  infoContent.style.display = 'none';
+                  icon.classList.remove('bi-chevron-down');
+                  icon.classList.add('bi-chevron-right');
+                }
+              }
+            </script>
+
+            <!---------------------------------Account Profile Section send us your query --------------------------------------->
+        <div id="sendQuery" class="content-section" style="display: none;">
+            <div class="section-body">
+              <h3 class="section-heading">
+                <i class="bi bi-arrow-left me-2" style="cursor: pointer;" onclick="showSection('help-section')"></i>
+                Send us your query
+              </h3>
+              
+              <form method="POST" action="{% url 'submit_help_query' %}">
+                {% csrf_token %}
+                <div class="mb-3">
+                  <textarea name="subject" rows="4" placeholder="Tell us your problem" class="text-query form-control w-100" style="resize: vertical; min-height: 100px;"></textarea>
+                </div>
+                
+                <div class="d-flex justify-content-center align-items-center">
+                  <button type="submit" class="query-btn mt-3">Submit</button>
+                </div>
+              </form>
+            </div>
+        </div>
+
+
+
+<!----------------------------------------------- Saved Address Section -------------------------------------------------------------------------->
+            <div id="address-section" class="content-section" style="display: none;">
+                <div class="section-body">
+                    <h3 class="section-heading">Saved Address</h3>
+                     <a href="{% url 'add_address' %}" class="card" style="background-color: #FBF0EF; text-decoration: none;">
+                        <h3 class="section-heading m-2" style="color:#6D3F0B">Add New Address</h3>
+                    </a>
+
+                {% for address in addresses %}
+                    <div class="card" style="background-color: #FBF0EF;">
+                      <div class="d-flex  justify-content-between">
+                        <div class="d-flex flex-column m-3">
+                           <h3 class="section-heading" style="font-size: 18px;">
+                                    {{ address.Name }} | {{ address.MobileNumber }}
+                                </h3>
+                          <p class="card-text mb-0" style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">
+                                    {{ address.Building }}, {{ address.location }}, {{ address.City }} - {{ address.Pincode }}
+                                </p>
+                        </div>
+                        <div class="dropdown m-4">
+                          <button class="btn btn-link p-0" type="button" id="dropdownMenuButton-{{ address.id }}" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 25px; color: #666;">
+                            <i class="bi bi-three-dots-vertical"></i>
+                          </button>
+                          <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton-{{ address.id }}">
+                            <li><a class="dropdown-item" href="{% url 'update_address' address.id  %}">Edit</a></li>
+                          </ul>
+                        </div>
+                      </div>
+                   
+                        {% if address.is_default %}
+                        <div class="d-flex justify-content-end me-3 mb-2">
+                            <span class="badge bg-primary">Default</span>
+                        </div>
+                        {% endif %}
+                        
+                    </div>
+                    {% empty %}
+                    <p>No saved addresses found.</p>
+                    {% endfor %}
+                </div>
+            </div>
+                         
+            
+            <!--------------------------------- Terms and Conditions Section --------------------------->
+            <div id="terms-section" class="content-section" style="display: none;">
+    <div class="section-body">
+        <h3 class="section-heading" style="text-align: center;">Terms and Conditions</h3>
+
+        <div class="term-item mb-0">
+            <h6 style="color:#981945">1. General Use</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                By using this website, you agree to our Terms & Conditions and Privacy Policy, governed by the laws of India. Website content may change anytime without notice.
+            </p>
+        </div>
+
+        <div class="term-item mb-0">
+            <h6 style="color:#981945">2. User Content</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                Any content you share (text, images, etc.) must be legal and not infringe others’ rights. By submitting, you grant us the right to use, publish, and edit such content.
+            </p>
+        </div>
+
+        <div class="term-item">
+            <h6 style="color:#981945">3. Intellectual Property</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                All website design, graphics, and trademarks are owned or licensed by Perfume Valley. Unauthorized use may result in legal action.
+            </p>
+        </div>
+
+        <div class="term-item">
+            <h6 style="color:#981945">4. Accuracy & Liability</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                Information on this site is for general use. We do not guarantee accuracy or completeness and are not liable for losses arising from its use.
+            </p>
+        </div>
+
+        <div class="term-item">
+            <h6 style="color:#981945">5. Links to Other Sites</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                External links are for convenience only. We are not responsible for their content.
+            </p>
+        </div>
+
+        <div class="term-item">
+            <h6 style="color:#981945">6. Promotions & Discounts</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                Promo codes/discounts cannot be combined and do not apply on sale or custom items.
+            </p>
+        </div>
+
+        <div class="term-item">
+            <h6 style="color:#981945">7. Returns & Refunds</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                All sales are final. No returns or refunds unless an order is lost by our shipping partner.
+            </p>
+        </div>
+
+        <div class="term-item">
+            <h6 style="color:#981945">8. Shipping</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                Orders are delivered within 7–15 days depending on demand. Extra charges may apply for certain delivery areas.
+            </p>
+        </div>
+
+        <div class="term-item">
+            <h6 style="color:#981945">9. Surcharge Delivery Areas</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                If you live in an area where additional delivery charges apply, you will be notified at the time of order and may need to pay the extra charges. This may also apply if returning items from such areas.
+            </p>
+        </div>
+
+        <div class="term-item">
+            <h6 style="color:#981945">10. Disputes</h6>
+            <p style="color: #666; font-family: Jomolhari, serif; font-size: 16px; line-height: 1.5;">
+                Any disputes related to website use are governed by Indian law.
+            </p>
+        </div>
+    </div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+
+<!--------------------------------------------------------------- Popups ----------------------------------------------------------------------->
+
+<div id="editPopup" class="popup">
+    <div class="popup-content">
+        
+        <h1 class="popup-title">Update Your Profile Picture</h1>
+        <div class="popup-body">
+            <label for="upload-image" style="cursor: pointer;">
+                <img src="{% static 'images2/Attachment.svg' %}" loading="lazy" decoding="async" alt="Edit" style="width: 30px; height: 30px;">
+            </label>
+            
+            <h1 class="popup-title"> upload Image</h1>
+            <div class="popup-img position-relative">
+              <img src="{% static 'images2/im1.png' %}" alt="User Image" class="img-fluid rounded-circle" style="width: 100px; height: 100px;">
+              <img src="{% static 'images2/remove.svg' %}" alt="Remove Icon" class="remove-icon">
+            </div>
+
+            <footer class="button-container">
+              <button class="cancel-button" onclick="closePopup('editPopup')">
+                <span style="font-family:Jomolhari;color:black">Cancel</span>
+              </button>
+              <button class="save-button" >
+                <span style="font-family:Jomolhari;color:white">Save</span>
+              </button>
+            </footer>
+
+        </div>
+    </div>
+</div>
+
+<div id="updatePhonePopup" class="popup">
+    <div class="popup-content"> 
+      <h1 class="popup-title">Update Your Phone Number</h1>
+        <label for="phoneNumber" style="color: #595959; font-size: 14px;" class="ms-2 mt-2"> Enter Phone Number</label>
+        <div class="card d-flex align-items-center flex-row mt-2">
+          <input type="text" class="mb-2 me-2" id="phoneNumber" style="border:none;font-size: 16px; outline: none; flex-grow: 1;">
+          <button class="mb-1" style="font-size: 16px;color: #6D3F0B;outline: none;border: none;background-color: white;">Send OTP</button>
+        </div><br>
+        <label for="phoneNumber" style="color: #595959; font-size: 14px;" class="ms-2 mt-2"> Enter OTP sent to +91XXXXXXXXXX</label>
+        </label>
+        <div class="card d-flex align-items-center flex-row p-2 mt-2">
+          <input type="text" class="mb-2 " id="phoneNumber" style="border:none;font-size: 16px; outline: none; flex-grow: 1;">
+          <button class=" mb-1" style="font-size: 16px;color: #6D3F0B;outline: none;border: none;background-color: white;">Resend</button>
+        </div>
+        <br>
+        <footer class="button-container">
+          <button class="cancel-button" onclick="closePopup('updatePhonePopup')">
+            <span style="font-family:Jomolhari;color:black">Cancel</span>
+          </button>
+          <button class="save-button" >
+            <span style="font-family:Jomolhari;color:white">Save</span>
+          </button>
+        </footer>
+    
+    </div>
+</div>
+
+<div id="updateEmailPopup" class="popup">
+ 
+    <div class="popup-content">
+     <h1 class="popup-title" >Verify Your Email</h1>
+     <label for="email" style="color: #595959; font-size: 14px;" class="ms-2 mt-2" > Enter OTP sent to abefg13455@... </label>
+     <div class="card d-flex align-items-center flex-row p-2 mt-2">
+      <input type="text" class="mb-2 " id="email" style="border:none;font-size: 16px; outline: none; flex-grow: 1;">
+      <button class=" mb-1" style="font-size: 16px;color: #6D3F0B;outline: none;border: none;background-color: white;">Resend</button>
+    </div>
+    <br>
+    <footer class="button-container">
+      <button class="cancel-button" onclick="closePopup('updateEmailPopup')">
+        <span style="font-family:Jomolhari;color:black">Cancel</span>
+      </button>
+      <button class="save-button" >
+        <span style="font-family:Jomolhari;color:white">Save</span>
+      </button>
+    </footer>
+    </div>
+</div>
+
+<div id="editDobPopup" class="popup">
+    <div class="popup-content">
+        <h1 class="popup-title">Edit date of birth</h1>
+        <label for="dateofBirth" style="color: #595959; font-size: 14px;" class="ms-2 mt-2"> Enter your Date of Birth</label>
+        <div class="card d-flex align-items-center flex-row p-2 mt-2">
+          <input type="text" class="mb-2 " id="dateofBirth" placeholder="DD-MM-YYYY" style="border:none;font-size: 16px; outline: none; flex-grow: 1;">
+
+        </div>
+        <br>
+        <footer class="button-container">
+          <button class="cancel-button" onclick="closePopup('editDobPopup')">
+            <span style="font-family:Jomolhari;color:black">Cancel</span>
+          </button>
+          <button class="save-button" onclick="saveDobFromPopup()" >
+            <span style="font-family:Jomolhari;color:white">Save</span>
+          </button>
+</div>
+</div>
+
+<!-------------- Review POPUP -->
+<!-- Review Modal -->
+<div class="modal fade" id="reviewModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-3 shadow-lg">
+      <form method="post" action="" id="reviewForm">
+        {% csrf_token %}
+        <div class="modal-header border-0">
+          <h5 class="modal-title fw-bold">Write a Review</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          
+          <!-- Star Rating -->
+          <div class="form-group star-rating text-center mb-3">
+            {% for i in "54321" %}
+              <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}">
+              <label for="star{{ i }}">&#9733;</label>
+            {% endfor %}
+          </div>
+
+          <!-- Review Textarea -->
+          <div class="form-group">
+           <textarea 
+  name="review_text" 
+  rows="3" 
+  class="form-control rounded-3 shadow-sm" 
+  placeholder="Write your review..." 
+  required></textarea>
+
+          </div>
+        </div>
+
+        <div class="modal-footer border-0">
+          <button type="submit" class="btn btn-primary rounded-3 px-4">Submit Review</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Star Rating Styling -->
+
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var reviewModal = document.getElementById('reviewModal');
+    reviewModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget; // Button that triggered the modal
+        var productId = button.getAttribute('data-product-id'); // Extract product ID
+        var form = reviewModal.querySelector('form'); // Find form inside modal
+        form.action = "/product/" + productId + "/ratings/"; // Update form action
+    });
+});
+</script>
+
+<style>
+  .modal-backdrop.show {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+.star-rating {
+  direction: rtl;
+  display: inline-flex;
+  gap: 5px;
+}
+.star-rating input {
+  display: none;
+}
+.star-rating label {
+  font-size: 2rem;
+  color: #ccc;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+.star-rating input:checked ~ label {
+  color: #f5c518; /* Gold for selected stars */
+}
+
+
+</style>
+
+
+<script>
+function saveDobFromPopup() {
+    const input = document.getElementById("dateofBirth").value.trim();
+    const parts = input.split('-'); // expect DD-MM-YYYY
+
+    if (parts.length === 3) {
+        const formatted = `${parts[2]}-${parts[1]}-${parts[0]}`; // to YYYY-MM-DD
+
+        // Update the hidden input used in form submission
+        document.getElementById("id_dob").value = formatted;
+
+        // Update the display-only input
+        document.getElementById("displayDob").value = input;
+
+        // Close popup
+        closePopup('editDobPopup');
+    } else {
+        alert("Please enter DOB in DD-MM-YYYY format.");
+    }
+}
+</script>
+
+
+
+<script>
+  function showPopup(popupId) {
+    document.getElementById(popupId).style.display = 'block';
+  }
+  
+  function closePopup(popupId) {
+    document.getElementById(popupId).style.display = 'none';
+  }
+
+  function updateDob(newDob) {
+    document.getElementById('displayDob').value = newDob;
+    document.getElementById('id_dob').value = newDob; // format: YYYY-MM-DD
+}
+
+  </script>
+
+<!--------------------------------------------------------------- end of Popups ----------------------------------------------------------------------->
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+
+<script>
+// Helper function to get CSRF token (single implementation)
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Profile image upload handler
+function handleProfileImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.match('image.*')) {
+        alert('Please select an image file (JPEG, PNG, etc.)');
+        return;
+    }
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const previewImg = document.getElementById('preview-image');
+        if (previewImg) {
+            previewImg.src = e.target.result;
+        }
+    };
+    reader.readAsDataURL(file);
+
+    // Prepare and send the upload request
+    const formData = new FormData();
+    formData.append('profile_image', file);
+
+    fetch('/profile/update-picture/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Update all profile images with cache-busting
+            const newUrl = `${data.image_url}?t=${Date.now()}`;
+            document.querySelectorAll('#preview-image, .profile-img').forEach(img => {
+                if (img) img.src = newUrl;
+            });
+        } else {
+            throw new Error(data.error || 'Failed to update profile picture');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(error.message);
+    });
+}
+    
+
+// Update phone number
+function updatePhoneNumber() {
+    const phone = document.getElementById('phoneNumber').value;
+    const otp = document.getElementById('phoneOtp').value;
+    
+    fetch('/profile/update-phone/', {
+        method: 'POST',
+        body: JSON.stringify({
+            phone: phone,
+            otp: otp
+        }),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closePopup('updatePhonePopup');
+            location.reload();
+        } else {
+            alert('Failed to update phone number: ' + (data.error || ''));
+        }
+    });
+}
+
+// Update email
+function updateEmail() {
+    const email = document.getElementById('email').value;
+    const otp = document.getElementById('emailOtp').value;
+    
+    fetch('/profile/update-email/', {
+        method: 'POST',
+        body: JSON.stringify({
+            email: email,
+            otp: otp
+        }),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closePopup('updateEmailPopup');
+            location.reload();
+        } else {
+            alert('Failed to update email: ' + (data.error || ''));
+        }
+    });
+}
+
+// Update date of birth
+function updateDob() {
+    const dob = document.getElementById('dateofBirth').value;
+
+    fetch('/profile/update-dob/', {
+        method: 'POST',
+        body: JSON.stringify({ dob: dob }),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('displayDob').value = dob;
+            closePopup('editDobPopup');
+        } else {
+            alert('Failed to update date of birth: ' + (data.error || ''));
+        }
+    })
+    .catch(error => {
+        console.error('DOB Update Error:', error);
+        alert('Error updating DOB.');
+    });
+}
+
+
+// Save profile form
+function saveProfileForm() {
+    const form = document.getElementById('profileForm');
+    const formData = new FormData(form);
+    
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Profile updated successfully!');
+        } else {
+            alert('Failed to update profile: ' + (data.error || ''));
+        }
+    });
+}
+
+// Initialize event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Image upload handler
+    const uploadInput = document.getElementById('upload-image');
+    if (uploadInput) {
+        uploadInput.addEventListener('change', handleProfileImageUpload);
+    }
+
+    // Save buttons in popups
+    document.querySelectorAll('.save-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const popup = this.closest('.popup');
+            const popupId = popup.id;
+            
+            if (popupId === 'updatePhonePopup') {
+                updatePhoneNumber();
+            } else if (popupId === 'updateEmailPopup') {
+                updateEmail();
+            } else if (popupId === 'editDobPopup') {
+                updateDob();
+            }
+        });
+    });
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const removeButtons = document.querySelectorAll('.remove-wishlist');
+
+  removeButtons.forEach(button => {
+    button.addEventListener('click', function () {
+      const card = this.closest('.wishlist-card');
+      const productId = card.dataset.productId;
+
+      fetch("{% url 'remove_from_wishlist' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: `product_id=${productId}`
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          card.remove();
+        } else {
+          alert("Error removing item from wishlist.");
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    });
+  });
+});
+</script>
+
+
+
+<script>
+function showSection(sectionId) {
+    // Hide all content sections
+    const sections = document.querySelectorAll('.content-section');
+    sections.forEach(section => section.style.display = 'none');
+
+    // Show the target section
+    const target = document.getElementById(sectionId);
+    if (target) {
+        target.style.display = 'block';
+        localStorage.setItem('activeSection', sectionId);
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+
+    // Handle profile edit button visibility
+    const editBtn = document.querySelector('.profile-edit-btn');
+    if (editBtn) {
+        if (sectionId === 'profile-section') {
+            editBtn.style.display = 'none';
+        } else {
+            editBtn.style.display = 'inline-block';
+        }
+    }
+
+    // Update nav link active state (sidebar/tabs)
+    const navLinks = document.querySelectorAll('.user-menu-link');
+    navLinks.forEach(link => {
+        if (link.getAttribute('data-section') === sectionId) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+}
+
+function showProfileSection() {
+    const sectionId = 'profile-section';
+    const newUrl = `${window.location.pathname}?section=${sectionId}`;
+    window.history.pushState({}, '', newUrl);
+    showSection(sectionId);
+}
+
+window.onload = function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sectionFromUrl = urlParams.get('section');
+
+    // Hide all sections first
+    const sections = document.querySelectorAll('.content-section');
+    sections.forEach(sec => sec.style.display = 'none');
+
+    // Decide which section to open
+    const activeSection = sectionFromUrl || localStorage.getItem('activeSection') || 'profile-section';
+    showSection(activeSection);
+
+    // Add click event to nav links
+    const navLinks = document.querySelectorAll('.user-menu-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const sectionId = this.getAttribute('data-section');
+
+            // Update URL with ?section=...
+            const newUrl = `${window.location.pathname}?section=${sectionId}`;
+            window.history.pushState({}, '', newUrl);
+
+            // Show section
+            showSection(sectionId);
+        });
+    });
+};
+</script>
+
+
+<!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> -->
+
+<!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script> -->
+
+{% endblock content %} 

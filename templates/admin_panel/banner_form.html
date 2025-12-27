@@ -1,0 +1,54 @@
+<!-- admin_panel/banner_form.html -->
+<form id="editbannerForm" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label for="editbannerName" class="form-label">banner Name</label>
+    <input type="text" class="form-control" id="editbannerName" name="title" value="{{ banner.title }}" required>
+  </div>
+  <div class="mb-3">
+    <label for="editbannersection" class="form-label">Section</label>
+    <select name="section" id="id_section" class="form-select">
+  <option value="">Choose a section...</option>
+  <option value="new-arrival" {% if banner.section == 'new-arrival' %}selected{% endif %}>New Arrival</option>
+  <option value="trending" {% if banner.section == 'trending' %}selected{% endif %}>Trending</option>
+  <option value="best-seller" {% if banner.section == 'best-seller' %}selected{% endif %}>Best Seller</option>
+  <option value="shopbyocassions" {% if banner.section == 'shopbyocassions' %}selected{% endif %}>Shop By Occasions</option>
+</select>
+
+  </div>
+  <div class="mb-3">
+    <label for="editbannerGif" class="form-label">GIF/Image</label>
+    <input type="file" class="form-control" id="editbannerGif" name="banner_image">
+    {% if banner.banner_image %}
+      <img src="{{ banner.banner_image.url }}" alt="Current GIF" height="60" class="mt-2">
+    {% endif %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-maroon">Update banner</button>
+  </div>
+</form>
+<script>
+document.getElementById('editbannerForm')?.addEventListener('submit', function(e) {
+  e.preventDefault();
+  var form = e.target;
+  var formData = new FormData(form);
+  var bannerId = '{{ banner.id }}';
+  fetch(`/admin-panel/banners/${bannerId}/update/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Failed to update banner.');
+    }
+  })
+  .catch(() => alert('Something went wrong!'));
+});
+</script>

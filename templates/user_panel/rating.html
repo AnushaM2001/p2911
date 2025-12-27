@@ -1,0 +1,42 @@
+<style>
+    .star-rating {
+        direction: rtl;
+        display: inline-flex;
+        font-size: 1.5rem;
+    }
+    .star-rating input {
+        display: none;
+    }
+    .star-rating label {
+        color: #ccc;
+        cursor: pointer;
+    }
+    .star-rating input:checked ~ label,
+    .star-rating label:hover,
+    .star-rating label:hover ~ label {
+        color: gold;
+    }
+</style>
+
+<!-- Review Submission Form -->
+{% if user.is_authenticated %}
+  <h4>Write a review:</h4>
+  <form method="post">
+    {% csrf_token %}
+    
+    <div class="form-group star-rating">
+      {% for i in "54321" %}
+        <input type="radio" id="star{{ i }}" name="rating" value="{{ i }}">
+        <label for="star{{ i }}">&#9733;</label>
+      {% endfor %}
+    </div>
+
+    <div class="form-group">
+      <textarea name="review_text" rows="3" placeholder="Write your review..." required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit Review</button>
+  </form>
+{% else %}
+  <p><a href="{% url 'login' %}">Login</a> to write a review.</p>
+{% endif %}

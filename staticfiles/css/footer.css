@@ -1,0 +1,20 @@
+.icons img {
+    width: 24px;
+    height: 24px;
+}.img-fluid{
+    width: 169px;
+    height: 96px;
+}
+
+.footer-container {
+     background-color: #F7E7E8;
+        background-image: url("../images2/image.png");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size:contain;
+        overflow: hidden;
+        z-index: 1;
+}
+.endtext {
+    background: #FBF0EF;
+}

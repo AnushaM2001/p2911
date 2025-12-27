@@ -1,0 +1,370 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% block title %}
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .btn-maroon {
+      background-color: #8b1538;
+      color: white;
+    }
+
+    .btn-maroon:hover {
+      background-color: #6e102c;
+      color: white;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f0f0f0;
+      border-color: transparent;
+    }
+
+    .badge-instock {
+      background-color: #28a745;
+    }
+
+    .badge-lowstock {
+      background-color: #fd7e14;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    .gear-icon {
+      cursor: pointer;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .toast-body{
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      font-size: 20px;
+      padding: 10px !important;
+    }
+  </style>
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <h3><strong>Banners</strong></h3>
+    <p class="text-muted">Manage your Banners</p>
+
+    <!-- Tabs -->
+    <!-- <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link active" href="#">Categories</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Products</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Brands</a>
+      </li>
+    </ul> -->
+
+    <!-- Search & Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+ {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>      <div>
+<button class="btn btn-maroon me-2" data-bs-toggle="modal" data-bs-target="#addbannerModal">+ Add Banner</button>        <!-- <button class="btn btn-maroon">+ Add Products</button> -->
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="dashboard-card">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Banner Name</th>
+            <th>Banner Image</th>
+            <!-- <th>Category</th> -->
+            <!-- <th>Price</th> -->
+            <!-- <th>Stock Status</th> -->
+            <th>Section</th>
+              <th>Created_at</th>
+
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for banner in page_obj %}
+          <tr data-banner-id="{{ banner.id }}">
+            <td>{{ banner.title }}</td>
+            {% if banner.banner_image %}
+            <td><img src="{{ banner.banner_image.url }}" alt="no image" height="100px" width="100px"></td>
+            {% else  %}
+            <td>No image</td>
+            {% endif %}
+<td>{{ banner.get_section_display }}</td>
+            <td>{{ banner.created_at|date:"D M j, g:iA" }}</td>
+            <!-- <td><span class="badge badge-instock">In stock</span></td> -->
+<td>
+  <div class="dropdown">
+    <img src="{% static 'images2/settings.png' %}" 
+         class="dropdown-toggle"
+         data-bs-toggle="dropdown"
+         aria-expanded="false"
+         style="cursor: pointer; width: 20px;">
+         
+    <ul class="dropdown-menu">
+      <li>
+        <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editbannerModal-{{ banner.id }}" onclick="openEditbannerModal({{ banner.id }})">
+          ✏️ Update
+        </a>
+      </li>
+      <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deletebannerModal-{{ banner.id }}">
+    🗑️ Delete
+  </button>
+</li>
+
+    </ul>
+  </div>
+</td>
+
+          {% endfor %}
+         
+          
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Add Category Modal -->
+<div class="modal fade" id="addbannerModal" tabindex="-1" aria-labelledby="addbannerModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="addbannerForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addbannerModalLabel">Add Banner</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="bannerName" class="form-label">banner Name</label>
+            <input type="text" class="form-control" id="bannerName" name="title" required>
+          </div>
+          <div class="mb-3">
+            <select name="section" id="id_section" class="form-select">
+    <option value="">Choose a section...</option>
+    <option value="new-arrival">New Arrival</option>
+    <option value="trending">Trending</option>
+    <option value="best-seller">Best Seller</option>
+    <option value="shopbyocassions">Shop By Occasions</option>
+</select>
+
+          </div>
+          <div class="mb-3">
+            <label for="bannerGif" class="form-label">GIF/Image</label>
+            <input type="file" class="form-control" id="bannerGif" name="banner_image">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-maroon">Add banner</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% for banner in banners %}
+<!-- Edit banner Modal -->
+<div class="modal fade" id="editbannerModal-{{ banner.id }}" tabindex="-1" aria-labelledby="editbannerModalLabel-{{ banner.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editbannerModalLabel-{{ banner.id }}">Edit banner</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="editbannerFormContainer-{{ banner.id }}">
+        <!-- Form will be loaded here via AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deletebannerModal-{{ banner.id }}" tabindex="-1" aria-labelledby="deletebannerModalLabel-{{ banner.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deletebannerModalLabel-{{ banner.id }}">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the banner <strong>{{ banner.title }}</strong>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger delete-banner-btn" data-banner-id="{{ banner.id }}">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+<!-- Toast Container -->
+<div class="position-fixed top-0 end-0 p-5" style="z-index: 9999">
+  <div id="bannerToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="bannerToastBody">
+        <!-- Message will be set by JS -->
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+<script>
+function showbannerToast(message, callback) {
+  const toastBody = document.getElementById('bannerToastBody');
+  toastBody.textContent = message;
+  const toastEl = document.getElementById('bannerToast');
+  const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+  toast.show();
+  if (callback) {
+    toastEl.addEventListener('hidden.bs.toast', function handler() {
+      callback();
+      toastEl.removeEventListener('hidden.bs.toast', handler);
+    });
+  }
+}
+// Add banner AJAX
+const addbannerForm = document.getElementById('addbannerForm');
+if (addbannerForm) {
+  addbannerForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var formData = new FormData(form);
+    fetch("{% url 'add_banner' %}", {
+      method: "POST",
+      headers: {
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Dynamically add the new row to the table without reload
+        const tbody = document.querySelector('table tbody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${data.title}</td>
+          <td>${data.banner_image ? `<img src="${data.banner_image}" alt="no image" height="100px" width="100px">` : 'No image'}</td>
+          <td>${data.section}</td>
+          <td>${data.created_at}</td>
+          <td>
+            <div class="dropdown">
+              <img src="{% static 'images2/settings.png' %}" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer; width: 20px;">
+              <ul class="dropdown-menu">
+                <li>
+                  <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editbannerModal-${data.id}" onclick="openEditbannerModal(${data.id}); return false;">✏️ Update</a>
+                </li>
+                <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deletebannerModal-${data.id}">🗑️ Delete</button>
+</li>
+              </ul>
+            </div>
+          </td>
+        `;
+        tbody.prepend(row);
+        // Close modal
+        var modal = bootstrap.Modal.getInstance(document.getElementById('addbannerModal'));
+        modal.hide();
+        form.reset();
+        showbannerToast('banner added successfully!');
+      } else {
+        alert(data.error || "Failed to add banner.");
+      }
+    })
+    .catch(() => alert("Something went wrong!"));
+  });
+}
+
+// Edit banner AJAX
+window.openEditbannerModal = function(bannerId) {
+  fetch(`/admin-panel/banners/${bannerId}/update/`)
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById(`editbannerFormContainer-${bannerId}`).innerHTML = html;
+      // Attach submit event
+      const form = document.getElementById('editbannerForm');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var formData = new FormData(form);
+          fetch(`/admin-panel/banners/${bannerId}/update/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Optionally update the row in the table dynamically
+              showbannerToast('banner updated successfully!', function() {
+                location.reload();
+              });
+            } else {
+              alert('Failed to update banner.');
+            }
+          })
+          .catch(() => alert('Something went wrong!'));
+        });
+      }
+    });
+}
+
+// Delete banner AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.delete-banner-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const bannerId = btn.getAttribute('data-banner-id');
+      btn.disabled = true;
+      fetch(`/admin-panel/banners/${bannerId}/delete/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove the row from the table
+          const modal = btn.closest('.modal');
+          const row = document.querySelector(`tr[data-banner-id='${bannerId}']`);
+          if (row) row.remove();
+          // Hide the modal
+          if (modal) bootstrap.Modal.getInstance(modal).hide();
+          showbannerToast('banner deleted successfully!');
+        } else {
+          alert(data.error || 'Failed to delete banner.');
+          btn.disabled = false;
+        }
+      })
+      .catch(() => {
+        alert('Something went wrong!');
+        btn.disabled = false;
+      });
+    });
+  });
+});
+</script>
+{% endblock content %}

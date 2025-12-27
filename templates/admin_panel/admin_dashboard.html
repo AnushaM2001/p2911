@@ -1,0 +1,194 @@
+{% extends "admin_panel/base.html" %}
+{% load humanize %}
+{% block title %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock title %}
+
+{% block content %}
+
+<div class="export-buttons" style="float: right;">
+   
+    <a href="{% url 'export-product-sales' %}" class="btn btn-maroon" style="background-color: maroon; color: white;">
+        📊 Sales Excel
+    </a>
+</div>
+
+<div class="dashboard-cards">
+  <h2>Dashboard Overview</h2>
+
+  <!-- Cards -->
+  <div class="row g-3">
+    <div class="col-md-3">
+      <div class="dashboard-card">
+        <h6>Total Sales</h6>
+        <h3 id="total-sales">₹{{ total_sales_amount|floatformat:2|intcomma }}</h3>
+        <div class="alert {{ alert_class }} mt-3" role="alert">
+          {{ sales_change_message }}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="dashboard-card">
+        <h6>Total Orders</h6>
+        <h3 id="order-count">{{ total_sales_count|intcomma }}</h3>
+        <div class="alert {{ alert_class }} mt-3" role="alert">
+          {{ sales_change_message }}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="dashboard-card">
+        <h6>Total Customers: <span id="customer-count">{{ total_customers|intcomma }}</span></h6>
+        <h6>This Month: {{ monthly_customers|intcomma }}</h6>
+        <div class="alert {{ customer_alert }} mt-3" role="alert">
+          {{ customer_change_msg }}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="dashboard-card">
+        <h6>Completed Orders</h6>
+        <h3 id="delivered-count">{{ total_deliverd_orders|intcomma }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sales Chart and Top Products -->
+  <div class="row mt-4 g-3">
+  <div class="col-md-6">
+    <div class="dashboard-card">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5>Sales Overview</h5>
+        <div>
+          <span id="filter-info" class="badge bg-secondary me-2"></span>
+           <div class="chart-controls" id="filterButtons">
+                <button class="btn btn-sm btn-outline-primary me-2" data-view="week" data-year="current">Week</button>
+                <button class="btn btn-sm btn-primary me-2" data-view="month" data-year="current">Month</button>
+                <button class="btn btn-sm btn-outline-primary" data-view="month" data-year="previous">Last Year</button>
+            </div>
+        </div>
+      </div>
+<div class="card-body">
+            <span class="badge bg-info mb-3" id="filter-info"></span>
+            <canvas id="orderChart" height="100"></canvas>
+        </div>    </div>
+  </div>
+
+
+    <div class="col-md-6">
+      <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="fw-bold">Top Selling Products</h4>
+          <div class="btn-group">
+            <a href="?filter=week" class="btn btn-sm {% if product_filter == 'week' %}btn-dark{% else %}btn-outline-secondary{% endif %}">Week</a>
+            <a href="?filter=month" class="btn btn-sm {% if product_filter == 'month' %}btn-dark{% else %}btn-outline-secondary{% endif %}">Month</a>
+          </div>
+        </div>
+
+        <div id="top-products">
+          {% for product in top_selling_products %}
+          <div class="card border-0 mb-3 shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between">
+                <h6 class="mb-1">{{ product.product__name }}</h6>
+                <span class="badge bg-primary">{{ product.total_quantity }} sold</span>
+              </div>
+              <div class="progress mt-2 rounded-pill" style="height: 12px;">
+                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: {{ product.percentage }}%;"
+                     aria-valuenow="{{ product.percentage }}" aria-valuemin="0" aria-valuemax="100">
+                </div>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <p class="text-muted">No sales data available for the selected period.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const ctx = document.getElementById("orderChart").getContext("2d");
+
+    let chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Total Orders",
+                data: [],
+                backgroundColor: "#0d6efd",
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: true }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        },
+    });
+
+    function updateChart(view = 'month', year = 'current') {
+        const currentYear = new Date().getFullYear();
+        const selectedYear = year === 'current' ? currentYear : currentYear - 1;
+
+        fetch(`/admin-panel/chart-data/?view=${view}&year=${selectedYear}`)
+            .then(response => response.json())
+            .then(data => {
+                chart.data.labels = data.labels;
+                chart.data.datasets[0].data = data.data;
+                chart.update();
+
+                // Update badge
+                const badge = document.getElementById('filter-info');
+                // badge.innerText = `${view.toUpperCase()} - ${year === 'current' ? 'This Year' : 'Last Year'}`;
+            });
+    }
+
+    // Initial chart
+    updateChart();
+
+    // Attach button events
+    document.querySelectorAll('#filterButtons button').forEach(button => {
+        button.addEventListener('click', function () {
+            const view = this.dataset.view;
+            const year = this.dataset.year;
+
+            updateChart(view, year);
+
+            // Active button styling
+            document.querySelectorAll('#filterButtons button').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-primary');
+            });
+            this.classList.remove('btn-outline-primary');
+            this.classList.add('btn-primary');
+        });
+    });
+});
+  
+</script>
+<script>
+    // Auto-reload the page every 60 seconds
+    setInterval(function () {
+        location.reload();
+    }, 60000); // 60000 milliseconds = 1 minute
+</script>
+{% endblock %}

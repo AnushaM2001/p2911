@@ -1,0 +1,665 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+<style>
+  body { background-color: #f8f9fa; padding: 10px; }
+  .btn-maroon { background-color: #8b1538; color: white; }
+  .btn-maroon:hover { background-color: #6e102c; color: white; }
+  .badge-instock { background-color: #28a745; }
+  .badge-lowstock { background-color: #fd7e14; }
+  .dashboard-card { background-color: white; border-radius: 8px; padding: 20px; }
+  .toast-body { min-width: 300px; color: white; font-size: 18px; }
+   .search-box {
+      max-width: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h3><strong>Products</strong></h3>
+  <p class="text-muted">Manage your Products</p>
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+
+  {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>
+<a href="{% url 'export-products-excel' %}" class="btn btn-success">
+    Export to Excel
+</a>
+
+  <div>
+    <button class="btn btn-maroon me-2" data-bs-toggle="modal" data-bs-target="#addproductModal">+ Add Product</button>
+  </div>
+</div>
+  <div class="dashboard-card">
+    <table class="table align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>SKU</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th>SubCategory</th>
+          <th>Stock</th>
+          <th>Created At</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in page_obj %}
+        <tr data-product-id="{{ product.id }}">
+          <td>{{ product.sku }}</td>
+          <td>{{ product.name }}</td>
+          <td>{{ product.category.name }}</td>
+          <td>{{ product.subcategory.name }}</td>
+          <td>
+            {% if product.stock_status == 'In Stock' %}
+              <span class="badge badge-instock">In Stock</span>
+            {% elif product.stock_status == 'Low Stock' %}
+              <span class="badge bg-warning">Low Stock</span>
+            {% else %}
+              <span class="badge bg-danger">Out of Stock</span>
+            {% endif %}
+          </td>
+          <td>{{ product.created_at|date:"D M j, g:iA" }}</td>
+          <td>
+            <div class="dropdown">
+              <img src="{% static 'images2/settings.png' %}" class="dropdown-toggle" data-bs-toggle="dropdown" style="cursor: pointer; width: 20px;">
+              <ul class="dropdown-menu">
+              <li>
+  <button class="dropdown-item text-primary" data-bs-toggle="modal" data-bs-target="#viewProductModal-{{ product.id }}">
+    👁️ View Details
+  </button>
+</li>
+
+                <li>
+                  <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editproductModal-{{ product.id }}" onclick="openEditProductModal({{ product.id }})">✏️ Update</a>
+                </li>
+                <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteProductModal-{{ product.id }}">
+    🗑️ Delete
+  </button>
+</li>
+
+              </ul>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ✅ ADD PRODUCT MODAL -->
+ <!-- -------------------------------------------------------------------------------------- -->
+<div class="modal fade" id="addproductModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <form id="addProductForm" method="post" enctype="multipart/form-data" action="{% url 'add_product' %}" onsubmit="return submitAddProductForm(event);">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <h5>Product Details</h5>
+          <div class="row">
+            {% for field in product_form %}
+            <div class="col-md-6 mb-3">{{ field|as_crispy_field }}</div>
+            {% endfor %}
+          </div>
+
+          <div id="variant-formset">
+            <h5>Product Variants</h5>
+            {{ variant_formset.management_form }}
+            <div id="variant-forms">
+              {% for form in variant_formset %}
+              <div class="variant-form border rounded p-3 mb-3">
+                <div class="row">
+                  
+                  {% for field in form.visible_fields %}
+                  <div class="col-md-6 mb-3" data-field-name="{{ field.name }}">{{ field|as_crispy_field }}</div>
+                  {% endfor %}
+                </div>
+                <button type="button" class="remove-variant btn btn-outline-danger btn-sm mt-2">✖ Remove Variant</button>
+              </div>
+              {% endfor %}
+            </div>
+            <a href="#" id="add-variant" class="add-variant-link mt-2">➕ Add Another Variant</a>
+          </div>
+<div id="giftset-formset">
+            <h5>Giftsets</h5>
+            {{ giftset_formset.management_form }}
+            <div id="giftset-forms">
+              {% for form in giftset_formset %}
+              <div class="giftset-form border rounded p-3 mb-3">
+                <div class="row">
+                  
+                  {% for field in form.visible_fields %}
+                  <div class="col-md-6 mb-3" data-field-name="{{ field.name }}">{{ field|as_crispy_field }}</div>
+                  {% endfor %}
+                </div>
+                <button type="button" class="remove-giftset btn btn-outline-danger btn-sm mt-2">✖ Remove giftset</button>
+              </div>
+              {% endfor %}
+            </div>
+            <a href="#" id="add-giftset" class="add-giftset-link mt-2">➕ Add Another giftset</a>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-maroon">Add Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ VIEW PRODUCT MODAL -->
+
+<!-- ✅ DYNAMIC EDIT MODALS -->
+{% for product in products %}
+<div class="modal fade" id="editproductModal-{{ product.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5>Edit Product</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="editproductFormContainer-{{ product.id }}">
+        <!-- AJAX-loaded form HTML here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" id="deleteProductModal-{{ product.id }}" tabindex="-1" aria-labelledby="deleteProductModalLabel-{{ product.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteProductModalLabel-{{ product.id }}">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the product <strong>{{ product.name }}</strong>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger delete-product-btn" data-product-id="{{ product.id }}">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- -------------------------------------------------------------------------- -->
+ <div class="modal fade" id="viewProductModal-{{ product.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Product: {{ product.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+         <div class="card mb-3">
+  <div class="card-header text-white text-center" style="background-color: maroon;">
+    Product Information
+  </div>
+  <div class="card-body p-0">
+  <table class="table table-bordered mb-0">
+    <tbody>
+      <tr>
+        <th scope="row">Category</th>
+        <td>{{ product.category.name }}</td>
+      </tr>
+      {% if product.subcategory.name %}
+      <tr>
+        <th scope="row">SubCategory</th>
+        <td>{{ product.subcategory.name }}</td>
+      </tr>
+      {% endif %}
+      <tr>
+        <th scope="row">Description</th>
+        <td>{{ product.description }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Original Price</th>
+        <td>₹{{ product.original_price }}</td>
+      </tr>
+      <tr>
+        <th scope="row">PlatForm Fees</th>
+        <td>₹{{ product.platform_fee }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Delivery Charges</th>
+        <td>₹{{ product.delivery_charges }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Created At</th>
+        <td>{{ product.created_at|date:"D M j, g:iA" }}</td>
+      </tr>
+      <!-- ✅ Responsive Image Grid -->
+  <div class="mt-4 px-3">
+    <h5 style="text-align: center;">Product Images</h5>
+    <div class="row g-3">
+      {% if product.image1 %}
+      <div class="col-6 col-md-4 col-lg-3 text-center">
+        <img src="{{ product.image1.url }}" alt="Image 1" class="img-thumbnail" style="max-height: 150px;">
+        <p class="mt-1 mb-0 small">Image 1</p>
+      </div>
+      {% endif %}
+
+      {% if product.image2 %}
+      <div class="col-6 col-md-4 col-lg-3 text-center">
+        <img src="{{ product.image2.url }}" alt="Image 2" class="img-thumbnail" style="max-height: 150px;">
+        <p class="mt-1 mb-0 small">Image 2</p>
+      </div>
+      {% endif %}
+
+      {% if product.image3 %}
+      <div class="col-6 col-md-4 col-lg-3 text-center">
+        <img src="{{ product.image3.url }}" alt="Image 3" class="img-thumbnail" style="max-height: 150px;">
+        <p class="mt-1 mb-0 small">Image 3</p>
+      </div>
+      {% endif %}
+
+      {% if product.image4 %}
+      <div class="col-6 col-md-4 col-lg-3 text-center">
+        <img src="{{ product.image4.url }}" alt="Image 4" class="img-thumbnail" style="max-height: 150px;">
+        <p class="mt-1 mb-0 small">Image 4</p>
+      </div>
+      {% endif %}
+
+      {% if product.plastic_image %}
+      <div class="col-6 col-md-4 col-lg-3 text-center">
+        <img src="{{ product.plastic_image.url }}" alt="Plastic Bottle" class="img-thumbnail" style="max-height: 150px;">
+        <p class="mt-1 mb-0 small">Plastic Bottle</p>
+      </div>
+      {% endif %}
+
+      {% if product.glass_image %}
+      <div class="col-6 col-md-4 col-lg-3 text-center">
+        <img src="{{ product.glass_image.url }}" alt="Glass Bottle" class="img-thumbnail" style="max-height: 150px;">
+        <p class="mt-1 mb-0 small">Glass Bottle</p>
+      </div>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+  </div>
+          
+          <hr>
+         {% if product.variants.count > 0 %}
+  <h6 class="mt-3">Variants:</h6>
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm">
+      <thead class="table-light">
+        <tr>
+          <th>Bottle Type</th>
+          <th>Price (₹)</th>
+          <th>Size</th>
+          <th>Stock</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for variant in product.variants.all %}
+        <tr>
+          <td>{{ variant.bottle_type }}</td>
+          <td>{{ variant.price }}</td>
+          <td>{{ variant.size }}</td>
+          <td>{{ variant.stock }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% elif product.gift_sets.count > 0 %}
+  <h6 class="mt-3">Giftsets:</h6>
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm">
+      <thead class="table-light">
+        <tr>
+          <th>Set Name</th>
+          <th>Price (₹)</th>
+          <th>Stock</th>
+          <th>Flavours</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for giftset in product.gift_sets.all %}
+        <tr>
+          <td>{{ giftset.set_name }}</td>
+          <td>{{ giftset.price }}</td>
+          <td>{{ giftset.stock }}</td>
+          <td>
+           <div class="row">
+  {% for flavour in giftset.flavours.all %}
+    <div class="col-6 col-md-4 text-center mb-3">
+      {% if flavour.image %}
+        <img src="{{ flavour.image.url }}" alt="{{ flavour.name }}" class="img-thumbnail" style="max-height: 100px;">
+      {% endif %}
+      <p class="mt-2 mb-0">{{ flavour.name }}</p>
+    </div>
+  {% endfor %}
+</div>
+
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-muted">No variants or giftsets available for this product.</p>
+{% endif %}
+</div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endfor %}
+
+<!-- ✅ TOAST -->
+<div class="position-fixed top-0 end-0 p-5" style="z-index: 9999">
+  <div id="productToast" class="toast align-items-center text-bg-success border-0">
+    <div class="d-flex">
+      <div class="toast-body" id="productToastBody"></div>
+      <button type="button" class="btn-close btn-close-white m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+<script>
+function initEditModal(productId) {
+  const form = document.getElementById(`editproductForm-${productId}`);
+  if (!form) return;
+
+  const variantContainer = document.getElementById(`variant-forms-${productId}`);
+  const variantEmptyFormElement = document.getElementById(`variant-empty-form-${productId}`).firstElementChild;
+  const variantTotal = form.querySelector('input[name="variants-TOTAL_FORMS"]');
+
+  const giftsetContainer = document.getElementById(`giftset-forms-${productId}`);
+  const giftsetEmptyFormElement = document.getElementById(`giftset-empty-form-${productId}`).firstElementChild;
+  const giftsetTotal = form.querySelector('input[name="gift_sets-TOTAL_FORMS"]');
+
+  const addVariantBtn = document.getElementById(`add-variant-${productId}`);
+  const addGiftsetBtn = document.getElementById(`add-giftset-${productId}`);
+
+  const categorySelect = form.querySelector('#id_category');
+  if (categorySelect) {
+    const toggle = () => {
+      const txt = categorySelect.options[categorySelect.selectedIndex].text.toLowerCase();
+      if (txt.startsWith('gift')) {
+        document.getElementById(`giftset-formset-${productId}`).style.display = 'block';
+        document.getElementById(`variant-formset-${productId}`).style.display = 'none';
+      } else {
+        document.getElementById(`giftset-formset-${productId}`).style.display = 'none';
+        document.getElementById(`variant-formset-${productId}`).style.display = 'block';
+      }
+    };
+    categorySelect.addEventListener('change', toggle);
+    toggle();
+  }
+
+  // Add Variant
+  if (addVariantBtn) {
+    addVariantBtn.addEventListener('click', e => {
+      e.preventDefault();
+      const index = parseInt(variantTotal.value);
+      const newForm = variantEmptyFormElement.cloneNode(true);
+
+      newForm.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.name) el.name = el.name.replace(/__prefix__/, index);
+        if (el.id) el.id = el.id.replace(/__prefix__/, index);
+        if (el.type !== 'hidden') el.value = '';
+      });
+
+      variantContainer.appendChild(newForm);
+      variantTotal.value = index + 1;
+    });
+  }
+
+  // Add Giftset
+  // Add Giftset
+if (addGiftsetBtn) {
+  addGiftsetBtn.addEventListener('click', e => {
+    e.preventDefault();
+    const index = parseInt(giftsetTotal.value);
+    const newForm = giftsetEmptyFormElement.cloneNode(true);
+
+    newForm.querySelectorAll('input, select, textarea').forEach(el => {
+      if (el.name) el.name = el.name.replace(/__prefix__/, index);
+      if (el.id) el.id = el.id.replace(/__prefix__/, index);
+      if (el.type !== 'hidden') el.value = '';
+    });
+
+    giftsetContainer.appendChild(newForm);
+    giftsetTotal.value = index + 1;
+  });
+}
+
+
+  // Remove Variant
+  variantContainer.addEventListener('click', e => {
+    if (e.target.classList.contains('remove-variant')) {
+      e.preventDefault();
+      e.target.closest('.variant-form').remove();
+      variantTotal.value = variantContainer.querySelectorAll('.variant-form').length;
+    }
+  });
+
+  // Remove Giftset
+  giftsetContainer.addEventListener('click', e => {
+    if (e.target.classList.contains('remove-giftset')) {
+      e.preventDefault();
+      e.target.closest('.giftset-form').remove();
+      giftsetTotal.value = giftsetContainer.querySelectorAll('.giftset-form').length;
+    }
+  });
+
+  // Submit Form
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const formData = new FormData(form);
+
+    fetch(`/admin-panel/products/${productId}/update/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showProductToast('Updated successfully!', () => location.reload());
+      } else {
+        let msg = '';
+        for (const [formsetName, errors] of Object.entries(data.errors)) {
+          errors.forEach((err, idx) => {
+            msg += `\n${formsetName}[${idx}]:\n`;
+            for (const [field, messages] of Object.entries(err)) {
+              msg += `  ${field}: ${messages.join(', ')}\n`;
+            }
+          });
+        }
+        alert(msg || 'Validation failed.');
+      }
+    })
+    .catch(() => alert('Something went wrong.'));
+  });
+}
+</script>
+
+<!-- ✅ SCRIPTS -->
+<script>
+function showProductToast(message, callback) {
+  const toastBody = document.getElementById('productToastBody');
+  toastBody.textContent = message;
+  const toastEl = document.getElementById('productToast');
+  const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+  toast.show();
+  if (callback) {
+    toastEl.addEventListener('hidden.bs.toast', function handler() {
+      callback();
+      toastEl.removeEventListener('hidden.bs.toast', handler);
+    });
+  }
+}
+
+function submitAddProductForm(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+
+  fetch(form.action, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      // ✅ Close the modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('addproductModal'));
+      modal.hide();
+
+      // ✅ Optional: reset form
+      form.reset();
+
+      // ✅ Show toast and reload after slight delay
+      showProductToast('Product added!', () => location.reload());
+    } else {
+      alert('Error: ' + JSON.stringify(data.errors));
+    }
+  })
+  .catch(() => alert('Error'));
+
+  return false;
+}
+
+
+document.querySelectorAll('.delete-product-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.productId;
+    fetch(`/admin-panel/products/${id}/delete/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showProductToast('Deleted!', () => location.reload());
+      } else {
+        console.error('Delete error:', data);
+        alert('Delete failed: ' + (data.error || 'Unknown error.'));
+      }
+    })
+    .catch(err => {
+      console.error('Fetch error:', err);
+      alert('Network error');
+    });
+  });
+});
+
+
+function openEditProductModal(id) {
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+
+    fetch(`/admin-panel/products/${id}/update/`)
+        .then(r => r.text())
+        .then(html => {
+            const container = document.getElementById(`editproductFormContainer-${id}`);
+            container.innerHTML = html;
+
+            const modalEl = document.getElementById(`editproductModal-${id}`);
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            initEditModal(id);
+        });
+}
+
+
+
+// ✅ Dynamic add/remove for Add form
+document.addEventListener('DOMContentLoaded', () => {
+  initDynamicFields();
+});
+
+function initDynamicFields(productId=null) {
+  const suffix = productId ? `-${productId}` : '';
+  const catSelect = document.getElementById(`id_category`);
+  const vFormset = document.getElementById(`variant-formset${suffix}`);
+  const gFormset = document.getElementById(`giftset-formset${suffix}`);
+  const vForms = document.getElementById(`variant-forms${suffix}`);
+  const gForms = document.getElementById(`giftset-forms${suffix}`);
+  const addV = document.getElementById(`add-variant${suffix}`);
+  const addG = document.getElementById(`add-giftset${suffix}`);
+  const vTotal = vFormset.querySelector('[id$="TOTAL_FORMS"]');
+  const gTotal = gFormset.querySelector('[id$="TOTAL_FORMS"]');
+
+  function toggle() {
+    if (!catSelect) return;
+    const txt = catSelect.options[catSelect.selectedIndex].text.toLowerCase();
+    if (txt.startsWith('gift')) { gFormset.style.display = 'block'; vFormset.style.display = 'none'; }
+    else { gFormset.style.display = 'none'; vFormset.style.display = 'block'; }
+  }
+
+  if (catSelect) catSelect.addEventListener('change', toggle); toggle();
+
+  if (addV) addV.onclick = e => { e.preventDefault();
+    const count = parseInt(vTotal.value);
+    const clone = vForms.children[0].cloneNode(true);
+    clone.querySelectorAll('input,select').forEach(el => {
+      el.name = el.name.replace('variants-0', `variants-${count}`);
+      el.id = el.id.replace('variants-0', `variants-${count}`);
+      if (el.type !== 'hidden') el.value = '';
+    });
+    vForms.appendChild(clone);
+    vTotal.value = count + 1;
+  };
+  if (vForms) vForms.onclick = e => {
+    if (e.target.classList.contains('remove-variant')) e.target.closest('.variant-form').remove();
+  };
+
+// Add Giftset
+if (addG) addG.onclick = e => { 
+    e.preventDefault();
+    const count = parseInt(gTotal.value);
+    const clone = gForms.children[0].cloneNode(true);
+
+    clone.querySelectorAll('input, select, textarea').forEach(el => {
+        el.name = el.name.replace('giftsets-0', `giftsets-${count}`);
+        el.id = el.id.replace('giftsets-0', `giftsets-${count}`);
+
+        // ✅ Fix for checkboxes
+        if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+        else if (el.type !== 'hidden') el.value = '';
+    });
+
+    gForms.appendChild(clone);
+    gTotal.value = count + 1;
+};
+
+}
+</script>
+{% endblock %}

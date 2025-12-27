@@ -1,0 +1,100 @@
+{% extends 'layouts/main.html' %}
+
+{% block extra_css %}
+<style>
+    .store-hero {
+        background: url('https://images.unsplash.com/photo-1594035910387-fea47794261f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2080&q=80') no-repeat center center;
+        background-size: cover;
+        height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    
+    .store-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .store-hero h1 {
+        position: relative;
+        color: white;
+        font-size: 3rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    .store-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        margin: 2rem auto;
+        padding: 2rem;
+        max-width: 800px;
+        border-left: 4px solid #4a6fdc;
+    }
+    
+    .store-card h2 {
+        color: #2d3748;
+        margin-bottom: 1rem;
+    }
+    
+    .store-card p {
+        color: #4a5568;
+        line-height: 1.6;
+        margin-bottom: 1.5rem;
+    }
+    
+    .map-btn {
+        display: inline-block;
+        background: #4a6fdc;
+        color: white;
+        padding: 0.6rem 1.5rem;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .map-btn:hover {
+        background: #3a5bc7;
+        transform: translateY(-2px);
+    }
+    
+    @media (max-width: 768px) {
+        .store-hero h1 {
+            font-size: 2rem;
+        }
+        .store-card {
+            padding: 1.5rem;
+            margin: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="store-hero">
+    <h1>Our Stores</h1>
+</div>
+
+<div class="container">
+    {% for store in stores %}
+    <div class="store-card">
+        <h2>{{ store.name }}</h2>
+        <p>{{ store.address|linebreaksbr }}</p>
+        {% if store.phone %}
+        <p><i class="fas fa-phone"></i> {{ store.phone }}</p>
+        {% endif %}
+        <a href="{{ store.map_link }}" class="map-btn" target="_blank">
+            <i class="fas fa-map-marker-alt"></i> Google Maps Direction
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

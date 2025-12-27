@@ -1,0 +1,148 @@
+{% extends 'admin_panel/base.html' %}
+{% block content %}
+{% block title %}
+<style>
+  .btn-maroon,.btn-maroon:hover{
+    background-color: maroon;
+    color: white;
+
+  }
+</style>
+{% endblock title %}
+<div class="container mt-4">
+
+  <!-- 🔹 Product Variants Section -->
+  <h2>All Product Variants</h2>
+
+  <!-- Filter Form -->
+  <form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control w-25" placeholder="🔍 Search..." />
+  
+  {% if query %}
+    <a href="?page={{ page_obj.number }}" class="btn btn-maroon btn-sm">Clear Filters</a>
+  {% else %}
+    <button type="submit" class="btn btn-maroon">Filter</button>
+  {% endif %}
+</form>
+<div class="text-end mb-2">
+  <button class="btn btn-outline-success btn-sm d-flex align-items-center gap-1" style="float: right; margin-bottom: 50px;" onclick="exportWithImages()">
+    <i class="bi bi-file-earmark-excel"></i> Export Excel
+  </button>
+</div>
+
+  <!-- Product Variants Table -->
+  {% if variants %}
+    <table id="bannerTable" class="table table-bordered mt-3">
+      <thead class="thead-dark">
+        <tr>
+          <th>Product Name</th>
+          <th>Variant Type</th>
+          <th>Size</th>
+          <th>Price</th>
+          <th>Stock</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for variant in page_obj %}
+          <tr>
+            <td>{{ variant.product.name }}</td>
+            <td>{{ variant.bottle_type|default:"—" }}</td>
+            <td>{{ variant.size|default:"—" }}</td>
+            <td>₹{{ variant.price }}</td>
+            <td>{{ variant.stock }}</td>
+            <td>
+              {% if variant.stock > 10 %}
+                <span class="badge bg-success">In Stock</span>
+              {% elif variant.stock > 0 %}
+                <span class="badge bg-warning text-dark">Low Stock</span>
+              {% else %}
+                <span class="badge bg-danger">Out of Stock</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No product variants available.</p>
+  {% endif %}
+
+  
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+<script>
+async function exportWithImages() {
+    const table = document.getElementById("bannerTable");
+    const rows = [...table.querySelectorAll("tr")];
+
+    const data = [];
+    const imageCells = [];
+
+    rows.forEach((row, rIndex) => {
+        const cells = [...row.querySelectorAll("th, td")];
+        const rowData = [];
+
+        cells.forEach((cell, cIndex) => {
+            const img = cell.querySelector("img");
+
+            if (img) {
+                // 🛑 Skip ONLY settings.png image
+                if (img.src.includes("settings.png")) {
+                    rowData.push("");  // Keep empty cell
+                } 
+                else {
+                    // ✔ Add all other images
+                    imageCells.push({
+                        row: rIndex + 1,
+                        col: cIndex + 1,
+                        src: img.src
+                    });
+                    rowData.push("");
+                }
+            } 
+            else {
+                rowData.push(cell.innerText.trim());
+            }
+        });
+
+        data.push(rowData);
+    });
+
+    // Excel export using ExcelJS (your version)
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Export");
+
+    data.forEach((row, rIndex) => {
+        sheet.addRow(row);
+    });
+
+    // Insert images except settings.png
+    for (let item of imageCells) {
+        const imgBlob = await fetch(item.src).then(res => res.blob());
+        const buffer = await imgBlob.arrayBuffer();
+
+        const imageId = workbook.addImage({
+            buffer: buffer,
+            extension: "png"
+        });
+
+        sheet.addImage(imageId, {
+            tl: { col: item.col - 1, row: item.row - 1 },
+            ext: { width: 80, height: 80 }
+        });
+    }
+
+    // Download file
+    workbook.xlsx.writeBuffer().then((buffer) => {
+        const blob = new Blob([buffer], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        saveAs(blob, "variants_report.xlsx");
+    });
+}
+</script>
+{% endblock %}

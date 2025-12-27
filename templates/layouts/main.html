@@ -1,0 +1,681 @@
+{% load static %}
+{% load compress %}
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- ✅ COMPRESS ONLY LOCAL STATIC FILES -->
+<link rel="stylesheet" href="{% static 'css/header.css' %}">
+<link rel="stylesheet" href="{% static 'css/footer.css' %}">
+
+
+<!-- ✅ SITE FAVICON -->
+<link rel="icon" type="image/png" href="{% static 'images2/hi1.png' %}" alt="jj">
+
+<!-- ✅ LOTTIE PLAYER (deferred) -->
+<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js" defer></script>
+
+
+    {% block extra_css %}{% endblock extra_css %}
+    <style>
+.whatsapp-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+.whatsapp-float img {
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+  animation: whatsapp-blink 1.2s infinite;
+}
+.whatsapp-float img:hover {
+  transform: scale(1.1);
+  animation: none; /* Stop blinking on hover */
+}
+@keyframes whatsapp-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+    </style>
+</head>
+<body>
+    <!-- Page Loader -->
+    <div id="loader" 
+     style="display:flex; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center;">
+    
+    <img src="{% static 'images2/PerfumeBottle.gif' %}" 
+         alt="Loading..."  loading="lazy"
+         style="width:100px; height:100px;" />
+</div>
+
+
+    {% include 'inc/header.html' %}
+
+    <!-- Perfume animation (autoplay on refresh) -->
+    <!-- <div id="animation-overlay">
+      <div id="animation-container">
+        <video autoplay muted loop playsinline>
+          <source src="{% static 'images2/PerfumeBottle.mp4' %}" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div> -->
+    
+    {% block content %}
+    <!-- Your page content here -->
+    {% endblock content %}
+    
+  
+    <!-- 🔹 Purchase Popup -->
+<!-- 🔹 Purchase Popup -->
+<div id="purchase-popup" 
+     class="p-2 bg-white border rounded shadow d-flex align-items-center"
+     style="width:380px; display:none; z-index:9999;">
+  
+  <!-- Product Image -->
+  <img id="popup-image" src="https://via.placeholder.com/60" 
+       alt="Product" class="rounded me-2" 
+       style="width:60px; height:60px; object-fit:cover;">
+
+  <div style="flex:1">
+    <!-- Stars -->
+    <div class="mb-1" style="color:gold; font-size:14px;">★★★★★</div>
+    
+    <!-- Text with link -->
+    <p class="m-0 text-dark fw-semibold product-title">
+      <span id="popup-user"></span> from <span id="popup-location"></span> just purchased 
+      <a id="popup-link" href="#" class="text-decoration-none fw-bold text-primary"></a>
+    </p>
+
+    <!-- Prices -->
+    <div>
+      <span id="popup-price" class="badge bg-danger"></span>
+      <span id="popup-original" class="text-muted text-decoration-line-through ms-1"></span>
+    </div>
+
+    <small class="text-muted">Just now</small>
+  </div>
+</div>
+
+<style>
+#purchase-popup {
+  position: fixed;
+  bottom: 20px;
+  right: 20px; /* ✅ Now pinned to right corner */
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  display: none;
+  opacity: 0;
+  transform: translateX(120%); /* start off-screen on right */
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+#purchase-popup.show {
+  display: flex;
+  opacity: 1;
+  transform: translateX(0); /* slide into view */
+}
+
+/* ✅ Product name clamp */
+.product-title a {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;       /* max 2 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.3em;
+  max-height: 2.6em; /* match 2 lines */
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  #purchase-popup {
+    width: 70%!important;
+    right: 5%;
+    height:auto;
+    display : flex;
+    justify-content:start;
+  }
+}
+</style>
+
+
+<!-- 🔹 Discount Wheel Button -->
+<div id="discount-wheel">
+  <!-- Rotating wheel background -->
+  <div class="wheel-background"> 
+    
+  
+ 
+  </div>
+  
+  <!-- Static tag image that bounces on click -->
+  <img src="{% static 'images2/Discount.png' %}" class="tag" alt="Wheel" id="discount-tag" loading="lazy">
+  
+  <!-- Static tooltip that pops out -->
+  <span class="wheel-tooltip" id="discount-tooltip">Get Discount!</span>
+</div>
+
+<!-- 🔹 Discount Popup Form -->
+<div id="discount-form" class="d-none">
+  <div class="discount-form-content">
+
+    <span id="close-discount">&times;</span>
+
+    <!-- Heading -->
+    <h2 class="keep-in">Keep In</h2>
+    <h1 class="touch">Touch</h1>
+
+    <!-- Success/Error message -->
+    <div id="discount-message" class="mb-2"></div>
+
+    <!-- Card -->
+    <div class="discount-con">
+      <h3 class="discount-subtitle">Subscribe to get a discount now!</h3>
+
+      <form id="discountForm" action="{% url 'sub_add' %}" method="post">
+        {% csrf_token %}
+
+        <div class="mb-3 input-group-custom">
+          <label>Name</label>
+          <input type="text" class="form-control-custom" name="name" placeholder="Enter here" required>
+        </div>
+
+        <div class="mb-3 input-group-custom">
+          <label>Email</label>
+          <input type="email" class="form-control-custom" name="email" placeholder="Enter here" required>
+        </div>
+        <div class="mb-3 input-group-custom">
+          <label>mobile Number</label>
+          <input type="tel" class="form-control-custom" name="phone_number" placeholder="Enter here" required>
+        </div>
+
+       
+        <button type="submit" class="subscribe-button w-100">
+         Subscribe
+        </button>
+      </form>
+    </div>
+
+    <!-- Footer -->
+    <p class="terms">
+      By Signing Up, You Agree To Receive Recurring Automated Marketing Messages At The Phone Number Provided.
+      Consent Is Not A Condition Of Purchase.
+    </p>
+
+  </div>
+</div>
+
+<style>
+/* ✅ Floating Wheel Container */
+
+
+.discount-con{
+  background-color: #fff;
+
+}
+
+.discount-form-heading{
+  width: 373px;
+height: 115px;
+
+font-family: 'Jomolhari';
+font-style: normal;
+font-weight: 400;
+font-size: 60px;
+line-height: 64px;
+
+display: flex;
+align-items: center;
+text-align: center;
+
+color: #6D3F0B;
+
+
+/* Inside auto layout */
+flex: none;
+order: 0;
+align-self: stretch;
+flex-grow: 0;
+}
+
+
+#discount-wheel {
+  position: fixed;
+  bottom: 100px;
+  left: 20px;
+  width: 105px;
+  height: 106px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1025;
+}
+
+/* ✅ Rotating Wheel Background - ONLY THIS ROTATES */
+.wheel-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("{% static 'images2/DiscountWheel.png' %}");
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  animation: rotateWheel 3s linear infinite;
+  z-index: 1;
+}
+
+/* ✅ Static Tag Image - STAYS STILL */
+.tag {
+  width: 65px;
+  height: 60px;
+  position: relative;
+  z-index: 3;
+  
+}
+
+/* ✅ Tag Bounce Animation on Click */
+.tag:hover {
+  animation: tagBounce 0.6s ease;
+}
+
+/* ✅ Static Tooltip - STAYS STILL */
+.wheel-tooltip {
+  position: absolute;
+  left: 85px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  transform-origin: left center;
+  background: #981942 !important;
+  color: rgb(247, 246, 246) !important;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: 'Jomolhari' !important;
+  font-size: 20px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 2;
+}
+
+/* ✅ Tooltip Pop-out Animation - Triggered on HOVER */
+#discount-wheel:hover .wheel-tooltip {
+  opacity: 1;
+  animation: tooltipPopOut 0.8s ease forwards;
+}
+
+/* ✅ ANIMATIONS */
+
+/* Wheel rotation - continuous */
+@keyframes rotateWheel {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Tag bounce - on click */
+@keyframes tagBounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.3) rotate(-10deg); }
+  50% { transform: scale(1.1) rotate(5deg); }
+  70% { transform: scale(1.2) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Tooltip pop-out - on click */
+@keyframes tooltipPopOut {
+  0% { 
+    transform: translateY(-50%) scale(0) translateX(-10px);
+    opacity: 0;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+  30% { 
+    transform: translateY(-55%) scale(1.2) translateX(0);
+    opacity: 1;
+    box-shadow: 0 0 15px #981942;
+  }
+  50% { 
+    transform: translateY(-45%) scale(0.9) translateX(5px);
+    box-shadow: 0 0 20px #981942;
+  }
+  70% { 
+    transform: translateY(-52%) scale(1.1) translateX(-2px);
+    box-shadow: 0 0 18px #981942;
+  }
+  100% { 
+    transform: translateY(-50%) scale(1) translateX(0);
+    opacity: 1;
+    box-shadow: 0 4px 12px #981942;
+  }
+}
+
+/* ✅ Responsive Styles */
+
+/* Small phones */
+@media (max-width: 480px) {
+  #discount-wheel {
+    width: 70px !important;
+    height: 70px !important;
+    bottom: 70px;
+    left: 15px;
+  }
+  .tag {
+    width: 30px !important;
+    height: 30px !important; 
+  }
+  .wheel-tooltip {
+    left: 60px;
+    font-size: 16px;
+    padding: 4px 8px;
+  }
+}
+
+/* Tablets / small screens */
+@media (max-width: 768px) {
+  #discount-wheel {
+    width: 110px;
+    height: 110px;
+    bottom: 80px;
+    left: 18px;
+  }
+  .tag {
+    width: 35px;
+    height: 35px;
+  }
+  .wheel-tooltip {
+    left: 70px;
+    font-size: 18px;
+    padding: 5px 10px;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1200px) {
+  .wheel-tooltip {
+    left: 100px;
+  }
+}
+/* Overlay */
+#discount-form {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+}
+
+/* Popup */
+.discount-form-content {
+  width: 90%;
+  max-width: 420px;
+  padding: 26px 22px;
+  border-radius: 18px;
+  background-image: url("{% static 'images2/Group.png' %}");
+  text-align: center;
+  position: relative;
+  animation: popupShow 0.3s ease forwards;
+}
+
+/* Close */
+#close-discount {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+/* Heading */
+.keep-in {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  margin: 0;
+}
+
+.touch {
+  font-family: 'Brush Script MT', cursive;
+  font-size: 44px;
+  color: #7a4a18;
+  margin-top: -6px;
+}
+
+/* Card */
+.discount-con {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px 18px;
+  margin: 18px 0;
+}
+
+.discount-subtitle {
+  font-family: "Jomolhari";
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: #333;
+}
+
+/* Inputs */
+.input-group-custom {
+  text-align: left;
+}
+
+.input-group-custom label {
+  font-size: 14px;
+  color: #595959;
+}
+
+.form-control-custom {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #bbb;
+  padding: 6px 4px;
+  font-size: 15px;
+  background: transparent;
+  outline: none;
+}
+
+/* Button */
+.subscribe-button {
+  margin-top: 16px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #981942, #CC3D70,#981942);
+  color: #fff;
+  font-family: "Jomolhari";
+  font-size: 18px;
+  padding: 10px 0px;
+  border: none;
+  cursor: pointer;
+}
+
+/* Footer */
+.terms {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.4;
+}
+
+/* Animation */
+@keyframes popupShow {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  let wheel = document.getElementById("discount-wheel");
+  let popup = document.getElementById("discount-form");
+  let closeBtn = document.getElementById("close-discount");
+  let tag = document.getElementById("discount-tag");
+  let form = document.getElementById("discountForm");
+  let messageDiv = document.getElementById("discount-message");
+
+  // Show popup on wheel click
+  wheel.addEventListener("click", function() {
+    tag.classList.add("bounce");
+    popup.classList.remove("d-none");
+    setTimeout(() => tag.classList.remove("bounce"), 600);
+  });
+
+  // Close popup
+  closeBtn.addEventListener("click", () => popup.classList.add("d-none"));
+  popup.addEventListener("click", e => { if (e.target === popup) popup.classList.add("d-none"); });
+
+  // AJAX form submission
+  form.addEventListener("submit", function(e) {
+    e.preventDefault();
+    let formData = new FormData(form);
+    let csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch("{% url 'sub_add' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": csrfToken,
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+  if (data.success) {
+    messageDiv.innerHTML = `
+      <div class="alert alert-success">${data.message}</div>
+    `;
+    form.reset();
+  } else {
+    if (data.errors && data.errors.email) {
+      messageDiv.innerHTML = `
+        <div class="alert alert-danger">
+          ${data.errors.email}
+        </div>
+      `;
+    } else {
+      messageDiv.innerHTML = `
+        <div class="alert alert-danger">
+          Please check the form fields.
+        </div>
+      `;
+    }
+  }
+})
+
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    let reviews = [
+        {% for purchase in latest_purchases %}
+          {
+            name: "{{ purchase.product_name|escapejs }}",
+            price: "{{ purchase.product_price|escapejs }}",
+            original: "{{ purchase.product_original_price|escapejs }}",
+            image: "{{ purchase.product_image|escapejs }}",
+            location: "{{ purchase.location|escapejs }}",
+            user: "{{ purchase.user_name|escapejs }}",
+            url: "{{ purchase.product_url|escapejs }}"
+          },
+        {% endfor %}
+    ];
+
+    let popup = document.getElementById("purchase-popup");
+    let popupImage = document.getElementById("popup-image");
+    let popupUser = document.getElementById("popup-user");
+    let popupLocation = document.getElementById("popup-location");
+    let popupLink = document.getElementById("popup-link");
+    let popupPrice = document.getElementById("popup-price");
+    let popupOriginal = document.getElementById("popup-original");
+
+    let index = 0;
+
+    function showPopup() {
+        if (reviews.length === 0) return;
+
+        let review = reviews[index];
+
+        popupImage.src = review.image || "https://via.placeholder.com/60";
+        popupUser.innerText = review.user;
+        popupLocation.innerText = review.location;
+        popupLink.innerText = review.name;
+        popupLink.href = review.url;
+        popupPrice.innerText = "₹" + review.price;
+        popupOriginal.innerText = review.original ? "₹" + review.original : "";
+
+        // show popup
+        popup.classList.add("show");
+
+        // hide after 40s
+        setTimeout(() => {
+            popup.classList.remove("show");
+            index = (index + 1) % reviews.length;
+            setTimeout(showPopup, 35000);
+        }, 4000);
+    }
+
+    setTimeout(showPopup, 2000);
+});
+</script>
+
+
+    <!-- <script>
+      // Hide the animation overlay after the page is fully loaded
+      window.addEventListener('load', function() {
+        document.getElementById("animation-overlay").style.display = "none"; 
+      });
+    
+      // Hide the overlay after 3 seconds
+      setTimeout(() => {
+        document.getElementById("animation-overlay").style.display = "none";
+      }, 3000);
+    </script> -->
+
+<script>
+      // Hide loader when page is fully loaded
+      window.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('loader').style.display = 'none';
+      });
+    </script>
+  
+  
+    
+   
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" defer></script>
+
+
+    <!-- WhatsApp Floating Icon -->
+<a href="https://wa.me/919059069188" target="_blank" class="whatsapp-float">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" width="70" height="70">
+</a>
+
+
+
+  {% include 'inc/footer.html' %}
+
+</body>
+</html>

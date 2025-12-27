@@ -1,0 +1,371 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% block title %}
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .btn-maroon {
+      background-color: #8b1538;
+      color: white;
+    }
+
+    .btn-maroon:hover {
+      background-color: #6e102c;
+      color: white;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f0f0f0;
+      border-color: transparent;
+    }
+
+    .badge-instock {
+      background-color: #28a745;
+    }
+
+    .badge-lowstock {
+      background-color: #fd7e14;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    .gear-icon {
+      cursor: pointer;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .toast-body{
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      font-size: 20px;
+      padding: 10px !important;
+    }
+  </style>
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <h3><strong>Categories</strong></h3>
+    <p class="text-muted">Manage your categories</p>
+
+    <!-- Tabs -->
+    <!-- <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link active" href="#">Categories</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Products</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Brands</a>
+      </li>
+    </ul> -->
+
+    <!-- Search & Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+ {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>      <div>
+<button class="btn btn-maroon me-2" data-bs-toggle="modal" data-bs-target="#addCategoryModal">+ Add Category</button>        <!-- <button class="btn btn-maroon">+ Add Products</button> -->
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="dashboard-card">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Category Name</th>
+            <th>Banner Image</th>
+            <!-- <th>Category</th> -->
+            <!-- <th>Price</th> -->
+            <!-- <th>Stock Status</th> -->
+            <th>GiF/Image</th>
+              <th>Created_at</th>
+
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for category in page_obj %}
+          <tr data-category-id="{{ category.id }}">
+            <td>{{ category.name }}</td>
+            {% if category.banner %}
+            <td><img src="{{ category.banner.url }}" alt="no image" height="100px" width="100px"></td>
+            {% else  %}
+            <td>No image</td>
+            {% endif %}
+            {% if category.gif_file %}
+            <td><img src="{{ category.gif_file.url }}" alt="no image" height="100px" width="100px"></td>
+            {% endif %}
+            <td>{{ category.created_at|date:"D M j, g:iA" }}</td>
+            <!-- <td><span class="badge badge-instock">In stock</span></td> -->
+<td>
+  <div class="dropdown">
+    <img src="{% static 'images2/settings.png' %}" 
+         class="dropdown-toggle"
+         data-bs-toggle="dropdown"
+         aria-expanded="false"
+         style="cursor: pointer; width: 20px;">
+         
+    <ul class="dropdown-menu">
+      <li>
+        <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editCategoryModal-{{ category.id }}" onclick="openEditCategoryModal({{ category.id }})">
+          ✏️ Update
+        </a>
+      </li>
+      <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal-{{ category.id }}">
+    🗑️ Delete
+  </button>
+</li>
+
+    </ul>
+  </div>
+</td>
+
+          {% endfor %}
+         
+          
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="addCategoryForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addCategoryModalLabel">Add Category</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="categoryName" class="form-label">Category Name</label>
+            <input type="text" class="form-control" id="categoryName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="categoryBanner" class="form-label">Banner Image</label>
+            <input type="file" class="form-control" id="categoryBanner" name="banner">
+          </div>
+          <div class="mb-3">
+            <label for="categoryGif" class="form-label">GIF/Image</label>
+            <input type="file" class="form-control" id="categoryGif" name="gif_file">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-maroon">Add Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% for category in categories %}
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal-{{ category.id }}" tabindex="-1" aria-labelledby="editCategoryModalLabel-{{ category.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editCategoryModalLabel-{{ category.id }}">Edit Category</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="editCategoryFormContainer-{{ category.id }}">
+        <!-- Form will be loaded here via AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteCategoryModal-{{ category.id }}" tabindex="-1" aria-labelledby="deleteCategoryModalLabel-{{ category.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteCategoryModalLabel-{{ category.id }}">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the category <strong>{{ category.name }}</strong>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger delete-category-btn" data-category-id="{{ category.id }}">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+<!-- Toast Container -->
+<div class="position-fixed top-0 end-0 p-5" style="z-index: 9999">
+  <div id="categoryToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="categoryToastBody">
+        <!-- Message will be set by JS -->
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+<script>
+function showCategoryToast(message, callback) {
+  const toastBody = document.getElementById('categoryToastBody');
+  toastBody.textContent = message;
+  const toastEl = document.getElementById('categoryToast');
+  const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+  toast.show();
+  if (callback) {
+    toastEl.addEventListener('hidden.bs.toast', function handler() {
+      callback();
+      toastEl.removeEventListener('hidden.bs.toast', handler);
+    });
+  }
+}
+// Add Category AJAX
+const addCategoryForm = document.getElementById('addCategoryForm');
+if (addCategoryForm) {
+  addCategoryForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var formData = new FormData(form);
+    fetch("/admin-panel/categories/add/", {
+      method: "POST",
+      headers: {
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Dynamically add the new row to the table without reload
+        const tbody = document.querySelector('table tbody');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${data.name}</td>
+          <td>${data.banner_url ? `<img src="${data.banner_url}" alt="no image" height="100px" width="100px">` : 'No image'}</td>
+          <td>${data.gif_url ? `<img src="${data.gif_url}" alt="no image" height="100px" width="100px">` : ''}</td>
+          <td>${data.created_at}</td>
+          <td>
+            <div class="dropdown">
+              <img src="{% static 'images2/settings.png' %}" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer; width: 20px;">
+              <ul class="dropdown-menu">
+                <li>
+                  <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editCategoryModal-${data.id}" onclick="openEditCategoryModal(${data.id}); return false;">✏️ Update</a>
+                </li>
+                <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteCategoryModal-${data.id}">🗑️ Delete</button>
+</li>
+              </ul>
+            </div>
+          </td>
+        `;
+        tbody.prepend(row);
+        // Close modal
+        var modal = bootstrap.Modal.getInstance(document.getElementById('addCategoryModal'));
+        modal.hide();
+        form.reset();
+        document.querySelector('#addCategoryButton').focus();
+
+        showCategoryToast('Category added successfully!');
+      } else {
+        alert(data.error || "Failed to add category.");
+      }
+    })
+ .catch(error => {
+      console.error("AJAX error:", error);
+      alert("Something went wrong:\n" + error);
+    });  });
+}
+
+
+
+// Edit Category AJAX
+window.openEditCategoryModal = function(categoryId) {
+  fetch(`/admin-panel/categories/${categoryId}/update/`)
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById(`editCategoryFormContainer-${categoryId}`).innerHTML = html;
+
+      const form = document.getElementById('editCategoryForm');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var formData = new FormData(form);
+          fetch(`/admin-panel/categories/${categoryId}/update/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              showCategoryToast('Category updated successfully!', function() {
+                location.reload();
+              });
+            } else {
+              alert('Failed to update category.');
+            }
+          })
+          .catch(() => alert('Something went wrong!'));
+        });
+      }
+    });
+};
+
+// Delete Category AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.delete-category-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const categoryId = btn.getAttribute('data-category-id');
+      btn.disabled = true;
+      fetch(`/admin-panel/categories/${categoryId}/delete/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove the row from the table
+          const modal = btn.closest('.modal');
+          const row = document.querySelector(`tr[data-category-id='${categoryId}']`);
+          if (row) row.remove();
+          // Hide the modal
+          if (modal) bootstrap.Modal.getInstance(modal).hide();
+          showCategoryToast('Category deleted successfully!');
+        } else {
+          alert(data.error || 'Failed to delete category.');
+          btn.disabled = false;
+        }
+      })
+      .catch(() => {
+        alert('Something went wrong!');
+        btn.disabled = false;
+      });
+    });
+  });
+});
+</script>
+{% endblock content %}

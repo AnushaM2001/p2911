@@ -1,0 +1,352 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% block title %}
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .btn-maroon {
+      background-color: #8b1538;
+      color: white;
+    }
+
+    .btn-maroon:hover {
+      background-color: #6e102c;
+      color: white;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f0f0f0;
+      border-color: transparent;
+    }
+
+    .badge-instock {
+      background-color: #28a745;
+    }
+
+    .badge-lowstock {
+      background-color: #fd7e14;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    .gear-icon {
+      cursor: pointer;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .toast-body{
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      font-size: 20px;
+      padding: 10px !important;
+    }
+  </style>
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <h3><strong>Product Videos</strong></h3>
+    <p class="text-muted">Manage your Product Videos</p>
+
+    <!-- Tabs -->
+    <!-- <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link active" href="#">Categories</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Products</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Brands</a>
+      </li>
+    </ul> -->
+
+    <!-- Search & Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+ {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>      <div>
+<button class="btn btn-maroon me-2" data-bs-toggle="modal" data-bs-target="#addvideoModal">+ Add Video</button>        <!-- <button class="btn btn-maroon">+ Add Products</button> -->
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="dashboard-card">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Title</th>
+            <th>Video</th>
+            <th>Products</th>
+            <th>Created_at</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for video in page_obj %}
+          <tr data-video-id="{{ video.id }}">
+            <td>{{ video.title }}</td>
+            
+           {% if video.video %}
+  <td>
+    <video width="200" height="150" controls>
+      <source src="{{ video.video.url }}" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+  </td>
+{% else %}
+  <td>No video uploaded</td>
+{% endif %}
+<td>{{ video.related_products.all|join:", " }}</td>
+
+            <td>{{ video.created_at|date:"D M j, g:iA" }}</td>
+            <!-- <td><span class="badge badge-instock">In stock</span></td> -->
+<td>
+  <div class="dropdown">
+    <img src="{% static 'images2/settings.png' %}" 
+         class="dropdown-toggle"
+         data-bs-toggle="dropdown"
+         aria-expanded="false"
+         style="cursor: pointer; width: 20px;">
+         
+    <ul class="dropdown-menu">
+      <li>
+        <a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#editvideoModal-{{ video.id }}" onclick="openEditvideoModal({{ video.id }})">
+          ✏️ Update
+        </a>
+      </li>
+      <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deletevideoModal-{{ video.id }}">
+    🗑️ Delete
+  </button>
+</li>
+
+    </ul>
+  </div>
+</td>
+
+          {% endfor %}
+         
+          
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Add Category Modal -->
+<div class="modal fade" id="addvideoModal" tabindex="-1" aria-labelledby="addvideoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="addvideoForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addvideoModalLabel">Add video</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {% csrf_token %}
+          <div class="mb-3">
+    <label for="video" class="form-label">Upload Video</label>
+    <input type="file" class="form-control" id="video" name="video" accept="video/*">
+  </div>
+
+  <div class="mb-3">
+    <label for="title" class="form-label">Video Title</label>
+    <input type="text" class="form-control" id="title" name="title" placeholder="Enter video title" value="{{ form.title.value|default_if_none:'' }}">
+  </div>
+
+  <div class="mb-3">
+    <select name="related_products" id="related_products" class="form-select" multiple>
+  {% for product in products %}
+    <option value="{{ product.id }}">{{ product.name }}</option>
+  {% endfor %}
+</select>
+
+    <small class="text-muted">Hold Ctrl (Windows) or Command (Mac) to select multiple products</small>
+  </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-maroon">Upload Video</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% for video in videos %}
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editvideoModal-{{ video.id }}" tabindex="-1" aria-labelledby="editvideoModalLabel-{{ video.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editvideoModalLabel-{{ video.id }}">Edit video</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="editvideoFormContainer-{{ video.id }}">
+        <!-- Form will be loaded here via AJAX -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deletevideoModal-{{ video.id }}" tabindex="-1" aria-labelledby="deletevideoModalLabel-{{ video.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deletevideoModalLabel-{{ video.id }}">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the video <strong>{{ video.name }}</strong>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger delete-video-btn" data-video-id="{{ video.id }}">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+<!-- Toast Container -->
+<div class="position-fixed top-0 end-0 p-5" style="z-index: 9999">
+  <div id="videoToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="videoToastBody">
+        <!-- Message will be set by JS -->
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+<script>
+function showvideoToast(message, callback) {
+  const toastBody = document.getElementById('videoToastBody');
+  toastBody.textContent = message;
+  const toastEl = document.getElementById('videoToast');
+  const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+  toast.show();
+  if (callback) {
+    toastEl.addEventListener('hidden.bs.toast', function handler() {
+      callback();
+      toastEl.removeEventListener('hidden.bs.toast', handler);
+    });
+  }
+}
+// Add Category AJAX
+const addvideoForm = document.getElementById('addvideoForm');
+if (addvideoForm) {
+  addvideoForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = e.target;
+    var formData = new FormData(form);
+
+    fetch('/admin-panel/videos/add/', {
+      method: "POST",
+      headers: {
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        var modal = bootstrap.Modal.getInstance(document.getElementById('addvideoModal'));
+        modal.hide();
+        setTimeout(() => location.reload(), 1000);
+        form.reset();
+        showvideoToast('Video added successfully!');
+      } else {
+        alert("Form error: " + JSON.stringify(data.errors));
+      }
+    })
+    .catch(() => alert("Something went wrong!"));
+  });
+}
+
+// Edit video AJAX
+window.openEditvideoModal = function(videoId) {
+  fetch(`/admin-panel/videos/${videoId}/update/`)
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById(`editvideoFormContainer-${videoId}`).innerHTML = html;
+      // Attach submit event
+      const form = document.getElementById('editvideoForm');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          var formData = new FormData(form);
+          fetch(`/admin-panel/videos/${videoId}/update/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Optionally update the row in the table dynamically
+              showvideoToast(' Video Updated successfully!', function() {
+                location.reload();
+              });
+            } else {
+              alert('Failed to update video.');
+            }
+          })
+          .catch(() => alert('Something went wrong!'));
+        });
+      }
+    });
+}
+
+// Delete Category AJAX
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.delete-video-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const videoId = btn.getAttribute('data-video-id');
+      btn.disabled = true;
+      fetch(`/admin-panel/videos/${videoId}/delete/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Remove the row from the table
+          const modal = btn.closest('.modal');
+          const row = document.querySelector(`tr[data-video-id='${videoId}']`);
+          if (row) row.remove();
+          // Hide the modal
+          if (modal) bootstrap.Modal.getInstance(modal).hide();
+          showvideoToast('video deleted successfully!');
+        } else {
+          alert(data.error || 'Failed to delete video.');
+          btn.disabled = false;
+        }
+      })
+      .catch(() => {
+        alert('Something went wrong!');
+        btn.disabled = false;
+      });
+    });
+  });
+});
+</script>
+{% endblock content %}

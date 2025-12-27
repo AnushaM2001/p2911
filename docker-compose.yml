@@ -1,0 +1,66 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: perfume_redis
+    ports:
+      - "6379:6379"
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  web:
+    build: .
+    container_name: perfume_django
+    command: daphne -b 0.0.0.0 -p 8000 PerfumeValley.asgi:application --application-close-timeout 30 --ping-interval 20
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=PerfumeValley.settings
+    restart: always
+
+  celery_worker:
+    build: .
+    container_name: perfume_celery_worker
+    command: celery -A PerfumeValley worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=PerfumeValley.settings
+    restart: always
+
+  celery_beat:
+    build: .
+    container_name: perfume_celery_beat
+    command: celery -A PerfumeValley beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=PerfumeValley.settings
+    restart: always
+
+volumes:
+  static_volume:
+  redis_data:

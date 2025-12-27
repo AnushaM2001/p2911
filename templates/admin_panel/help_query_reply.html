@@ -1,0 +1,162 @@
+{% extends 'admin_panel/base.html' %}
+{% block content %}
+
+<div class="admin-chat-wrapper">
+
+  <!-- Header -->
+  <div class="chat-header mb-2">
+    <strong>{{ query.subject }}</strong>
+    <span class="ms-auto badge bg-secondary">{{ query.status }}</span>
+  </div>
+
+  <!-- Messages -->
+  <div id="chatMessages" class="chat-messages">
+    {% for msg in query.messages.all %}
+      <div class="chat-bubble {% if msg.sender == 'Admin' %}admin{% else %}user{% endif %}">
+        {{ msg.text|linebreaksbr }}
+        <div class="time">{{ msg.created_at|date:"H:i" }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Input -->
+  <div class="chat-input">
+  <div class="chat-input-box">
+    <input
+      type="text"
+      id="chatInput"
+      placeholder="Type a message…"
+      autocomplete="off"
+    />
+    <button type="button" onclick="sendMessage()" aria-label="Send">
+      <i class="bi bi-send-fill"></i>
+    </button>
+  </div>
+</div>
+
+
+</div>
+
+<script>
+const queryId = "{{ query.id }}";
+const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+const socket = new WebSocket(
+  wsProtocol + '://' + window.location.host + '/ws/help-query/' + queryId + '/'
+);
+
+socket.onmessage = function(e) {
+  const data = JSON.parse(e.data);
+
+  // ADMIN VIEW:
+  // Admin msg -> right
+  // User msg -> left
+  const bubbleClass = data.sender === 'Admin' ? 'admin' : 'user';
+
+  document.getElementById('chatMessages').insertAdjacentHTML(
+    'beforeend',
+    `
+    <div class="chat-bubble ${bubbleClass}">
+      ${data.message}
+      <div class="time">${data.time}</div>
+    </div>
+    `
+  );
+
+  scrollBottom();
+};
+
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  socket.send(JSON.stringify({ message: msg }));
+  input.value = '';
+}
+
+function scrollBottom() {
+  const box = document.getElementById('chatMessages');
+  box.scrollTop = box.scrollHeight;
+}
+
+scrollBottom();
+</script>
+
+<style>
+    .chat-input {
+  background: #f0f0f0;
+  padding: 10px 12px;
+  border-top: 1px solid #ddd;
+}
+
+.chat-input-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 6px 12px 6px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.chat-input-box input {
+  flex: 1.5;               /* Increased flex from 1 → 1.5 for more width */
+  border: none;
+  width: 100%;
+  outline: none;
+  font-size: 14px;
+  padding: 10px 0;
+  background: transparent;
+  color: #333;
+}
+
+.chat-input-box input::placeholder {
+  color: #999;
+}
+
+.chat-input-box button {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: #075E54;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.chat-input-box button i {
+  font-size: 16px;
+  margin-left: 1px;
+}
+
+.chat-input-box button:hover {
+  background: #064c45;
+}
+
+.chat-input-box button:active {
+  transform: scale(0.92);
+}
+
+.admin-chat-wrapper { max-width:900px; margin:auto; }
+.chat-header { background:#075E54; color:#fff; padding:10px; display:flex; }
+.chat-messages {
+  background:#ECE5DD;
+  height:65vh;
+  overflow-y:auto;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.chat-bubble { max-width:70%; padding:10px 12px; border-radius:12px; }
+.chat-bubble.user { background:#fff; align-self:flex-start; }
+.chat-bubble.admin { background:#DCF8C6; align-self:flex-end; }
+.time { font-size:11px; text-align:right; margin-top:4px; }
+.chat-input { display:flex; gap:8px; padding:10px; background:#fff; }
+</style>
+
+{% endblock %}

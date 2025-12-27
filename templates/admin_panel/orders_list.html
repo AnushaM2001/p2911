@@ -1,0 +1,335 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+{% block title %}
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+
+    .btn-maroon {
+      background-color: #8b1538;
+      color: white;
+    }
+
+    .btn-maroon:hover {
+      background-color: #6e102c;
+      color: white;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #f0f0f0;
+      border-color: transparent;
+    }
+
+    .badge-instock {
+      background-color: #28a745;
+    }
+
+    .badge-lowstock {
+      background-color: #fd7e14;
+    }
+
+    .search-box {
+      max-width: 300px;
+    }
+
+    .gear-icon {
+      cursor: pointer;
+    }
+
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .toast-body{
+      min-width: 300px;
+      max-width: 500px;
+      color: white;
+      font-size: 20px;
+      padding: 10px !important;
+    }
+  </style>
+{% endblock title %}
+{% block content %}
+  <div class="container">
+    <h3><strong>Orders</strong></h3>
+    <p class="text-muted">Manage your Orders</p>
+
+    <!-- Tabs -->
+    <!-- <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link active" href="#">Categories</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Products</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">Brands</a>
+      </li>
+    </ul> -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Mark category "orders" as read
+    fetch('/notifications/mark-as-read/orders/')
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "ok") {
+                const ordersBadge = document.getElementById('orders-count');
+                if (ordersBadge) {
+                    ordersBadge.innerText = "0";
+                    ordersBadge.style.display = "none";
+                }
+            }
+        }).catch(err => {
+            console.log('Mark-as-read failed', err);
+        });
+});
+</script>
+
+    <!-- Search & Buttons -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+<form method="get" class="d-flex gap-2 align-items-center mb-3">
+  <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
+  <input type="date" name="date" value="{{ selected_date }}" class="form-control" />
+ {% if query or selected_date %}
+<a href="?page={{ page_obj.number }}" class="btn btn-maroon">Clear Filters</a>
+{% else %}
+  <button type="submit" class="btn btn-maroon">Filter</button>
+  
+  {% endif %}
+</form>      
+<a href="{% url 'export_orders_excel' %}?q={{ query }}&date={{ selected_date }}" 
+   class="btn btn-success"
+   style="gap: 6px; border-radius: 6px; float: right; ">
+    📄 Export Orders Excel
+</a>
+    </div>
+
+
+    <!-- Table -->
+   <div class="dashboard-card">
+  <table class="table align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Order ID</th>
+        <th>Customer</th>
+        <th>Date</th>
+        <!-- <th>Gender</th> -->
+        <th>Amount</th>
+
+        <th>Status</th>
+        <th>Payment</th>
+        <th>Invoice</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in page_obj %}
+      <tr data-order-id="{{ order.id }}">
+          <td>ORD-{{ order.id|stringformat:"03d" }}</td>
+        <td>{{ order.address.Name|default:"-"  }}</td>
+          <td>{{ order.created_at|date:'Y-m-d' }}</td>
+          <td>{{ order.total_price }}</td>
+<td>
+  {% if order.shiprocket_tracking_status %}
+    {% with status=order.shiprocket_tracking_status|lower %}
+      {% if "delivered" in status %}
+        <span class="badge bg-success">Delivered</span>
+      {% elif "canceled" in status %}
+        <span class="badge bg-danger">Cancelled</span>
+      {% elif "in transit" in status %}
+        <span class="badge bg-primary">In Transit</span>
+    {% elif "awb_assigned" in status %}
+        <span class="badge bg-primary">Order Confirmed</span>
+      {% else %}
+        <span class="badge bg-warning text-dark">{{ order.shiprocket_tracking_status }}</span>
+      {% endif %}
+    {% endwith %}
+  {% else %}
+    <span class="badge bg-secondary">No Status</span>
+  {% endif %}
+</td>
+
+            <td>
+                {% if order.total_price %}
+                <span class="badge bg-success">Paid</span>
+                {% else %}
+                <span class="badge bg-danger">Unpaid</span>
+                {% endif %}</td>
+                <td>
+              {% if order.shiprocket_order_id %}
+    <a href="{% url 'invoice_download' order.id %}"
+       class="btn btn-sm btn-outline-success"
+       target="_blank">
+       ⬇ Invoice
+    </a>
+  {% else %}
+    <span class="text-muted">N/A</span>
+  {% endif %}
+                </td>
+
+ <td>
+  <div class="dropdown">
+    <img src="{% static 'images2/settings.png' %}" 
+         class="dropdown-toggle"
+         data-bs-toggle="dropdown"
+         aria-expanded="false"
+         style="cursor: pointer; width: 20px;">
+         
+    <ul class="dropdown-menu">
+    <li>
+  <button class="dropdown-item text-primary" data-bs-toggle="modal" data-bs-target="#vieworderModal-{{ order.id }}">
+    👁️ View Details
+  </button>
+</li>
+      <li>
+  <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteprofileModal-{{ profile.id }}">
+    🗑️ Block
+  </button>
+</li>
+
+    </ul>
+  </div>
+</td>
+               
+      </tr>
+      {% endfor %}         
+          
+        </tbody>
+      </table>
+      {% for order in orders %}
+       <div class="modal fade" id="vieworderModal-{{ order.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog" style="max-width: 600px;">
+    <div class="modal-content rounded-4 shadow-lg border-0">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">Order Details</h5>
+        
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body pt-0">
+        <div class="row">
+            <div class="col-md-6">
+                  <div class="mb-3">
+          <h6 class="fw-semibold">Order Information</h6>
+          <div class="d-flex flex-column gap-2">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Order Id:</span>
+              <span class="fw-medium">{{ order.id|default:"-"  }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Date:</span>
+              <span class="fw-medium">{{ order.created_at|date:'Y-m-d'  }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">status:</span>
+              <span class="fw-medium">{{ order.shiprocket_tracking_status }}</span>
+            </div>
+            {% if order.total_price %}
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Payment:</span>
+              <span class="badge bg-success">Paid</span>
+            </div>
+            {% endif %}
+             <div class="d-flex justify-content-between">
+              <span class="text-muted">GiftWrap:</span>
+              <span class="badge bg-success">{{ order.items.first.gift_wrap|yesno:"Yes,No" }}
+</span>
+            </div>
+          </div>
+        </div>
+
+</div>
+        <!-- Customer Details -->
+         <div class="col-md-6">
+        <div class="mb-3">
+          <h6 class="fw-semibold">Customer Details</h6>
+          <div class="d-flex flex-column gap-2">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Name:</span>
+              <span class="fw-medium">{{ order.address.Name  }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Email:</span>
+              <span class="fw-medium">{{ order.user.username  }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Phone:</span>
+              <span class="fw-medium">{{ order.address.MobileNumber }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Address:</span>
+              <span class="fw-medium">{{ order.address.location  }},{{ order.address.Pincode  }},{{ order.address.City  }},{{ order.address.State  }}</span>
+            </div>
+          </div>
+        </div>
+</div>
+</div>
+        <!-- Purchase History -->
+       <h6 class="mt-4">Order Items</h6>
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Quantity</th>
+      <th>Size</th>
+      <th>Flavours/BottleType</th>
+      <th>Price</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in order.items.all %}
+    <tr>
+      <td>{{ item.product.name }}</td>
+      <td>{{ item.quantity }}</td>
+
+      {% if item.product_variant %}
+        <td>{{ item.product_variant.size }}</td>
+        <td>{{ item.product_variant.bottle_type }}</td>
+      {% else %}
+        <td>Set: {{ item.gift_set.set_name }}</td>
+        <td>{{ item.flavour_names|default:"Not Set" }}</td>
+
+      {% endif %}
+
+      <td>₹{{ item.price }}</td>
+      <td>₹{{ item.price|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if order.items.first.gift_wrap %}
+  <div class="text-end fw-bold text-success">
+    GiftWrap : +₹150
+  </div>
+{% endif %}
+
+{% if order.total_discount %}
+  <div class="text-end fw-bold text-danger">
+    Discount: -₹{{ order.total_discount }}
+  </div>
+{% endif %}
+
+                    <hr>
+                    <div class="text-end fw-bold">
+                      Order Total: ₹{{ order.total_price }}
+                    </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+      <!-- Block User Modal -->
+     
+ 
+
+ 
+
+  <!-- Add Category Modal -->
+{% endblock content %}

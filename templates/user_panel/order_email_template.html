@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #fbeef2;
+            color: #333;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .email-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header img {
+            width: 160px;
+            height: auto;
+        }
+
+        h2 {
+            color: #a20042;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #a20042;
+            margin-bottom: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        th {
+            background-color: #fbeef2;
+            font-weight: bold;
+        }
+
+        .total {
+            text-align: right;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+
+        .cta {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .cta a {
+            background: linear-gradient(to right, #a20042, #c14f78);
+            color: #fff;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-weight: 600;
+            display: inline-block;
+            transition: background 0.3s ease;
+        }
+
+        .cta a:hover {
+            opacity: 0.9;
+        }
+
+        .footer {
+            font-size: 12px;
+            text-align: center;
+            color: #777;
+            margin-top: 50px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- <div class="header">
+            <img src="https://yourdomain.com/static/images/perfume-valley-logo.png" alt="Perfume Valley">
+        </div> -->
+
+        <h2>Hello {{ user.first_name }},</h2>
+        <p>Thank you for your purchase! We’re happy to let you know that your order <strong>#{{ order.id }}</strong> has been placed successfully.</p>
+
+        <!-- <div class="section">
+            <div class="section-title">Shipping Address</div>
+            <p>
+                {{ order.address.full_name }}<br>
+                {{ order.address.street }}<br>
+                {{ order.address.city }}, {{ order.address.state }} - {{ order.address.pincode }}<br>
+                Phone: {{ order.address.phone }}
+            </p>
+        </div> -->
+
+        <div class="section">
+            <div class="section-title">Order Summary</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order_items %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>₹{{ item.price }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="total">Total: ₹{{ order.total_amount }}</p>
+        </div>
+
+        <!-- <div class="cta">
+            <a href="{{ order_tracking_url }}">Track Your Order</a>
+        </div> -->
+
+        <div class="footer">
+            You’ll find your invoice attached to this email.<br>
+            Thank you for shopping with <strong>Perfume Valley</strong>!
+        </div>
+    </div>
+</body>
+</html>

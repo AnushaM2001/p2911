@@ -1,0 +1,72 @@
+<form id="editsubCategoryForm" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <!-- Category Dropdown -->
+  <div class="mb-3">
+    <label for="editCategorySelect" class="form-label">Category</label>
+    <select class="form-control" id="editCategorySelect" name="category" required>
+  <option value="">-- Select Category --</option>
+  {% for cat in categories %}
+    <option value="{{ cat.id }}" {% if cat.id == subcategory.category.id %}selected{% endif %}>
+      {{ cat.name }}
+    </option>
+  {% endfor %}
+</select>
+
+  </div>
+
+  <!-- SubCategory Name -->
+  <div class="mb-3">
+    <label for="editSubCategoryName" class="form-label">SubCategory Name</label>
+    <input type="text" class="form-control" id="editSubCategoryName" name="name" value="{{ subcategory.name }}" required>
+  </div>
+
+  <!-- Banner Image -->
+  <div class="mb-3">
+    <label for="editSubCategoryBanner" class="form-label">Banner Image</label>
+    <input type="file" class="form-control" id="editSubCategoryBanner" name="banner">
+    {% if subcategory.banner %}
+      <img src="{{ subcategory.banner.url }}" alt="Current Banner" height="60" class="mt-2">
+    {% endif %}
+  </div>
+
+  <!-- Sub Image / GIF -->
+  <div class="mb-3">
+    <label for="editSubCategoryGif" class="form-label">GIF/Image</label>
+    <input type="file" class="form-control" id="editSubCategoryGif" name="sub_image">
+    {% if subcategory.sub_image %}
+      <img src="{{ subcategory.sub_image.url }}" alt="Current GIF" height="60" class="mt-2">
+    {% endif %}
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-maroon">Update SubCategory</button>
+  </div>
+</form>
+
+<script>
+document.getElementById('editsubCategoryForm')?.addEventListener('submit', function(e) {
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  const subcategoryId = '{{ subcategory.id }}';
+
+  fetch(`/admin-panel/subcategories/${subcategoryId}/update/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Failed to update Subcategory.');
+    }
+  })
+  .catch(() => alert('Something went wrong!'));
+});
+</script>

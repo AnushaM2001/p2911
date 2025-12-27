@@ -1,0 +1,1063 @@
+{% extends 'layouts/main.html' %}
+{% load static %}
+{% block title %}
+<title>Shopping Page</title>
+
+{% endblock title %}
+
+{% block extra_css %}
+
+ 
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+ 
+    <!-- Load jQuery first -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+    <!-- Now your own custom AJAX script -->
+    
+  
+
+  <style>
+    body {
+      background-color: #F7E7E8;;
+    }
+    .custom-box {
+      background-color: #FBF0EF;
+      border-radius: 8px;
+    }
+    .card {
+      border: none;
+      background-color: #FBF0EF;
+    }
+    .price-text {
+      font-weight: bold;
+    }
+    .strike {
+      text-decoration: line-through;
+      color: grey;
+    }
+    .discount {
+      color: green;
+      font-weight: 500;
+    }
+    .gift-icon {
+      color: #c70039;
+      font-size: 1.2rem;
+    }
+    .btn-theme {
+        
+        border-radius: 500px;
+        background-color: #981945;
+        color: white;
+        padding: 10px 14px;
+        font-family: Jomolhari;
+font-size: 13px;
+font-style: normal;
+font-weight: 400;
+line-height: 18px;
+        
+    }
+    .btn-theme:hover{
+        background-color: #981945;
+        color: white;
+
+
+    }
+    .btn-theme-pay {
+      background: linear-gradient(90deg, #981942 0%, #CC3D70 50%, #981942 100%);
+      border-radius: 500px !important;
+      width: 140px;
+      padding: 15px 0  !important;
+      justify-content: center;
+      align-items: center;
+      display: flex;
+      color: white;
+      font-family: 'Jomolhari';
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 18px;
+      border: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+.back-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: #6D3F0B;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  font-size: 14px;
+  border-radius: 5px;
+  text-decoration: none;
+  z-index: 999;
+}
+.back-btn:hover {
+  background-color: #4f2e08;
+}
+/* Responsive Media Queries by kartheek*/
+ @media (max-width: 992px) {
+    .custom-box,
+    .card,
+    .cont {
+      padding: 1rem;
+    }
+    .btn-theme,
+    .btn-theme-pay {
+      width: 100%;
+      font-size: 13px;
+    }
+    .d-flex.p-3.mb-3 {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+    .d-flex.p-3.mb-3 img {
+      width: 120px;
+      height: auto;
+    }
+    .d-flex.p-3.mb-3 .ms-4.mt-4 {
+      margin-top: 0 !important;
+      margin-left: 1rem !important;
+      text-align: left;
+    }
+    .btn-theme-pay {
+      width: 100% !important;
+    }
+    .input-group {
+      flex-direction: column;
+    }
+    #premium-offer-section .form-control {
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    #premium-offer-section .btn {
+      width: 100%;
+      height:fit-content;
+    }
+    #gift-wrap-button{
+    font-size:10px;
+  }
+  }
+
+  @media (max-width: 768px) {
+    .container {
+      padding: 0 15px;
+    }
+    .col-md-8,
+    .col-md-4 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+    .btn-theme {
+      padding: 10px;
+      font-size: 12px;
+    }
+    .btn-theme-pay {
+      padding: 10px 0;
+      font-size: 13px;
+    }
+    .strike, .discount, .price-text {
+      display: block;
+      margin-top: 5px;
+    }
+    .d-inline-flex.align-items-center {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .gift-icon {
+      font-size: 1.2rem;
+    }
+    .cont {
+      margin-top: 30px !important;
+    }
+    #gift-wrap-message {
+      font-size: 14px;
+      margin-top: 10px;
+    }
+    #gift-wrap-button{
+        font-size:10px;
+}
+  }
+
+  @media (max-width: 576px) {
+    h6, .fw-bold, .price-text {
+      font-size: 14px !important;
+    }
+    .btn-theme, .btn-theme-pay {
+      font-size: 12px !important;
+      padding: 10px 0 !important;
+    }
+    .d-flex.justify-content-between {
+     
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .d-flex.align-items-center {
+      
+      gap: 0.5rem;
+    }
+    .coupon span {
+      font-size: 13px;
+    }
+    .remove-form button {
+      font-size: 13px;
+    }
+    .custom-box {
+      margin-bottom: 1rem;
+    }
+    .toast {
+      width: 90%;
+      font-size: 14px;
+    }
+
+    #gift-wrap-button{
+        font-size:10px;
+}
+
+  }
+  .stars-outer {
+  position: relative;
+  display: inline-block;
+  color: #ccc;
+  font-size: 1.1rem;
+}
+
+.stars-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  color: #ffc107;
+}
+
+.update-quantity-form button:active {
+    transform: scale(0.95);
+}
+@media(max-width:578px){
+  .img-thumbnail{
+    width:200px !important;
+  }
+}
+
+.img-thumbnail {
+  transition: transform 0.3s ease-in-out;
+}
+
+.img-thumbnail:hover {
+  transform: scale(1.1);
+}
+
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+  </style>
+  
+
+{% endblock extra_css %}
+
+{% block content %}
+
+<div class="container py-5">
+  
+  <div class="row">
+    <!-- Left Column -->
+    <div class="col-md-8">
+
+      <!-- Delivery To Title -->
+      <div class="mb-2 p-3 custom-box shadow-sm d-flex justify-content-between align-items-center">
+        <p class="mb-0 fw-bold" style="color: #981942;">
+          <i class="bi bi-geo-alt-fill me-2"></i>Delivery To
+        </p>
+        <a href="{% url 'add_address' %}" class="text-decoration-none" style="color: var(--color-saddlebrown);">Select</a>
+      </div>
+
+       <!-- <div class="mb-2 p-3 custom-box shadow-sm d-flex justify-content-between align-items-center">
+        <p class="mb-0 fw-bold" style="color: #981942;">
+          <i class="bi bi-geo-alt-fill me-2"></i>International Orders
+        </p>
+        <a href="{% url 'international_order' %}" class="text-decoration-none" style="color: var(--color-saddlebrown);">Select</a>
+      </div> -->
+     
+      
+
+      <!-- Address Section -->
+      <div class="mb-3 p-3 custom-box shadow-sm d-flex justify-content-between align-items-start">
+        <div>
+          <i class="bi bi-person-circle me-2"></i>
+          {% if address %}
+          <strong>{{ address.Name }}</strong> |{{ address.location }}, {{ address.City}}, {{ address.State}} - {{ address.Pincode}}
+          {% else %}
+          <strong>No Address Found</strong>
+          {% endif %}
+        </div>
+        <div>
+          {% if address %}
+          <a href="{% url 'update_address' address_id=address.id %}" class="text-decoration-none" style="color: var(--color-saddlebrown);">Change</a>
+          
+          {% endif %}
+
+        </div>
+      </div>
+
+
+      <!-- Product Section -->
+      {% for item in cart_items %}
+      <div class="d-flex p-3 mb-3">
+        {% if item.product %}
+        <a href="{% url 'product_detail' item.product.id %}"><img src="{{ item.product.image1.url }}" class="img-thumbnail" style="width: 150px; height:auto; border:none; border-radius: 10px;" alt="Product Image"></a>
+        {% endif %}
+        <div class="ms-4 mt-4">
+          <h6>{{ item.product.name }}</h6>
+           {% if item.flavour_names %}
+  <p><strong>Selected Flavours:</strong> {{ item.flavour_names }}</p>
+{% endif %}
+
+
+          <div class="d-flex align-items-center">
+            
+            {% if item.gift_set %}
+            {% if item.discounted_price %}
+        <span class="text-success font-weight-bold">₹{{ item.discounted_price|floatformat:2  }}</span>
+        <del class="text-muted" style="margin-left:10px;">₹{{ item.gift_set.price }}</del>
+        {% if item.offer_applied %}
+          <br><small class="text-danger"> ({{ item.offer_applied.percentage }}% off)</small>
+        {% endif %}
+        {% else %}
+            <span class="price-text">₹{{ item.price }}</span>
+            <span class="ms-2 strike">₹{{ item.original_price }}</span>
+            <span class="ms-2 discount">{{ item.product.offer }}</span>
+            {% endif %}
+            
+          {% elif item.product_variant %}
+          {% if item.discounted_price %}
+        <span class="text-success font-weight-bold">₹{{ item.discounted_price|floatformat:2  }}</span>
+        <del class="text-muted" style="margin-left:10px;">₹{{ item.original_price }}</del>
+        {% if item.offer_applied %}
+          <br><small class="text-danger"> ({{ item.offer_applied.percentage }}% off)</small>
+        {% endif %}
+        {% else %}
+            <span class="price-text">₹{{ item.product_variant.price }}</span>
+            <span class="ms-2 strike">₹{{ item.product_variant.original_price }}</span>
+            <span class="ms-2 discount">{{ item.product.offer }}</span>
+          {% endif %}
+        
+          {% else %}
+            <span class="price-text">₹{{ item.product.price }}</span>
+          {% endif %}
+          </div>
+         {% if item.average_rating %}
+<div class="d-flex align-items-center gap-2 mb-2">
+  <div class="stars-outer position-relative" style="color: #ccc; font-size: 1.1rem;">
+    <div class="stars-inner position-absolute top-0 start-0" style="width: {{ item.rating_percentage }}%; color: #AF9164; white-space: nowrap; overflow: hidden;">
+      ★★★★★
+    </div>
+    ★★★★★
+  </div>
+  <span class="text-muted" style="font-size: 0.85rem;">({{ item.average_rating|floatformat:1 }} / 5)</span>
+</div>
+{% endif %}
+
+      <div class="mt-2 d-flex align-items-center">
+          <form method="POST" action="{% url 'update_cart_item' item.id %}" 
+                class="d-flex mt-2 align-items-center update-quantity-form"
+                data-item-id="{{ item.id }}">
+              {% csrf_token %}
+              {% if item.product_variant %}
+              <input type="hidden" name="variant_id" value="{{ item.product_variant.id }}">
+              {% else %}
+              <input type="hidden" name="variant_id" value="">
+              {% endif %}
+              
+              {% if item.gift_set %}
+              <input type="hidden" name="gift_set_id" value="{{ item.gift_set.id }}">
+              {% else %}
+              <input type="hidden" name="gift_set_id" value="">
+              {% endif %}
+              
+              <label class="me-2 mb-0">Qty:</label>
+              <div class="d-inline-flex align-items-center border border-dark rounded-pill px-2 py-1 shadow-sm">
+                  <button type="button" class="btn btn-link p-0 px-2 text-dark text-decoration-none decrease-btn">-</button>
+                  <span class="mx-2 quantity-display">{{ item.quantity }}</span>
+                  <button type="button" class="btn btn-link p-0 px-2 text-dark text-decoration-none increase-btn">+</button>
+              </div>
+          </form>
+      </div>
+          
+          <!-- <p class="mt-2 text-muted small"><i class="bi bi-calendar3"></i> Expected Delivery 24 Dec</p> -->
+          <div class="cart-item" data-item-id="{{ item.id }}">
+              <!-- Item details, image, name, price -->
+
+              <form method="POST" action="{% url 'remove_cart_item' item.id %}" 
+                  class="remove-form" data-item-id="{{ item.id }}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-link text-danger small p-0">
+                      Remove
+                  </button>
+              </form>
+          </div>
+
+
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Gift Wrap -->
+      <div class="d-flex justify-content-between align-items-center mb-3 p-3 border rounded">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-gift gift-icon me-2" style="font-size: 1.5rem;"></i>
+          <span class="fs-6">Do you want a gift box with wrap? Only ₹150</span>
+        </div>
+   <form method="post" action="{% url 'toggle_gift_wrap' %}" id="gift-wrap-form">
+    {% csrf_token %}
+    <button type="submit" 
+            class="btn"
+            id="gift-wrap-button" style="background-color: maroon; color: white;" >
+        {% if request.session.gift_wrap %}
+            Remove Gift Wrap
+        {% else %}
+            Gift Box with Wrap
+        {% endif %}
+    </button>
+</form>
+
+<div id="gift-wrap-message" class="text-success mb-3"
+     {% if not request.session.gift_wrap %}style="display:none;"{% endif %}>
+    🎁 Gift Wrap Applied (+₹150)
+</div>
+
+    
+</div>
+    
+      <!-- Pay Now -->
+       
+      <div class="cont p-3" style="background-color: #FBF0EF; border-radius: 12px; margin-top: 60px;">
+        
+        <div class="d-flex justify-content-end">
+          
+          {% if address.id %}
+            <button type="button" id="pay-button" class="btn btn-theme-pay" style="color:white;">Pay Now</button>
+          {% else %}
+            <button type="button" id="fill-address-button" class="btn btn-theme-pay" style="color: white;">Add Address</button>
+          {% endif %}
+          
+
+          
+        </div>
+
+      </div>
+      
+</div>
+
+
+ 
+
+    <!-- Right Column -->
+   
+    <div class="col-md-4">
+      {% if error_messages %}
+  {% for message in error_messages %}
+      <div class="auto-clear-msg alert alert-danger">{{ message }}</div>
+  {% endfor %}
+{% elif success_messages %}
+  {% for message in success_messages %}
+      <div class="auto-clear-msg alert alert-success">{{ message }}</div>
+  {% endfor %}
+  
+  <!-- Check if there are any success messages -->
+  <script>
+      document.addEventListener('DOMContentLoaded', function () {
+          if ({{ success_messages|length }} > 0) {
+              confetti({
+                  particleCount: 200,
+                  spread: 100,
+                  startVelocity: 40,
+                  origin: { y: 0.6 }
+              });
+          }
+      });
+  </script>
+{% endif %}
+
+  
+  
+
+
+      <!-- Coupon Section -->
+       <div class="p-3 custom-box shadow-sm mb-3" style="background-color: #FBF0EF;">
+        
+        <h6 class="d-flex align-items-center mb-3">
+          <img src="{% static 'images2/vector.png' %}" height="25" width="25">Apply Coupon
+        </h6>
+        
+        <!-- Premium/Festive Offer Input -->
+        
+           <div class="input-group mb-3" id="premium-offer-section">
+  <form id="premium-offer-form" method="POST" action="{% if premium_offer_code %}{% url 'remove_premium_offer' %}{% else %}{% url 'apply_premium_coupon' %}{% endif %}" class="d-flex w-100">
+    {% csrf_token %}
+    <input type="text" id="premium-offer-code" name="code" class="form-control" placeholder="Enter code"
+      value="{{ premium_offer_code|default:'' }}" {% if premium_offer_code %}readonly{% endif %} required>
+    <button type="submit" id="premium-offer-btn" class="btn btn-outline-transparent bg-white"
+      style="color: var(--color-saddlebrown);">
+      {% if premium_offer_code %}Remove{% else %}Apply{% endif %}
+    </button>
+  </form>
+</div>
+<div id="premium-offer-message" style="margin-top:10px;"></div>
+
+    
+        <div class="p-2" style="background-color: #fff; border-radius: 5px;">
+          <p class="mb-1 fw-bold">Applicable</p>
+          {% if applicable_offers %}
+          {% for offer in applicable_offers %}
+
+          <div class="d-flex justify-content-between mb-3 align-items-center">
+            <div class="festival-offers">
+                <span class="fw-bold text-dark">
+                    {% if offer.code %}
+                        <span class="badge bg-success text-white">Get {{ offer.percentage }}% OFF</span> 
+                        with code <span class="text-primary">{{ offer.code }}</span>
+                    {% else %}
+                        <span class="badge bg-danger text-white">Get {{ offer.percentage }}% OFF</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        
+{% endfor %}
+{% endif %}
+
+    
+          <!-- Coupon 1 -->
+          {% for coupon in all_coupons %}
+          <div class="d-flex justify-content-between mb-2">
+              <div class="coupon
+                  {% if coupon in eligible_coupons and coupon.id not in used_coupons %}
+                      active
+                  {% else %}
+                      inactive
+                  {% endif %}
+              ">
+                  <span class="fw-bold">{{ coupon.code }}</span>
+                  
+                  {% if coupon.id in used_coupons %}
+                      <span class="text-danger">Already used ₹{{ coupon.discount }}</span>
+                  {% elif coupon not in eligible_coupons %}
+                      <span class="text-warning">Shop Above ₹{{ coupon.required_amount }} 
+                          <b style="color: green;">Save ₹{{ coupon.discount }}</b>
+                      </span>
+                  {% else %}
+                      <span class="text-success">You save ₹{{ coupon.discount }}</span>
+                  {% endif %}
+              </div>
+          
+              <div class="text-end">
+                  {% if coupon.code == request.session.applied_coupon %}
+                      <!-- If this coupon already applied -->
+                      <div class="d-flex gap-2">
+                          <button class="btn btn-success btn-sm" disabled>Applied</button>
+                          <form method="POST" action="{% url 'remove_coupon' %}">
+                              {% csrf_token %}
+                              <input type="hidden" name="item_id" value="{{ item.id }}">
+                              <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                          </form>
+                      </div>
+                  {% elif coupon in eligible_coupons and coupon.id not in used_coupons %}
+                      <!-- If eligible and not used, show apply button -->
+                      <form id="applyCouponForm{{ coupon.id }}" method="POST" action="{% url 'apply_coupon' %}">
+                          {% csrf_token %}
+                          <input type="hidden" name="code" value="{{ coupon.code }}">
+                          <input type="hidden" name="item_id" value="{{ item.id }}">
+                          <button type="submit" class="btn btn-outline-primary btn-sm">Apply Coupon</button>
+                      </form>
+                  {% else %}
+                      <!-- Otherwise, disable -->
+                      <button class="btn btn-outline-secondary btn-sm" disabled>Not Eligible</button>
+                  {% endif %}
+              </div>
+          </div>
+          <hr>
+          {% endfor %}
+          
+    
+          <!-- Coupon 2 -->
+          
+        </div>
+      </div>
+    
+    
+
+    <!-- Order Summary -->
+    
+
+      <!-- Order Summary change==================== -->
+<div class="p-3 custom-box shadow-sm">
+    <h6>Order Details</h6>
+    <div class="d-flex justify-content-between mb-2">
+        <span> Price(Products)</span>
+        <span data-price="subtotal">₹{{ amount|floatformat:2 }}</span>
+    </div>
+    <div class="d-flex justify-content-between mb-2">
+        <span>Delivery Charge</span>
+        <span data-price="delivery">₹{{ delivery_charges|floatformat:2 }}</span>
+    </div>
+    <div class="d-flex justify-content-between mb-2">
+        <span>Platform Fee</span>
+        <span data-price="platform_fee">₹{{ platform_fee|floatformat:2 }}</span> 
+    </div>
+    {% if applied_coupon %}
+    <div class="d-flex justify-content-between mb-2">
+        <span>Discount</span>  
+        <span data-price="discount" style="color: green;">-₹{{ discount|floatformat:2 }}</span>    
+    </div>
+    {% endif %}
+    
+    {% if gift_wrap_display %}
+    <div class="d-flex justify-content-between mb-2">
+        <span>Gift Wrap</span>  
+        <span data-price="gift_wrap" style="color: green;">+₹{{ gift_wrap_display|floatformat:2 }}</span>    
+    </div>
+    {% endif %}
+    
+    {% if premium_discount %}
+    <div class="d-flex justify-content-between mb-2">
+        <span>Premium Discount</span>
+        <span data-price="premium_discount" style="color: green;">-₹{{ premium_discount|floatformat:2 }}</span>
+    </div>
+    {% endif %}
+    
+    <hr>
+    
+    <div class="d-flex justify-content-between fw-bold">
+        <span>Amount Payable:</span>
+        <span data-price="total">₹{{ total_price|floatformat:2 }}</span>
+    </div>
+</div>
+    </div>
+  </div>
+</div>
+
+
+<div id="toast" class="toast position-fixed bottom-0 end-0 m-3 bg-success text-white" role="alert" style="display: none; z-index: 9999;">
+  <div class="toast-body">
+    Item removed from cart
+  </div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ---------- REMOVE ITEM ----------
+    document.querySelectorAll('.remove-form').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            fetch(this.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+
+                    const cartItem = document.querySelector(
+                        `.cart-item[data-item-id="${this.dataset.itemId}"]`
+                    );
+                    if (cartItem) {
+                        const wrapper = cartItem.closest('.d-flex.p-3.mb-3');
+                        if (wrapper) wrapper.remove();
+                    }
+
+                    refreshOrderSummary();
+                }
+            });
+        });
+    });
+
+    // ---------- QUANTITY UPDATE ----------
+    document.querySelectorAll('.update-quantity-form').forEach(form => {
+        const quantityDisplay = form.querySelector('.quantity-display');
+        const itemId = form.dataset.itemId;
+
+        form.querySelector('.increase-btn').onclick = () =>
+            updateQuantity(form, itemId, 'increase', quantityDisplay);
+
+        form.querySelector('.decrease-btn').onclick = () => {
+            if (parseInt(quantityDisplay.textContent) > 1) {
+                updateQuantity(form, itemId, 'decrease', quantityDisplay);
+            }
+        };
+    });
+
+    function updateQuantity(form, itemId, action, quantityDisplay) {
+        const formData = new FormData(form);
+        formData.append('action', action);
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                quantityDisplay.textContent = data.new_quantity;
+                refreshOrderSummary();
+            }
+        });
+    }
+
+    // ---------- BACKEND-DRIVEN SUMMARY ----------
+    function refreshOrderSummary() {
+        fetch('/sync-redis-cart/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateOrderSummary(data.order_summary);
+
+                document.querySelectorAll('.cart-count').forEach(el => {
+                    el.textContent = data.cart_count;
+                });
+            }
+        });
+    }
+
+    // ---------- DISPLAY ONLY ----------
+    window.updateOrderSummary = function (prices) {
+        const set = (key, val) => {
+            const el = document.querySelector(`[data-price="${key}"]`);
+            if (el) el.textContent = '₹' + parseFloat(val).toFixed(2);
+        };
+
+        set('subtotal', prices.subtotal);
+        set('delivery', prices.delivery);
+        set('platform_fee', prices.platform_fee);
+        set('gift_wrap', prices.gift_wrap);
+        set('discount', -prices.discount);
+        set('premium_discount', -prices.premium_discount);
+        set('total', prices.total);
+    };
+
+});
+</script>
+
+
+
+<!-- Razorpay script -->
+<!-- <script src="https://checkout.razorpay.com/v1/checkout.js"></script> -->
+
+<script>
+  const hasAddress = {{ address.id|yesno:"true,false" }};
+  const redirectUrl = "{% url 'add_address' %}";
+  const keyId = "{{ key_id }}";
+  const Amount = "{{ amount_in_paise }}";  // in paise
+  const orderId = "{{ razorpay_order_id }}";
+  const userEmail = "{{ request.user.email }}";
+  const userName = "{{ request.user.get_full_name }}";
+  const totalPrice = "{{ total_price }}";
+  const csrfToken = "{{ csrf_token }}";
+  const orderSuccessUrl = "{% url 'order_success' %}";
+
+  let hasSubmitted = false;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const payBtn = document.getElementById('pay-button');
+    const fillAddressBtn = document.getElementById('fill-address-button');
+    
+    const redirectUrl = "{% url 'add_address' %}?next={{ request.path }}";
+
+    if (hasAddress) {
+      payBtn?.addEventListener('click', function (e) {
+        e.preventDefault();
+        initiatePayment();
+      });
+    } else {
+      fillAddressBtn?.addEventListener('click', function () {
+        alert("Please fill in your address before proceeding to payment.");
+        window.location.href = redirectUrl;
+      });
+    }
+  });
+
+  
+function initiatePayment() {
+    const options = {
+      "key": keyId,
+      "amount": Amount,
+      "currency": "INR",
+      "name": "Perfume Valley",
+      "description": "Order Payment",
+      "order_id": orderId,
+      "prefill": {
+        "name": userName,
+        "email": userEmail
+      },
+      "theme": {
+        "color": "#F37254"
+      },
+      "handler": function (response) {
+        if (hasSubmitted) return;
+        hasSubmitted = true;
+
+        // Create form dynamically to POST to success view
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = orderSuccessUrl;
+
+        const fields = {
+          'csrfmiddlewaretoken': csrfToken,
+          'razorpay_payment_id': response.razorpay_payment_id,
+          'razorpay_order_id': response.razorpay_order_id,
+          'razorpay_signature': response.razorpay_signature,
+          'total_price': totalPrice
+        };
+
+        for (let key in fields) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = fields[key];
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.open();
+  }
+</script>
+
+<script>
+  function handleCouponApply(form) {
+      // Find the button inside the form
+      var button = form.querySelector('.apply-button');
+      
+      // Immediately change button text and disable it
+      button.innerText = "Applied";
+      button.disabled = true;
+      button.style.color = 'gray'; // Optional: style it grey to show disabled
+  
+      // Allow form submission
+      return true;
+  }
+  </script>
+  <script>
+    const applyButtons = document.querySelectorAll('.apply-button');
+    applyButtons.forEach(btn => {
+        btn.innerText = 'Applied';
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        return true;
+    });
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+      const form = document.getElementById('gift-wrap-form');
+      const button = document.getElementById('gift-wrap-button');
+      const message = document.getElementById('gift-wrap-message');
+
+      form.addEventListener('submit', function (event) {
+          event.preventDefault();  // stop default form submit temporarily
+
+          // Toggle button text
+          if (button.innerText.trim() === 'Gift Box With Wrap') {
+              button.innerText = 'Remove Gift Wrap';
+              message.style.display = 'block';  // Show the gift wrap message
+          } else {
+              button.innerText = 'Gift Box With Wrap';
+              message.style.display = 'none';  // Hide the gift wrap message
+          }
+
+          // Now submit the form after toggling
+          form.submit();
+      });
+  });
+</script>
+<script>
+  setTimeout(function () {
+    const msgs = document.querySelectorAll('.auto-clear-msg');
+    msgs.forEach(function (msg) {
+      msg.style.transition = 'opacity 1s';
+      msg.style.opacity = '0';
+      setTimeout(() => msg.remove(), 1000);  // remove after fade
+    });
+  }, 6000); // 1 minute
+</script>
+
+
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('premium-offer-form');
+    const input = document.getElementById('premium-offer-code');
+    const btn = document.getElementById('premium-offer-btn');
+    const messageDiv = document.getElementById('premium-offer-message');
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const isRemoving = btn.textContent.trim().toLowerCase() === 'remove';
+      const url = isRemoving ? "{% url 'remove_premium_offer' %}" : "{% url 'apply_premium_coupon' %}";
+      const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+      const codeValue = input.value;
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: new URLSearchParams(isRemoving ? {} : { code: codeValue })
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            if (isRemoving) {
+              input.readOnly = false;
+              input.value = '';
+              btn.textContent = 'Apply';
+              messageDiv.innerHTML = `<div class="alert alert-info">${data.message}</div>`;
+            } else {
+              input.readOnly = true;
+              btn.textContent = 'Remove';
+              messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+            }
+          } else {
+            messageDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+          }
+        })
+        .catch(err => {
+          messageDiv.innerHTML = `<div class="alert alert-danger">Something went wrong. Please try again.</div>`;
+          console.error(err);
+        });
+    });
+  });
+</script>
+
+  <script>
+  document.getElementById('premium-offer-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const url = form.action;
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      alert(data.message);
+
+      if (data.status === 'success') {
+        // Reload cart section to reflect updated amount or update values manually
+        location.reload(); // Simple solution
+        // OR update total price dynamically here (preferred for a smoother UX)
+        document.getElementById('total-price').innerText = data.total_price;
+        document.getElementById('premium-discount').innerText = data.premium_discount;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+  });
+</script>
+
+<script>
+// Connect to WebSocket for real-time updates
+const cartSocket = new WebSocket(
+    'ws://' + window.location.host + 
+    '/ws/cart/{{ request.user.id }}/'
+);
+
+cartSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    console.log('WebSocket message received:', data);
+    
+    // Update cart count in header
+    const cartCountElements = document.querySelectorAll('.cart-count');
+    cartCountElements.forEach(el => {
+        el.textContent = data.cart_count || '0';
+    });
+    
+    if (data.action === 'remove') {
+        // If item was removed, find and remove it from DOM
+        const itemElement = document.querySelector(`[data-item-id="${data.item_id}"]`);
+        if (itemElement) {
+            itemElement.closest('.d-flex.p-3.mb-3').remove();
+        }
+        
+        // Show notification
+        showToast('Item removed from cart');
+        
+        // If cart is empty, reload the page
+        if (data.is_empty) {
+            setTimeout(() => location.reload(), 1000);
+        }
+    } else if (data.action === 'update') {
+        // Update quantity display if needed
+        const itemElement = document.querySelector(`[data-item-id="${data.item_key}"]`);
+        if (itemElement) {
+            const quantityElement = itemElement.querySelector('.quantity-value');
+            if (quantityElement) {
+                quantityElement.textContent = data.quantity;
+            }
+        }
+    }
+};
+
+cartSocket.onclose = function(e) {
+    console.error('Cart socket closed unexpectedly:', e);
+};
+
+// Helper function to show toast messages
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.querySelector('.toast-body').textContent = message;
+        toast.style.display = "block";
+        setTimeout(() => {
+            toast.style.display = "none";
+        }, 2000);
+    }
+}
+</script>
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti"></script>
+
+  
+
+
+  
+{% endblock content %}

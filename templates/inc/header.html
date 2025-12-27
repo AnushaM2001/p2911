@@ -1,0 +1,1552 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{% static 'css/user_profile.css' %}?v1">   
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+
+
+    <title></title>
+</head>
+<body>
+   <!-- Include the Canvas Confetti Library -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+<style>
+    .scrolling-text {
+        width: 100%;
+        overflow: hidden;
+        position: relative;
+        background-color: #981945;  /* Background color for highlighting */
+        padding: 10px 0;  /* Adds padding to top and bottom */
+    }
+
+    .scroll-text {
+        display: inline-flex; /* Keep elements in the same line */
+        white-space: nowrap;
+        animation: scroll-left 10s linear infinite;
+        font-size: 24px;
+        color: white;
+        font-weight: bold;
+        text-transform: uppercase;  /* Make the text uppercase for emphasis */
+    }
+
+    /* Scrolling animation */
+    @keyframes scroll-left {
+        0% {
+            transform: translateX(100%);
+        }
+        100% {
+            transform: translateX(-100%);
+        }
+    }
+
+    .offer-text {
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffeb3b; 
+        text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);  
+        margin-right: 30px; /* Add more space between text and countdown */
+        background-color: #981945;  
+        padding: 5px 20px;  /* Padding around the text */
+        border-radius: 5px;  /* Rounded corners */
+    }
+
+    #countdown-timer {
+        font-size: 24px;
+        color: #ffeb3b;  
+        padding: 5px 20px;  
+        border-radius: 5px;  
+        font-weight: bold;
+        text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5); /* Shadow effect */
+    }
+
+    /* Only underline the category name on hover, not the dropdown toggle */
+    .navbar-nav .nav-item .nav-link.category-name {
+    position: relative;
+    font-family: 'Lato' !important;
+    transition: color 0.3s ease, transform 0.2s ease; /* smooth color transition */
+    font-size:20px;
+}
+
+
+ 
+
+@media (min-width: 920px) {
+    .navbar-nav .nav-item .nav-link.category-name::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 2px;
+    background: #981945;
+    transition: width 0.3s ease;
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+
+}
+
+.navbar-nav .nav-item .nav-link.category-name:hover::after {
+    width: 100%;
+}
+
+.navbar-nav .nav-item .nav-link.category-name:hover {
+    transform: scale(1.1);
+    z-index: 1;
+    color:#ff0a57 !important; 
+}
+    
+}
+
+/* Allow navbar items to wrap to a new row on medium/large screens */
+@media (min-width: 768px) {
+  .navbar-nav {
+    flex-wrap: wrap !important;
+    justify-content: center;
+    row-gap: 0.5rem; /* Adds some vertical spacing between rows */
+  }
+
+  .navbar .navbar-nav .nav-item {
+    flex: 0 1 auto; /* Allow items to shrink and wrap */
+  }
+}
+
+
+
+  /* Search Container */
+.searchCon {
+    display: none;
+    z-index: 1000;
+   
+    position: fixed;
+    top: 80px;
+    right: 0;
+    left: auto;
+    width: 45vw;
+    padding: 20px 10px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.searchCon.active {
+    transform: translateX(0);
+}
+
+/* Responsive adjustments for container */
+@media (min-width: 1200px) {
+    .searchCon {
+        margin-top: 15px;
+        width: 80vw;
+        max-width: 80vw;
+        right: 0;
+    }
+}
+
+/* Input Styling */
+#searchInput {
+    height: 55px;
+    font-size: 18px;
+    border-radius: 10px;
+    padding: 10px 18px;
+    background-color: #fff8f8;
+    
+}
+
+
+/* Search Results Styling */
+#search-results {
+   
+ 
+    padding: 10px;
+    width: 100%;
+  
+    overflow-y: auto;   /* Vertical scroll */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    max-height: 70vh;
+}
+
+.search-row-responsive {
+    display: flex;
+    flex-wrap: wrap; /* Ensure columns wrap to next line */
+    margin: 0 -5px; /* Remove extra horizontal padding */
+}
+
+.search-row-responsive .col-6 {
+    padding: 5px; /* Add some spacing between cards */
+}
+
+
+/* Product Card */
+#search-results .card {
+
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    transition: transform 0.3s ease;
+}
+#search-results .card:hover {
+    transform: translateY(-5px);
+}
+
+/* Product Image */
+#search-results .card-img-top {
+ 
+    border-radius: 0;
+    max-width: 100%;
+    display: inline-block;
+    opacity: 1;
+
+}
+
+/* Image Height Responsive */
+@media (max-width: 768px) {
+    #search-results .card-img-top {
+        height: 300px;
+        width:210px;
+    }
+}
+@media (max-width: 576px) {
+    #search-results .card-img-top {
+        height: 200px;
+        width:155px;
+    }
+}
+
+/* Card Body */
+#search-results .card-body {
+    padding: 10px;
+}
+
+/* Title & Description */
+.product-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    line-height: 1.3;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.product-desc {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+    line-height: 1.4;
+    max-height: 34px;
+    overflow: hidden;
+}
+
+/* Price Section */
+.price-section .price {
+    font-size: 12px;
+    font-weight: 550;
+    color: #000;
+}
+.original-price {
+    font-size: 10px;
+    color: #999;
+    text-decoration: line-through;
+}
+
+/* Rating Section */
+.rating-section {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+}
+.stars-outer {
+    position: relative;
+    display: inline-block;
+    color: #ccc;
+    font-size: 14px;
+}
+.stars-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    color: #AF9164;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Responsive Grid Layout */
+@media (max-width: 575.98px) {
+    #search-results .search-row-responsive > .col-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+@media (min-width: 576px) and (max-width: 991.98px) {
+    #search-results .search-row-responsive > .col-md-4 {
+        flex: 0 0 33.33%;
+        max-width: 33.33%;
+    }
+}
+@media (min-width: 992px) {
+    #search-results .search-row-responsive > .col-lg-4 {
+        flex: 0 0 33.33%;
+        max-width: 33.33%;
+    }
+}
+
+
+
+</style>
+
+
+
+
+{% if festival_offer_percentage %}
+<a href="{% url 'products_list' %}?{% if festival_offer_category_ids %}categories={{ festival_offer_category_ids|join:',' }}{% endif %}{% if festival_offer_subcategory_ids %}&subcategories={{ festival_offer_subcategory_ids|join:',' }}{% endif %}" style="text-decoration: none; display: block;">
+    <div class="ban" style="background: linear-gradient(135deg, #981945 0%, #d63384 50%, #fd7e14 100%); background-size: 400% 400%; animation: gradientShift 8s ease infinite; min-height: 40px; overflow: hidden; box-shadow: 0 2px 10px rgba(152, 25, 69, 0.3); position: relative;">
+        <!-- Shimmer Effect -->
+        <div style="content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); animation: shimmer 3s infinite; z-index: 1;"></div>
+        
+        <!-- Sparkle Background -->
+        <div style="content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 40% 80%, rgba(255,255,255,0.1) 1px, transparent 1px), radial-gradient(circle at 60% 30%, rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 50px 50px; animation: sparkle 4s linear infinite; z-index: 1;"></div>
+
+        <div class="row justify-content-center align-items-center" style="height: 100%; margin: 0; position: relative; z-index: 2;">
+                <div class="col-12 text-center px-0">
+                        <div class="scrolling-text">
+                                <span class="scroll-text festival-offer-banner text-center"
+                                            style="color: white !important; font-weight: 700; text-decoration: none !important; font-family: 'Jomolhari'; display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px;  border-radius: 15px; backdrop-filter: blur(10px); transition: all 0.3s ease; position: relative; overflow: hidden; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); letter-spacing: 0.5px;">
+                                     <!-- Hover Effect -->
+                                     <span style="content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s ease; pointer-events: none;"></span>
+                                     <!-- Content -->
+                                     <span style="font-size: 18px; animation: bounce 2s infinite;">🎉</span>
+                                     <span style="color: #ff6b35; animation: flicker 1.5s infinite alternate;">🔥</span>
+                                     <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">{{ festival_offer_name }} is live!</span>
+                                     <span style="color: #FFD700; animation: twinkle 2s infinite;">⭐</span>
+                                     <span>Get</span>
+                                     <span style="background: rgba(255,255,255,0.9); color: #981945; padding: 2px 8px; border-radius: 12px; font-weight: 800; font-size: 16px; margin: 0 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); animation: pulse 2s infinite;">{{ festival_offer_percentage }}%</span>
+                                     <span>OFF</span>
+                                     <span style="color: #FFD700;">🎁</span>
+                                </span>
+                        </div>
+                </div>
+        </div>
+    </div>
+</a>
+
+<style>
+    .ban {
+        width: 100vw;
+        left: 0;
+        top: 0;
+      
+        position: relative;
+    }
+    
+    .scrolling-text {
+        width: 100%;
+        overflow: hidden;
+        position: relative;
+        padding: 6px 0;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .scroll-text {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        animation: scroll-left 15s linear infinite;
+        font-size: 19px;
+        font-weight: 700;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        letter-spacing: 0.5px;
+        font-family: 'Jomolhari';
+    }
+    
+    .festival-offer-banner:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
+        background: rgba(255,255,255,0.25) !important;
+        border-color: rgba(255,255,255,0.5) !important;
+    }
+    
+    .festival-offer-banner:hover span:first-child {
+        left: 100% !important;
+    }
+    
+    /* Animations */
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    @keyframes shimmer {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+    
+    @keyframes sparkle {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+    
+    @keyframes scroll-left {
+        0% { transform: translateX(100vw); }
+        100% { transform: translateX(-100%); }
+    }
+    
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-8px); }
+        60% { transform: translateY(-4px); }
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    @keyframes flicker {
+        0% { opacity: 1; transform: scale(1); }
+        100% { opacity: 0.8; transform: scale(1.1); }
+    }
+    
+    @keyframes twinkle {
+        0%, 100% { opacity: 1; transform: rotate(0deg) scale(1); }
+        50% { opacity: 0.7; transform: rotate(180deg) scale(1.2); }
+    }
+    
+    /* Responsive Design */
+
+    @media (max-width:1280px){
+        .ban{
+            min-height: 66px !important;
+        }
+    }
+
+    @media (max-width: 1024px) and (min-width: 992px) {
+        .ban {
+            min-height: 62px !important;
+        }
+        .scrolling-text {
+            padding: 5px 0;
+            min-height: 38px !important;
+        }
+        .scroll-text {
+            font-size: 20px !important;
+        }
+        .festival-offer-banner {
+            gap: 7px !important;
+            padding: 3px 10px !important;
+        }
+        .festival-offer-banner span:first-of-type {
+            font-size: 17px !important;
+        }
+        .festival-offer-banner span:nth-of-type(7) {
+            font-size: 15px !important;
+            padding: 2px 7px !important;
+            margin: 0 3px !important;
+        }
+        .festival-offer-banner + div {
+            margin-left: 10px !important;
+            padding: 2px 6px !important;
+            gap: 3px !important;
+        }
+        .festival-offer-banner + div span[id] {
+            font-size: 11px !important;
+        }
+        .festival-offer-banner + div span:not([id]):not(:first-child) {
+            font-size: 7px !important;
+        }
+        .festival-offer-banner + div span:first-child {
+            font-size: 11px !important;
+        }
+    }
+    
+    @media (max-width: 991.98px) {
+        .ban {
+            min-height: 36px !important;
+        }
+        .scrolling-text {
+            padding: 5px 0;
+            min-height: 36px !important;
+        }
+        .scroll-text {
+            font-size: 20px !important;
+        }
+        .festival-offer-banner span:first-of-type {
+            font-size: 16px !important;
+        }
+        .festival-offer-banner span:nth-of-type(7) {
+            font-size: 14px !important;
+            padding: 2px 6px !important;
+        }
+    }
+    
+    @media (max-width: 575.98px) {
+        .ban {
+            min-height: 32px !important;
+        }
+        .scrolling-text {
+            padding: 4px 0;
+            min-height: 32px !important;
+            min-width:fit-content;
+        }
+        .scroll-text {
+            font-size: 18px !important;
+        }
+        .festival-offer-banner {
+            gap: 6px !important;
+            padding: 3px 8px !important;
+        }
+        .festival-offer-banner span:first-of-type {
+            font-size: 14px !important;
+        }
+        .festival-offer-banner span:nth-of-type(7) {
+            font-size: 12px !important;
+            padding: 1px 4px !important;
+            margin: 0 2px !important;
+        }
+        .festival-offer-banner + div {
+            margin-left: 8px !important;
+            padding: 2px 4px !important;
+        }
+        .festival-offer-banner + div span[id] {
+            font-size: 10px !important;
+        }
+        .festival-offer-banner + div span:not([id]):not(:first-child) {
+            font-size: 6px !important;
+        }
+    }
+</style>
+
+
+{% endif %}
+
+<script>
+    var endDateTimeStr = "{{ festival_offer_end|date:'c' }}";  // ISO 8601
+    var endDateTime = new Date(endDateTimeStr);
+
+    function updateCountdown() {
+        var now = new Date().getTime();
+        var remainingTime = endDateTime.getTime() - now;
+
+        if (remainingTime > 0) {
+            var days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
+            var hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            var minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+            var seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+
+            // document.getElementById("countdown-timer").innerHTML =
+            //     "Offer ends in: " + days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+        } else {
+            document.getElementById("countdown-timer").innerHTML = "Offer has ended!";
+            clearInterval(x);  // Stop the countdown
+            document.querySelector('.ban').style.display = 'none';  // Hide the banner
+            startConfetti();  // Start confetti animation when the offer ends
+        }
+    }
+
+  
+
+    updateCountdown();
+    var x = setInterval(updateCountdown, 1000);
+
+    // Confetti animation
+    function startConfetti() {
+        confetti({
+            particleCount: 100,
+            spread: 60,
+            origin: { y: 0.6 }
+        });
+    }
+
+    // Start confetti when the offer is visible
+    startConfetti();
+
+    
+
+</script>
+
+<!-- Offcanvas Navbar (like adilqadri.com) -->
+<nav class="navbar navbar-expand-lg navbar-light" style="background:#F7E7E8">
+    <div class="container-fluid px-2">
+        <!-- Navbar Toggler (left on mobile/tablet) -->
+        <button class="navbar-toggler order-1 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
+            aria-controls="offcanvasNavbar" aria-label="Toggle navigation"
+            style="margin-right: 10px; background: transparent; border: none; padding: 4px; outline: none; box-shadow: none;">
+            <span><i class="bi bi-list" style="font-size: 26px;"></i></span>
+        </button>
+
+        <!-- Logo (center on mobile/tablet, left on desktop) -->
+        <a class="navbar-brand order-2 order-lg-1 d-flex align-items-center justify-content-center justify-content-lg-start mx-auto"
+            href="{% url 'home' %}"
+            style="min-width:60px; height:100%; padding:0;">
+             <img src="{% static 'images2/Logo1.jpg' %}"
+                alt="Logo"
+                class="logo m-0"
+                style="
+                display: block;
+                width: 160px;
+                height: 100px;
+                object-fit: contain;
+                margin: 0 auto;
+                mix-blend-mode: darken;
+                max-width: 90vw;
+                max-height: 12vh;
+                ">
+        </a>
+        <style>
+        .navbar-brand {
+             height: 100%;
+             display: flex !important;
+             align-items: center !important;
+             justify-content: center !important;
+             padding: 0 !important;
+        }
+        .navbar-brand .logo {
+             width: 160px !important;
+             height: 90px !important;
+             object-fit: contain;
+             display: block;
+             margin: 0 auto;
+             max-width: 90vw;
+             max-height: 12vh;
+        }
+        @media (max-width: 1080px) {
+             .navbar-brand .logo {
+              width: 120px !important;
+              height: 60px !important;
+              max-width: 80vw;
+              max-height: 10vh;
+             }
+        }
+        @media (max-width: 767.98px) {
+             .navbar-brand .logo {
+              width: 100px !important;
+              height: 38px !important;
+              max-width: 70vw;
+              max-height: 9vh;
+             }
+        }
+        @media (max-width: 575.98px) {
+             .navbar-brand .logo {
+              width: 80px !important;
+              height: 62px !important;
+              max-width: 60vw;
+              max-height: 8vh;
+             }
+        }
+        .dropdown-item{
+            font-size: 18px!important;
+            padding:15px;
+
+        }
+        </style>
+        <!-- Icons (right on all screens) -->
+        <div class="d-flex align-items-center gap-2 order-3 ms-auto flex-shrink-0" style="line-height: 1;">
+            <i class="bi bi-search d-inline-block" onclick="toggleSearchSection()" style="cursor: pointer; font-size: 19px;"></i>
+<a href="{% url 'user_profile' %}?section=wishlist-section" class="position-relative d-inline-block">
+    <i class="bi bi-heart d-inline-block me-2" style="cursor: pointer; font-size: 19px; color: #000;"></i>
+    <span id="wishlist-count"
+          class="wishlist-count position-absolute translate-middle badge rounded-pill bg-danger"
+          style="cursor: pointer; font-size: 11px; left:21px;{% if wishlist_count == 0 %}display:none;{% endif %}">
+        {{ wishlist_count }}
+    </span>
+</a>
+
+            <a href="{% url 'user_profile' %}?section=orders-section"><img src="{% static 'images2/shipping.svg' %}"  style="height: 24px; color: black;"></a>
+            <a href="{% url 'view_cart' %}" 
+   id="cart-link"
+   class="position-relative d-inline-block">
+    <img src="{% static 'images2/cart.svg' %}" 
+         style="cursor: pointer; width: 24px; height: 24px;" 
+         alt="Cart">
+
+    <span id="cart-count" class="cart-count position-absolute translate-middle badge rounded-pill bg-danger">
+        0
+    </span>
+
+    <!-- Hidden popup message -->
+    <div id="cart-empty-msg" 
+         class="text-center position-absolute top-100 start-50 translate-middle-x shadow rounded"
+         style="font-size: 14px; display: none; background-color: maroon; color: white; padding: 10px 8px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        🛒 Cart is empty
+    </div>
+</a>
+
+
+
+            <a href="{% url 'user_profile' %}?section=profile-section" class="d-inline-block">
+                <img src="{% static 'images2/person.svg' %}" style="height: 24px;">
+            </a>
+        </div>
+        <!-- Desktop Navbar links (centered on desktop) -->
+        <div class="collapse navbar-collapse order-4 order-lg-2 mt-lg-4 d-none d-lg-block" id="navbarNav">
+            <ul class="navbar-nav mx-auto mb-2 mb-lg-0 w-100 justify-content-center">
+                <li class="nav-item">
+                    <a class="nav-link category-name"  href="{% url 'all_view' %}">Shop All</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link category-name"  href="{% url 'viewall_products' 'best-seller' %}">Best Sellers</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link category-name"  href="{% url 'viewall_products' 'new-arrival' %}">New Arrivals</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link category-name"  href="{% url 'viewall_products' 'trending' %}">Trending Products</a>
+                </li>
+                {% for category in navbar_categories %}
+                    {% if category.subcategories.all %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link category-name d-flex align-items-center" href="{% url 'products_list' %}?category={{ category.id }}"
+                                    id="navbarDropdownPerfumes{{ category.id }}" role="button" style="gap: 0.4em;">
+                                <span>{{ category.name }}</span>
+                              <span class="ms-1" style="font-weight: normal; font-size: 0.85rem;">
+                                <i class="bi bi-caret-down-fill" style="font-weight: normal;"></i>
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownPerfumes{{ category.id }}">
+                                {% for sub in category.subcategories.all %}
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'products_list' %}?subcategory={{ sub.id }}">
+                                            {{ sub.name }}
+                                        </a>
+                                    </li>
+                                {% empty %}
+                                    <li class="dropdown-item">No subcategories</li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link category-name" href="{% url 'products_list' %}?category={{ category.id }}">{{ category.name }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</nav>
+<!-- ✅ Clean Offcanvas Navbar for Mobile -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasNavbarLabel">
+      <img src="{% static 'images2/Logo1.jpg' %}" alt="Logo" style="height: 50px; mix-blend-mode: darken;">
+    </h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+
+  <div class="offcanvas-body px-0">
+    <ul class="navbar-nav w-100">
+      <li class="nav-item">
+        <a class="nav-link category-name offcanvas-link" href="{% url 'all_view' %}">Shop All</a>
+        <div class="divider"></div>
+      </li>
+         <li class="nav-item">
+        <a class="nav-link category-name offcanvas-link" href="{% url 'viewall_products' 'best-seller' %}">Best Sellers</a>
+        <div class="divider"></div>
+      </li>
+         <li class="nav-item">
+        <a class="nav-link category-name offcanvas-link" href="{% url 'viewall_products' 'new-arrival' %}">New Arrivals</a>
+        <div class="divider"></div>
+      </li>
+         <li class="nav-item">
+        <a class="nav-link category-name offcanvas-link" href="{% url 'viewall_products' 'trending' %}">Trending Products</a>
+        <div class="divider"></div>
+      </li>
+
+      {% for category in navbar_categories %}
+        {% if category.subcategories.all %}
+          <li class="nav-item dropdown">
+           <a href="{% url 'products_list' %}?category={{ category.id }}"
+            class="nav-link category-name offcanvas-link d-flex justify-content-between align-items-center dropdown-toggle"
+            data-category="{{ category.id }}"
+            data-has-dropdown="true">
+
+              {{ category.name }}
+              <i class="bi bi-caret-down-fill"></i>
+            </a>
+            <ul class="dropdown-menu">
+              {% for sub in category.subcategories.all %}
+                <li>
+                  <a class="dropdown-item" href="{% url 'products_list' %}?subcategory={{ sub.id }}">
+                    {{ sub.name }}
+                  </a>
+                </li>
+              {% empty %}
+                <li class="dropdown-item">No subcategories</li>
+              {% endfor %}
+            </ul>
+            <div class="divider"></div>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="nav-link category-name offcanvas-link" href="{% url 'products_list' %}?category={{ category.id }}">
+              {{ category.name }}
+            </a>
+            <div class="divider"></div>
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+
+<style>
+
+.divider {
+    width: calc(100% - 3rem);
+    height: 1px;
+    background: rgba(152, 25, 69, 0.2);
+    margin: 0.5rem 1.5rem;
+    display: block;
+}
+
+
+/* Premium Offcanvas Container */
+.offcanvas.offcanvas-start {
+    width: 320px !important;
+    background: #F7E7E8;
+    border: none;
+    box-shadow: 5px 0 25px rgba(0,0,0,0.15);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index:9999;
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.offcanvas-header {
+    border-bottom: 1px solid rgba(152, 25, 69, 0.1);
+    padding: 1.5rem;
+   
+}
+
+.btn-close {
+    width: 1.2em;
+    height: 1.2em;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+}
+
+.btn-close:hover {
+    opacity: 1;
+    transform: rotate(90deg);
+}
+
+/* Offcanvas Body */
+.offcanvas-body {
+    padding: 0 !important;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #981945 transparent;
+}
+
+.offcanvas-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.offcanvas-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.offcanvas-body::-webkit-scrollbar-thumb {
+    background: #981945;
+    border-radius: 6px;
+}
+
+/* Animated Menu Items */
+.offcanvas .navbar-nav {
+    padding: 0.5rem 0;
+}
+
+.offcanvas .nav-item {
+    opacity: 0;
+    transform: translateX(-20px);
+    animation: slideIn 0.5s ease forwards;
+}
+
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.offcanvas .nav-item:nth-child(1) { animation-delay: 0.1s; }
+.offcanvas .nav-item:nth-child(2) { animation-delay: 0.15s; }
+.offcanvas .nav-item:nth-child(3) { animation-delay: 0.2s; }
+.offcanvas .nav-item:nth-child(4) { animation-delay: 0.25s; }
+.offcanvas .nav-item:nth-child(5) { animation-delay: 0.3s; }
+.offcanvas .nav-item:nth-child(6) { animation-delay: 0.35s; }
+.offcanvas .nav-item:nth-child(7) { animation-delay: 0.4s; }
+.offcanvas .nav-item:nth-child(8) { animation-delay: 0.45s; }
+.offcanvas .nav-item:nth-child(9) { animation-delay: 0.5s; }
+.offcanvas .nav-item:nth-child(10) { animation-delay: 0.55s; }
+
+/* Premium Nav Links with Animated Underline */
+.offcanvas .nav-link.offcanvas-link {
+    position: relative;
+    color: #2c2c2c;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 1rem 1.5rem;
+    margin: 0.2rem 0.75rem;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+
+
+.offcanvas .nav-link.offcanvas-link:hover::before,
+.offcanvas .nav-link.offcanvas-link:focus::before,
+.offcanvas .nav-link.offcanvas-link.active::before {
+    width: calc(100% - 3rem);
+}
+
+/* Shimmer/Sweep Effect */
+.offcanvas .nav-link.offcanvas-link::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(152, 25, 69, 0.08), transparent);
+    transition: left 0.6s ease;
+}
+
+.offcanvas .nav-link.offcanvas-link:hover::after {
+    left: 100%;
+}
+
+.offcanvas .nav-link.offcanvas-link:hover,
+.offcanvas .nav-link.offcanvas-link:focus {
+    color: #981945;
+    background: rgba(152, 25, 69, 0.05);
+    transform: translateX(8px);
+    box-shadow: 0 4px 12px rgba(152, 25, 69, 0.1);
+}
+
+
+.offcanvas .dropdown.show .nav-link i.bi-caret-down-fill {
+    transform: rotate(180deg);
+}
+
+/* Dropdown Menu Styles */
+.offcanvas .dropdown-menu {
+    position: static !important;
+    transform: none !important;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0.5rem 0 0.5rem 1rem;
+    box-shadow: none;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.offcanvas .dropdown.show .dropdown-menu {
+    max-height: 500px;
+}
+
+/* Dropdown Items with Animation */
+.offcanvas .dropdown-item {
+    position: relative;
+    color: #4a4a4a;
+    padding: 0.75rem 1.5rem;
+    margin: 0.15rem 0;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 400;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+    opacity: 0;
+    transform: translateX(-10px);
+}
+
+.offcanvas .dropdown.show .dropdown-item {
+    animation: dropdownSlide 0.4s ease forwards;
+}
+
+@keyframes dropdownSlide {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.offcanvas .dropdown.show .dropdown-item:nth-child(1) { animation-delay: 0.1s; }
+.offcanvas .dropdown.show .dropdown-item:nth-child(2) { animation-delay: 0.15s; }
+.offcanvas .dropdown.show .dropdown-item:nth-child(3) { animation-delay: 0.2s; }
+.offcanvas .dropdown.show .dropdown-item:nth-child(4) { animation-delay: 0.25s; }
+.offcanvas .dropdown.show .dropdown-item:nth-child(5) { animation-delay: 0.3s; }
+.offcanvas .dropdown.show .dropdown-item:nth-child(6) { animation-delay: 0.35s; }
+
+.offcanvas .dropdown-item:hover,
+.offcanvas .dropdown-item:focus {
+    background: rgba(152, 25, 69, 0.08);
+    color: #981945;
+    border-left-color: #981945;
+    transform: translateX(5px);
+}
+
+/* Active State */
+.offcanvas .nav-link.active,
+.offcanvas .dropdown-item.active {
+    color: #981945;
+    font-weight: 600;
+}
+
+/* Enhanced Backdrop */
+.offcanvas-backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 575.98px) {
+    .offcanvas.offcanvas-start {
+        width: 280px !important;
+    }
+    
+    .offcanvas .nav-link.offcanvas-link {
+        font-size: 0.9rem;
+        padding: 0.85rem 1.25rem;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .offcanvas.offcanvas-start {
+        width: 300px !important;
+    }
+}
+</style>
+
+<!-- Add this JavaScript at the bottom of your page, before closing </body> tag -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const dropdownLinks = document.querySelectorAll(
+        '#offcanvasNavbar .dropdown > .nav-link'
+    );
+
+    dropdownLinks.forEach(link => {
+        let tappedOnce = false;
+
+        link.addEventListener('click', function (e) {
+            const parent = this.closest('.dropdown');
+
+            // If dropdown is closed → open it
+            if (!parent.classList.contains('show')) {
+                e.preventDefault(); // block redirect ONLY first time
+
+                // close others
+                document.querySelectorAll('#offcanvasNavbar .dropdown').forEach(d => {
+                    d.classList.remove('show');
+                });
+
+                parent.classList.add('show');
+                tappedOnce = true;
+
+                // reset tap after short delay
+                setTimeout(() => {
+                    tappedOnce = false;
+                }, 800);
+            }
+            // If already open → allow navigation naturally
+        });
+    });
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('#offcanvasNavbar .dropdown')) {
+            document.querySelectorAll('#offcanvasNavbar .dropdown').forEach(d => {
+                d.classList.remove('show');
+            });
+        }
+    });
+});
+</script>
+
+
+
+
+<!--search section-->
+<div class="searchCon" id="searchCon" style="background-color: #FBF0EF; color: black;">
+    <div class="container-fluid" style="background-color: #FBF0EF;">
+        <div class="d-flex justify-content-between align-items-center mb-3" style="background-color: #FBF0EF;">
+            <h5 class="m-0" style="font-family: 'Jomolhari';">Search Here</h5>
+            <span class="close" onclick="toggleSearchSection()" style="cursor: pointer; font-size: 20px;">&times;</span>
+        </div>
+        <div class="card " style=" background-color: #FBF0EF;border-color:#F7E7E8 ; border-radius: 10px; padding: 10px; ">
+            <input type="text" id="searchInput" placeholder="Search your product..." style="background-color: #FBF0EF;">
+            <style>
+            #searchInput::placeholder {
+                opacity: 0.8;
+                font-family: 'Jomolhari';
+            }
+            </style>
+            <select id="categorySelect" class="form-select" >
+        <option value="" style="background-color:#FBF0EF; font-family: 'Jomolhari';">All Categories</option>
+        <style>
+        #categorySelect, #categorySelect option {
+            background-color:#FBF0EF !important;
+            font-family: 'Jomolhari';
+        }
+        </style>
+        <!-- Categories will be dynamically populated -->
+    </select>
+            <div id="search-results" class="search-results-dropdown "></div>
+
+        </div>
+    </div>
+</div>
+
+<!--end-->
+
+<style>
+    /* Make Bootstrap dropdown open on hover */
+    .navbar .dropdown:hover > .dropdown-menu {
+        display: block;
+        top: 100%; /* Position the dropdown directly below the parent item */
+        left: 0; /* Align the dropdown with the parent item */
+        margin-top: 0; /* Remove any vertical gap */
+        background-color: #FBF0EF;
+    }
+
+   
+    .offcanvas .dropdown:hover .dropdown-menu {
+        display: block;
+    }
+</style>
+
+
+
+
+
+<style>
+/* Responsive navbar tweaks */
+.navbar {
+    min-height: 50px;
+}
+.navbar-brand {
+    min-width: 80px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.navbar .navbar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+}
+
+    
+
+/* Allow navbar items to wrap to a new row on medium/large screens */
+@media (min-width: 992px) {
+  .navbar-nav {
+    flex-wrap: wrap !important;
+    justify-content: center;
+    align-items: center;
+    row-gap: 0.5rem;
+    padding: 0.5rem 0;
+  }
+
+  .navbar .navbar-nav .nav-item {
+    flex: 0 1 auto;
+  }
+  
+  .navbar-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Reserve fixed space for navbar to prevent layout shift */
+  
+}
+
+/* Medium screens - more space for wrapping */
+@media (min-width: 768px) {
+  .navbar-nav {
+    flex-wrap: wrap !important;
+    justify-content: center;
+    align-items: center;
+    row-gap: 0.5rem;
+   
+  }
+
+  .navbar .navbar-nav .nav-item {
+    flex: 0 1 auto;
+  }
+  
+  .navbar-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  
+}
+
+/* Tablet screens - even more space */
+@media (min-width: 1024px){
+  .navbar {
+    min-height: 120px;
+  }
+}
+
+/* Desktop screens */
+@media (min-width: 1200px) {
+  .navbar {
+    min-height: 100px;
+  }
+}
+
+@media (max-width:1023px){
+     .navbar-brand img {
+        height: 116px !important;
+        width: 205px !important;
+        margin-inline-start: 120px !important;
+    }
+   
+}
+
+@media (max-width: 575.98px) {
+    .navbar-brand img {
+        height: 70px !important;
+        width: 119px !important;
+        margin-inline-start: 37px !important;
+    }
+    .d-flex.gap-3.ms-auto img {
+        height: 22px !important;
+        font-size: 18px !important;
+    }
+    .d-flex.gap-3.ms-auto i {
+        font-size: 18px !important;
+    }
+   
+    .d-flex.gap-3.ms-auto {
+        gap: 0.8rem !important;
+    }
+    .navbar-brand {
+        min-width: 60px !important;
+    }
+    .navbar-toggler {
+        margin-right: 0 !important;
+    }
+}
+@media (min-width: 992px) {
+    .navbar-brand {
+        margin-left: 0 !important;
+        margin-right: 1rem !important;
+        justify-content: flex-start !important;
+        order: 1;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .navbar-toggler {
+        order: 0;
+    }
+    .d-flex.gap-3.ms-auto {
+        margin-left: auto !important;
+        margin-right: 0 !important;
+        order: 3;
+    }
+    .navbar-collapse {
+        order: 2;
+    }
+}
+
+   
+
+
+
+
+</style>
+
+                    <!-- Search Modal -->
+                  <style>
+.searchCon {
+    display: none;
+    z-index: 1100; /* Higher than navbar */
+    background: rgb(250, 235, 234);
+    position: fixed;
+    top: 0; /* 👈 Stick to very top (on navbar) */
+    right: 0;
+    left: auto;
+    width: 45vw;
+    height:100%;
+    padding: 20px 10px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15); /* subtle shadow */
+}
+
+.search-overlay {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.searchCon.active {
+    transform: translateX(0);
+}
+
+/* ✅ Adjust for tablet screens */
+@media (max-width:1024px) {
+    .searchCon{
+        width: 62vw;
+    }
+}
+
+/* ✅ Full-width on mobile */
+@media (max-width:578px) {
+    .searchCon{
+        width: 100%;
+        height: 100%;
+    }
+}
+</style>
+
+
+    
+
+
+
+
+                    <!-- End Search Modal -->
+               
+
+<script>
+function toggleSearchSection() {
+    const section = document.getElementById('searchCon');
+    const resultsDiv = document.getElementById('search-results');
+    const searchInput = document.getElementById('searchInput');
+
+    if (section.classList.contains('active')) {
+        // Close the search overlay
+        section.classList.remove('active');
+        setTimeout(() => { section.style.display = 'none'; }, 400);
+    } else {
+        // Open and reset search
+        section.style.display = 'block';
+        setTimeout(() => { section.classList.add('active'); }, 10);
+
+        // 🧹 Clear previous search input and results
+        searchInput.value = "";
+        resultsDiv.innerHTML = "";
+
+        // Load top 4 trending products
+        loadTopProducts();
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("searchInput");
+    const categorySelect = document.getElementById("categorySelect");
+    const resultsDiv = document.getElementById("search-results");
+
+    // --- Load categories on startup ---
+    fetch(`/ajax/search/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.categories && categorySelect.options.length <= 1) {
+                data.categories.forEach(cat => {
+                    const option = document.createElement("option");
+                    option.value = cat.id;
+                    option.textContent = cat.name;
+                    categorySelect.appendChild(option);
+                });
+            }
+        });
+
+    // --- Fetch search results ---
+    function fetchResults(showTop = false) {
+        const query = searchInput.value.trim();
+        const category = categorySelect ? categorySelect.value : '';
+
+        fetch(`/ajax/search/?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&top=${showTop ? 1 : 0}`)
+            .then(response => response.json())
+            .then(data => renderResults(data.results));
+    }
+
+    // --- Load top 4 products (on open or empty search) ---
+    function loadTopProducts() {
+        fetchResults(true);
+    }
+
+    // --- Render results ---
+    function renderResults(products) {
+        resultsDiv.innerHTML = "";
+        if (!products || products.length === 0) {
+            resultsDiv.innerHTML = '<div class="p-3 text-center">No results found</div>';
+            return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "row g-3 search-row-responsive";
+
+        products.slice(0, 4).forEach(item => {
+            const col = document.createElement("div");
+            col.className = "col-6 col-md-4 col-lg-3";
+
+            col.innerHTML = `
+                <a href="${item.url}" class="text-decoration-none text-dark">
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <img src="${item.image}" class="card-img-top" alt="${item.name}">
+                        <div class="card-body p-2">
+                            <h6 class="product-title">${item.name}</h6>
+                            <p class="product-desc">${item.description}</p>
+                            <div class="price-section mb-2">
+                                <span class="price">${item.price_display}</span>
+                                <span class="original-price ms-2">${item.original_price || ''}</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            `;
+            row.appendChild(col);
+        });
+
+        resultsDiv.appendChild(row);
+        resultsDiv.style.display = "block";
+    }
+
+    // --- Live typing search ---
+    searchInput.addEventListener("keyup", function () {
+        if (searchInput.value.trim().length > 0) {
+            fetchResults();
+        } else {
+            loadTopProducts();
+        }
+    });
+
+    if (categorySelect) categorySelect.addEventListener("change", fetchResults);
+
+    // --- Close when clicking outside ---
+    document.addEventListener("click", function (e) {
+        const searchBox = document.getElementById("searchCon");
+        if (!searchBox.contains(e.target) && !e.target.closest(".bi-search")) {
+            searchBox.classList.remove("active");
+            setTimeout(() => { searchBox.style.display = 'none'; }, 300);
+        }
+    });
+});
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const cartLink = document.getElementById("cart-link");
+    const cartMsg = document.getElementById("cart-empty-msg");
+    const cartCountElem = document.getElementById("cart-count");
+
+    // Fetch count on page load
+    if ("{{ request.user.is_authenticated|yesno:'true,false' }}" === "true") {
+        fetch('/api/cart/count/')
+            .then(response => response.json())
+            .then(data => {
+                cartCountElem.textContent = data.count;
+            });
+    }
+
+    // Intercept cart click
+    cartLink.addEventListener("click", function(event) {
+        event.preventDefault(); // stop redirect first
+
+        fetch('/api/cart/count/')
+            .then(response => response.json())
+            .then(data => {
+                const cartCount = data.count;
+
+                if (cartCount > 0) {
+                    window.location.href = cartLink.getAttribute("href"); // go to cart
+                } else {
+                    cartMsg.style.display = "block";
+                    setTimeout(() => {
+                        cartMsg.style.display = "none";
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                console.error("Error checking cart count:", error);
+            });
+    });
+});
+</script>
+
+
+<script>
+const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+const wishlistSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/wishlist/`);
+
+wishlistSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if (data.count !== undefined) {
+        const countElem = document.querySelector("#wishlist-count");
+        if (countElem) countElem.textContent = data.count;
+    }
+};
+
+wishlistSocket.onclose = function(e) {
+    console.error("Wishlist WebSocket closed unexpectedly");
+};
+
+// Handle favorite icon click
+document.addEventListener("click", function(e) {
+    const fav = e.target.closest(".favorite");
+    if (!fav) return;
+
+    const productId = fav.dataset.productId;
+    const isActive = fav.classList.contains("active");
+
+    // Choose URL based on current state
+    const url = isActive
+        ? "{% url 'remove_from_wishlist' %}"
+        : "{% url 'add_to_wishlist' %}";
+
+    fetch(url, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        body: new URLSearchParams({ product_id: productId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Toggle heart color immediately (instant feedback)
+            fav.classList.toggle("active", !isActive);
+
+            // Also update count right away for smooth UX
+            const countElem = document.querySelector("#wishlist-count");
+            if (countElem) countElem.textContent = data.count;
+        }
+    })
+    .catch(err => console.error("Wishlist update error:", err));
+});
+</script>
+
+     
+      
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+</body>
+</body>
+</html>

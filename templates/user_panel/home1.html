@@ -1,0 +1,3926 @@
+
+{% extends 'layouts/main.html' %}
+{% load static %}
+{% block title %}
+
+{% endblock title %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" />
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+    @media (max-width: 576px) {
+        .circle-container {
+            width: 160px;
+            height: 160px;
+        }
+
+        :root {
+            --arc-size: 10px;
+            --small-arc-size: 5px;
+            --circle-spacing: 1.25rem;
+        }
+
+        .circle-text {
+            font-size: 1rem;
+        }
+    }
+ .custom-container {
+        width: auto;
+        margin: auto;
+        padding: 20px;
+        background: #F7E7E8;
+        ;
+    }
+
+
+    .custom-card {
+        width: 290px;
+        border: 1.5px solid #D8CBBD;
+        background: #FFFFFF;
+        border-radius: 8px;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .custom-img-container {
+        width: 100%;
+        height: 270px;
+        background: #FBFAF4;
+        position: relative;
+        overflow: hidden;
+    }
+
+
+    .custom-img {
+        width: 100%;
+        height: auto;
+        position: absolute;
+        top: -60px;
+        left: 0;
+    }
+
+    .fixed-layout1 {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 10px;
+        margin: 0 auto;
+        width: 100%;
+        padding-left: 10px;
+        padding-right: 10px;
+        scroll-padding: 0 10px;
+    }
+
+    .custom-card1 {
+        flex: 0 0 100%;
+        max-width: 300px;
+        border: 1.5px solid #D8CBBD;
+        border-radius: 8px;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        transition: transform 0.3s ease-in-out;
+
+        scroll-snap-align: center;
+        margin-right: 15px;
+    }
+
+    .mobile-scroll1 {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .mobile-scroll1::-webkit-scrollbar {
+        display: none;
+    }
+
+
+    @media (min-width: 768px) {
+        .custom-card1 {
+            flex: 0 0 auto;
+            width: 80%;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .custom-card1 {
+            flex: 0 0 90%;
+        }
+    }
+
+
+
+
+    /* Footer Styling */
+    .custom-footer {
+        background: #FBF0EF;
+        border-top: 1px solid #161615;
+        padding: 20px 10px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .custom-footer div {
+        text-align: center;
+        color: #4D4D4D;
+        font-size: 16px;
+        font-family: Jomolhari, serif;
+        font-weight: 400;
+        text-transform: capitalize;
+        line-height: 18px;
+        word-wrap: break-word;
+    }
+
+
+
+
+    .custom-btn {
+        background: #981945;
+        color: white;
+        font-size: 16px;
+        font-family: Jomolhari, serif;
+        font-weight: 400;
+        line-height: 18px;
+        height: 58px;
+        width: 158px;
+        border-radius: 500px;
+        padding: 20px 36px;
+        border: none;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .custom-btn:hover {
+        background: #7a1036;
+        /* Darker shade on hover */
+        color: white;
+    }
+
+    /* card2 */
+    .container-fluid {
+        background: #F7E7E8;
+        ;
+
+    }
+
+    .text4 {
+        color: #404040;
+        font-size: 40px;
+        font-family: Jomolhari;
+        font-weight: 100;
+        line-height: 70px;
+        word-wrap: break-word
+    }
+
+    .text3 {
+        color: #6D3F0B;
+        font-size: 60px;
+        font-family: 'Brush Script MT', cursive;
+
+        font-weight: 400;
+        line-height: 64px;
+        word-wrap: break-word
+    }
+
+    .custom-bg {
+        background-color: #FBFAF4;
+    }
+
+    .custom-border {
+        border: 1.5px solid #D8CBBD;
+    }
+
+    .custom-button {
+        background-color: rgba(109, 63, 11, 0.95);
+        color: white;
+    }
+
+    .custom-button:hover {
+        background-color: #6D3F0B;
+    }
+
+    .custom-nav-button {
+        background-color: #6D3F0B;
+        border-radius: 50%;
+        padding: 10px;
+    }
+
+    .custom-nav-button:hover {
+        background-color: #5a3510;
+    }
+
+    .custom-pagination {
+        background-color: #981945;
+    }
+
+    .custom-pagination-dot4-1,
+    .custom-pagination-dot4-2,
+    .custom-pagination-dot4-3,
+    .custom-pagination-dot4-4,
+    .custom-pagination-dot4-5 {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1px solid #981945;
+    }
+
+    .custom-pagination-dot4-1.active,
+    .custom-pagination-dot4-2.active,
+    .custom-pagination-dot4-3.active,
+    .custom-pagination-dot4-4.active,
+    .custom-pagination-dot4-5.active {
+        background-color: #981945;
+    }
+
+
+    /* image */
+    .container10 {
+        margin-top: 20px;
+    }
+
+    .download-section {
+        width: 100%;
+        height: 450px;
+        display: flex;
+        justify-content: space-evenly;
+        padding: 30px 20px;
+    }
+
+    .download-section img {
+        object-fit: cover;
+        width: 450px;
+
+    }
+
+    .download-div1 {
+        display: flex;
+        justify-content: center;
+
+    }
+
+    .download-text {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        color: #404040;
+
+    }
+
+    .download-title {
+        font-size: 40px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        text-transform: capitalize;
+        line-height: 42px;
+    }
+
+    .store {
+        display: flex;
+        gap: 50px;
+    }
+
+
+    .discount-text {
+        color: #6D3F0B;
+        font-size: 48px;
+        font-family: 'Brush Script MT', cursive;
+        
+        text-transform: capitalize;
+        line-height: 42px;
+    }
+
+    .highlight-text {
+        color: black;
+        font-size: 40px;
+        font-family: "DM Sans";
+        font-weight: 800;
+        text-transform: capitalize;
+        line-height: 42px;
+    }
+
+    .subtext1 {
+        color: #404040;
+        font-size: 40px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        text-transform: capitalize;
+        line-height: 42px;
+    }
+
+    .info-box {
+        display: flex;
+        align-items: center;
+        background: #f8f8f8;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 20px;
+        gap: 15px;
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-box img {
+        width: 60px;
+        height: 40px;
+        object-fit: contain;
+    }
+
+    .info-text h1 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0;
+        color: #404040;
+        text-transform: capitalize;
+    }
+
+    .cart {
+        width: 28px;
+        height: 28px;
+    }
+
+
+    /* Responsive Adjustments */
+    @media (max-width: 992px) {
+        .download-section {
+            flex-direction: column-reverse;
+            text-align: center;
+        }
+
+        .download-text {
+            text-align: center;
+        }
+
+        .store {
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-box {
+            justify-content: center;
+            text-align: left;
+        }
+    }
+
+    /* text */
+    .featured-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 50px 20px;
+    }
+
+    /*.featured-title span {
+            display: block;
+        }*/
+
+    .featured-title .our {
+        color: #404040;
+        font-size: 40px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        line-height: 70px;
+    }
+
+    .featured-title .separator {
+        color: #981945;
+        font-size: 48px;
+        font-family: Playfair Display;
+        font-weight: 400;
+        line-height: 52px;
+    }
+
+    .featured-title .highlight {
+        color: #6D3F0B;
+        font-size: 60px;
+        font-weight:normal;
+      
+        line-height: 64px;
+    }
+
+     
+
+    .featured-description {
+        max-width: 984px;
+        color: #4D4D4D;
+        font-size: 16px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        text-transform: capitalize;
+        line-height: 28px;
+        margin-top: 20px;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .featured-title .our {
+            font-size: 32px;
+            line-height: 50px;
+        }
+
+        .featured-title .separator {
+            font-size: 38px;
+            line-height: 42px;
+        }
+
+        .featured-title .highlight {
+            font-size: 48px;
+            line-height: 54px;
+        }
+
+        .featured-description {
+            font-size: 14px;
+            line-height: 24px;
+            padding: 0 15px;
+        }
+    }
+
+    /* shop text */
+    .shop-by-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 50px 20px;
+    }
+
+    /* .shop-title span {
+            display: block;
+        } */
+
+    .shop-title .shop-by {
+        color: #404040;
+        font-size: 40px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        line-height: 70px;
+    }
+
+    .shop-title .separator {
+        color: #981945;
+        font-size: 48px;
+        font-family: Playfair Display;
+        font-weight: 400;
+        line-height: 52px;
+    }
+
+    .shop-title .highlight {
+        color: #6D3F0B;
+    
+        font-size: 60px;
+       
+     
+        line-height: 64px;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .shop-title .shop-by {
+            font-size: 32px;
+            line-height: 50px;
+        }
+
+        .shop-title .separator {
+            font-size: 38px;
+            line-height: 42px;
+        }
+
+        .shop-title .highlight {
+            font-size: 48px;
+            line-height: 54px;
+        }
+    }
+
+    /* star cards */
+    /*.card1 {
+            border: none;
+            border-radius: 10px;
+            transition: transform 0.3s ease-in-out;
+            border: 1.5px solid #D8CBBD;
+
+        }
+
+        .card1:hover {
+            transform: translateY(-5px);
+        }*/
+    .card1 {
+        height: 300px;
+        background-color: white;
+        display: flex;
+
+        justify-content: center;
+        align-content: center;
+        padding: 10px 20px;
+    }
+
+    .carousel-item .card1 {
+        width: 350px;
+    }
+
+    .card1 h1 {
+        font-size: 17px;
+    }
+
+    .star-rating {
+        color: #FFD700;
+        /* Gold color for stars */
+    }
+
+    .star-rating img {
+        width: 30px;
+        height: 30px;
+    }
+
+    .card-title {
+        color: #666666;
+        font-size: 16px;
+        font-family: DM Sans;
+        font-weight: 400;
+        line-height: 26px;
+        word-wrap: break-word
+    }
+
+    /* email */
+    .email-input {
+        width: 100%;
+        max-width: 400px;
+        padding: 12px 32px;
+        border-radius: 500px;
+        border: 0.5px solid #808080;
+        font-size: 16px;
+        font-family: "DM Sans", sans-serif;
+        font-weight: 400;
+        line-height: 26px;
+        color: black;
+        outline: none;
+    }
+
+    .subscribe-btn {
+        background: #981945;
+        color: white;
+        border: none;
+        padding: 20px 36px;
+        border-radius: 500px;
+        font-size: 16px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        line-height: 18px;
+        cursor: pointer;
+        transition: 0.3s ease-in-out;
+    }
+
+    .subscribe-btn:hover {
+        background: #7d1235;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 576px) {
+        .email-input {
+            max-width: 100%;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+
+        .subscribe-btn {
+            padding: 15px 28px;
+            font-size: 14px;
+        }
+    }
+
+    .custom-card-container4 {
+        display: flex;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        scrollbar-width: none;
+        /* Hide scrollbar for modern browsers */
+        -ms-overflow-style: none;
+        /* Hide scrollbar for IE */
+    }
+
+    .custom-card-container4::-webkit-scrollbar {
+        display: none;
+        /* Hide scrollbar for Chrome & Safari */
+    }
+
+    .custom-card4 {
+        flex: 0 0 80%;
+        /* Adjust the width to fit only one card at a time */
+        max-width: 300px;
+        margin-right: 20px;
+        background: white;
+        border-radius: 10px;
+        text-align: center;
+        padding: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .custom-img4 {
+        width: 100%;
+        border-radius: 10px;
+    }
+
+    .custom-footer4 {
+        margin-top: 10px;
+        font-size: 18px;
+    }
+
+    .custom-nav-button4 {
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    .custom-pagination-dot4-1,
+    .custom-pagination-dot4-2,
+    .custom-pagination-dot4-3,
+    .custom-pagination-dot4-4,
+    .custom-pagination-dot4-5 {
+        width: 10px;
+        height: 10px;
+        background: #bbb;
+        border-radius: 50%;
+        margin: 5px;
+    }
+
+    .custom-pagination-dot4-1.active,
+    .custom-pagination-dot4-2.active,
+    .custom-pagination-dot4-3.active,
+    .custom-pagination-dot4-4.active,
+    .custom-pagination-dot4-5.active {
+        background: #6D3F0B;
+    }
+
+    .custom-card-container4 {
+        display: flex;
+        gap: 20px;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        padding-bottom: 50px;
+        /* Ensure space for buttons */
+    }
+
+    .custom-card4 {
+        background: #fff;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .custom-img4 {
+        width: 100%;
+        height: auto;
+    }
+
+    .custom-footer {
+        margin-top: 10px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .custom-nav-button1 {
+        background-color: #6D3F0B;
+        border-radius: 50%;
+        padding: 10px;
+    }
+
+    .custom-nav-button1:hover {
+        background-color: #5a3510;
+    }
+
+    .custom-nav-button1 {
+        position: absolute;
+        bottom: -40px;
+        /* Adjust as needed */
+
+        border-radius: 50%;
+        padding: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .left-nav {
+        left: 0;
+    }
+
+    .right-nav {
+        right: 0;
+    }
+
+    /* oval */
+    .oval-container {
+        width: 90%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 70px;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        margin: auto;
+        text-align: center;
+        position: relative;
+        /* important for background layering */
+        background-color: #F7E7E8;
+        background-image: url("{% static 'images2/image.png' %}");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size:contain;
+        overflow: hidden;
+        z-index: 1;
+    }
+
+    .middle {
+        position: absolute;
+       
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 450px;
+        width: 100%;
+        height: 100%;
+        opacity: 0.8;
+        z-index: 0;
+    }
+
+    /*.background-img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: auto;
+            height: 100%;
+            opacity: 0.1;
+            
+            z-index: 0;
+            pointer-events: none;
+            
+        }*/
+
+    h1, h2, h3, h4, h5, h6 {
+    font-weight: normal;
+}
+
+.essence-heading,
+.category-brand,
+.text3,
+.discount-text,
+.featured-title .highlight,
+.shop-title .highlight,
+.products-section-title {
+    font-weight: normal !important;
+}
+
+
+    .oval-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 10px;
+        gap: 20px;
+        height: 250px;
+        border-radius: 10px;
+        box-shadow: 0 4px 16px #F7E7E8;
+        margin-top: 6rem;
+        /* ensures it's above background */
+    }
+
+    .oval-img:hover {
+        transform: scale(1.1);
+        cursor: pointer;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .oval-img {
+        width: 100px;
+        height: 300px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50px;
+        border: 0.617px solid #AF9164;
+        background: #FBF0EF;
+        z-index: 1;
+    }
+
+    .oval-img img {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 500px;
+    }
+
+    .name-text {
+        margin-top: 8px;
+        font-size: 18px;
+        font-family: 'Times New Roman', Times, serif;
+        font-weight: 500;
+    }
+
+
+  
+    .product-card {
+        width: 300px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #FBF0EF;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease-in-out;
+    }
+
+ .favorite {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+    z-index: 5;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+
+
+.favorite img {
+    width: 20px;
+    height: 20px;
+    filter: grayscale(100%); /* default grey heart */
+    transition: all 0.3s ease;
+}
+
+.favorite.active {
+    border-color: #e63946;
+    background: #cf0d78;
+}
+
+.favorite.active img {
+    filter: none; /* show real color */
+}
+
+
+    .addcart {
+        display: none;
+        position: absolute;
+        bottom:134px;
+        /* Position at bottom of image container */
+        left: 51%;
+        transform: translateX(-50%);
+        background-color: #6D3F0BF2;
+        color: white;
+        height: 55px;
+        width: calc(111% - 20px);
+        /* Full width minus padding */
+        justify-content: center;
+        gap: 12px;
+        align-items: center;
+        z-index: 2;
+        font-size: 18px;
+        font-family: Jomolhari;
+        text-transform: capitalize;
+
+    }
+
+ 
+
+    /* Hover effects */
+    .product-card:hover {
+        transform: scale(1.05);
+        cursor: pointer;
+        z-index: 3;
+    }
+
+    .product-card:hover .favorite,
+    .product-card:hover .addcart {
+        display: flex;
+    }
+
+    .product-img-container {
+        height: 400px;
+        overflow: hidden;
+        border-radius: 10px 10px 0 0;
+        position: relative;
+    }
+
+    .product-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+
+    .product-card:hover .product-img {
+        transform: scale(1.05);
+    }
+
+    /* Product info styling */
+    .product-info {
+        padding: 15px;
+        background: #FBF0EF;
+        display: flex;
+        justify-content:start;
+        flex-direction: column;
+        border-radius: 0 0 10px 10px;
+        position: relative;
+        /* Needed for z-index stacking */
+        z-index: 1;
+    }
+
+
+
+    .product-price {
+        color: #4D4D4D;
+        font-size: 18px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        text-transform: capitalize;
+        line-height: 18px;
+        word-wrap: break-word;
+        margin: 0;
+        /* Remove default margins */
+        white-space: nowrap;
+        /* Prevent price from wrapping */
+    }
+
+
+
+    /* Scrollable Products Container */
+    .products-scroll-container {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 20px 0;
+        scrollbar-width: none;
+        /* Firefox */
+        -ms-overflow-style: none;
+        /* IE/Edge */
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    .products-scroll-container::-webkit-scrollbar {
+        display: none;
+        /* Chrome/Safari */
+    }
+
+    /* Navigation Controls Container */
+    .products-navigation-wrapper {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 20px;
+        padding: 0 20px;
+    }
+
+    /* Navigation Buttons */
+    .product-nav-button {
+        background: transparent;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .product-nav-button img {
+        width: 30px;
+        height: 30px;
+    }
+
+    /* Pagination Dots */
+    .custom-pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-grow: 1;
+        margin: 0 20px;
+    }
+
+    .custom-pagination-dot4-1,
+    .custom-pagination-dot4-2,
+    .custom-pagination-dot4-3,
+    .custom-pagination-dot4-4,
+    .custom-pagination-dot4-5 {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ccc;
+        margin: 0 5px;
+        cursor: pointer;
+
+    }
+
+    .back-btn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background-color: #6D3F0B;
+        color: #fff;
+        padding: 8px 14px;
+        border: none;
+        border-radius: 5px;
+        font-size: 14px;
+        cursor: pointer;
+        z-index: 1000;
+        transition: background-color 0.3s ease;
+    }
+
+    .back-btn:hover {
+        background-color: #4f2e08;
+    }
+
+
+    /* Responsive Behavior */
+
+    @media (max-width: 1440px) {
+        .favorite {
+            width: 40px;
+            height: 40px;
+        }
+
+        .favorite img {
+            width: 20px;
+            height: 20px;
+        }
+    }
+
+    @media(min-width:1440px) {
+        .oval-container {
+            height: 450px;
+        }
+    }
+
+    @media (min-width: 1025px) {
+        .products-scroll-container {
+            flex-wrap: wrap;
+            justify-content: center;
+            overflow-x: visible;
+            gap: 20px;
+        }
+
+        .product-card {
+            margin: 0;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .product-card {
+            width: 280px;
+        }
+
+        .product-img-container {
+            height: 400px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .product-card {
+            width: 280px;
+            margin: 16px auto;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            /* background: #fff; */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-img-container {
+            position: relative;
+            height: 400px;
+            overflow: hidden;
+        }
+
+        .product-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .addcart {
+            background-color: #6D3F0BF2;
+            font-size: 10px;
+            height: 10px;
+            color: white;
+
+            border-radius: 5px;
+        }
+       
+     .oval-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    .oval-item {
+        width: 22vw;
+        margin-top: 4rem!important;
+    }
+
+    }
+
+    /* Section Titles */
+    .products-section-subtitle {
+
+        color: #404040;
+        font-size: 40px;
+        font-family: Jomolhari;
+        font-weight: 400;
+        line-height: 70px;
+        word-wrap: break-word
+    }
+
+    .products-section-title {
+        color: #6D3F0B;
+        font-size: 60px;
+        font-family: "Euphoria Script";
+        font-weight: 400;
+        line-height: 64px;
+    }
+   
+ 
+   
+       
+    
+
+    @media (max-width: 768px) {
+        .text3 {
+            font-size: 30px;
+        }
+
+        .products-section-title {
+            font-size: 30px;
+            margin-top: -30px;
+        }
+
+        .products-section-subtitle {
+            font-size: 30px;
+            margin-top: 50px;
+        }
+
+        .discount-text {
+            font-size: 30px;
+        }
+    }
+
+
+    .carousel-item {
+        transition: transform 1.5s ease-in-out !important;
+        /* Smooth & slower animation */
+    }
+
+    /* .circle-container.active {
+        border: 1px solid transparent;
+        border-radius: 50%;
+        padding: 4px;
+        transition: all 0.3s ease;
+    } */
+    @media(max-width:768px) {
+        .man-img {
+            display: none;
+        }
+    }
+
+    .custom-nav-button {
+        background-color: #6D3F0B;
+        border-radius: 50%;
+        padding: 10px;
+        z-index: 2;
+    }
+
+
+
+    .product-card:hover {
+        transform: scale(1.05);
+    }
+
+    .product-card video {
+        border-radius: 8px;
+        width: 100%;
+        height: auto;
+    }
+
+    @media (max-width: 768px) {
+        .product-card {
+            margin-bottom: 20px;
+            
+        }
+    }
+
+    .products-scroll-row {
+        display: flex;
+        gap: 24px;
+        overflow-x: auto;
+        scroll-behavior: smooth;
+        padding: 30px 0;
+        scrollbar-width: none;
+    }
+
+    .products-scroll-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+
+        .custom-nav-button.left-nav,
+        .custom-nav-button.right-nav {
+            display: none !important;
+        }
+    }
+
+    .video-scroll-wrapper {
+        overflow: hidden;
+        /* Hide scrollbar and prevent manual scroll */
+        width: 100%;
+        padding-bottom: 20px;
+    }
+
+    .video-scroll-row {
+        display: flex;
+        gap: 24px;
+        transition: transform 0.7s cubic-bezier(.4, 0, .2, 1);
+        will-change: transform;
+    }
+
+    .video-card {
+        min-width: 320px;
+        max-width: 340px;
+        flex: 0 0 auto;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+        padding: 10px;
+    }
+
+    .video-card video {
+        width: 100%;
+        border-radius: 10px;
+    }
+
+    @media (max-width: 768px) {
+        .video-card {
+            min-width: 220px;
+            max-width: 240px;
+        }
+    }
+
+    .custom-view-all-btn {
+        display: inline-block;
+        padding: 10px 25px;
+        background-color: #6D3F0B;
+        color: white;
+        font-size: 18px;
+        font-weight: 500;
+        text-decoration: none;
+        border-radius: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.3s ease, transform 0.3s ease;
+        font-family: Jomolhari, serif;
+    }
+
+    .custom-view-all-btn:hover {
+        background-color: #8a4c11;
+        transform: translateY(-2px);
+        color: #fff;
+    }
+
+    .favorite img {
+        transition: filter 0.2s, transform 0.2s;
+    }
+
+   
+    .favorite.active img {
+        /* Darker pink tint */
+        filter: #fff;
+        transform: scale(1.15);
+
+    }
+     .favorite:hover img{
+        filter:#cf0d78;
+        transform: scale(1.15);
+
+     }
+
+    .modal-split-layout {
+        display: flex;
+        flex-direction: row;
+        height: 80vh;
+        gap: 10px;
+    }
+
+    .left-video,
+    .right-iframe {
+        flex: 1;
+        height: 100%;
+    }
+
+    .left-video video,
+    .right-iframe iframe {
+        width: 100%;
+        height: 100%;
+        border-radius: 8px;
+        object-fit: cover;
+        border: none;
+    }
+
+    @media (max-width: 768px) {
+        .modal-split-layout {
+            flex-direction: column;
+        }
+
+        .left-video,
+        .right-iframe {
+            height: 50vh;
+        }
+    }
+
+    .badge-rating {
+        position: absolute;
+    
+        right: 10px;
+        background-color: #ecebe7;
+        color: #333;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        z-index: -2;
+        font-weight: 600;
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+    }
+
+/* 1. Prevent entire page horizontal overflow */
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+/* Carousel Base Styles */
+#pvHeroCarousel {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+
+/* Image Scaling with smooth loading */
+#pvHeroCarousel .carousel-item img {
+  width: 100%;
+  height: 85dvh;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Carousel Inner Container */
+#pvHeroCarousel .carousel-inner {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Carousel Item Positioning */
+#pvHeroCarousel .carousel-item {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: none;
+}
+
+/* Active slide is visible */
+#pvHeroCarousel .carousel-item.active {
+  display: block;
+  position: relative;
+}
+
+/* Slides during transition */
+#pvHeroCarousel .carousel-item.active,
+#pvHeroCarousel .carousel-item-next,
+#pvHeroCarousel .carousel-item-prev {
+  display: block;
+}
+
+/* -----------------------------
+   RIGHT → LEFT WIPE TRANSITION
+----------------------------- */
+
+/* Slides during transition need absolute positioning */
+#pvHeroCarousel .carousel-item-next,
+#pvHeroCarousel .carousel-item-prev {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Next slide starts off-screen on the RIGHT */
+#pvHeroCarousel .carousel-item-next:not(.carousel-item-start) {
+  transform: translateX(100%);
+}
+
+/* Previous slide starts off-screen on the LEFT */
+#pvHeroCarousel .carousel-item-prev:not(.carousel-item-end) {
+  transform: translateX(-100%);
+}
+
+/* Slide animation for next */
+#pvHeroCarousel .carousel-item-next.carousel-item-start {
+  transform: translateX(0);
+}
+
+/* Slide animation for previous */
+#pvHeroCarousel .carousel-item-prev.carousel-item-end {
+  transform: translateX(0);
+}
+
+/* Active slide moving out */
+#pvHeroCarousel .active.carousel-item-start {
+  transform: translateX(-100%);
+}
+
+#pvHeroCarousel .active.carousel-item-end {
+  transform: translateX(100%);
+}
+
+/* Apply transition timing */
+#pvHeroCarousel .carousel-item-next.carousel-item-start,
+#pvHeroCarousel .carousel-item-prev.carousel-item-end,
+#pvHeroCarousel .active.carousel-item-start,
+#pvHeroCarousel .active.carousel-item-end {
+  transition: transform 1s ease-in-out;
+}
+
+/* Progress Bar Indicators */
+#pvHeroCarousel .carousel-indicators {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  z-index: 10;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+#pvHeroCarousel .carousel-indicators button {
+  width: 50px;
+  height: 3px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  opacity: 1;
+  transition: transform 0.2s ease;
+}
+
+#pvHeroCarousel .carousel-indicators button:hover {
+  transform: scaleY(1.3);
+}
+
+#pvHeroCarousel .carousel-indicators .progress-track {
+  width: 100%;
+  height: 60%;
+  background: rgba(255, 255, 255, 0.4);
+  position: relative;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+#pvHeroCarousel .carousel-indicators .progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: #ffffff;
+  border-radius: 3px;
+  will-change: width;
+  transition: none;
+}
+
+#pvHeroCarousel .carousel-indicators button.active .progress-track {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+#pvHeroCarousel .carousel-indicators button.active .progress-fill {
+  background: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+/* Clickable Areas */
+#pvHeroCarousel .carousel-item a {
+  display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+#pvHeroCarousel .carousel-item a:hover {
+  opacity: 0.95;
+}
+
+/* Hide Navigation Controls */
+#pvHeroCarousel .carousel-control-prev,
+#pvHeroCarousel .carousel-control-next {
+  display: none !important;
+}
+
+/* Performance Optimizations */
+#pvHeroCarousel * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Loading State */
+#pvHeroCarousel .carousel-item img {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  #pvHeroCarousel .carousel-item img {
+    height: 400px;
+  }
+  
+  #pvHeroCarousel .carousel-indicators {
+    bottom: 20px;
+  }
+  
+  #pvHeroCarousel .carousel-indicators button {
+    width: 45px;
+  }
+}
+
+@media (max-width: 768px) {
+  #pvHeroCarousel .carousel-item img {
+    height: 300px;
+  }
+  
+  #pvHeroCarousel .carousel-indicators {
+    bottom: 16px;
+    gap: 8px;
+  }
+  
+  #pvHeroCarousel .carousel-indicators button {
+    width: 35px;
+    height: 2.5px;
+  }
+}
+
+@media (max-width: 576px) {
+  #pvHeroCarousel .carousel-item img {
+    height: 220px;
+  }
+  
+  #pvHeroCarousel .carousel-indicators {
+    bottom: 12px;
+    gap: 6px;
+  }
+  
+  #pvHeroCarousel .carousel-indicators button {
+    width: 28px;
+    height: 2px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  #pvHeroCarousel .carousel-item {
+    transition: none !important;
+  }
+  
+  #pvHeroCarousel .carousel-indicators .progress-fill {
+    transition: none !important;
+  }
+}
+
+/* Focus States for Keyboard Navigation */
+#pvHeroCarousel .carousel-indicators button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+#pvHeroCarousel:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -2px;
+}
+</style>
+<style>
+    .blur-image {
+    filter: blur(2px);
+    pointer-events: none;
+}
+
+.blink {
+    animation: blinker 1s linear infinite;
+}
+
+@keyframes blinker {
+    50% {
+        opacity: 0;
+    }
+}
+
+@media(min-width:1400px){
+    .container{
+        max-width:1160px !important;
+    }
+}
+
+.arc-main,
+.arc-opposite {
+    transform-origin: center;
+    will-change: transform;
+}
+
+@keyframes rotate-arc {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.circle-container:hover .arc-main,
+.circle-container:hover .arc-opposite {
+    animation: rotate-arc 3s linear infinite;
+    color: #7d1235 !important;
+}
+
+.circle-container:hover .arc-main::before {
+    background: conic-gradient(
+        from -45deg,
+        transparent 0deg calc(90deg + var(--arc-gap)),
+        var(--hover-color) calc(90deg + var(--arc-gap)) calc(270deg - var(--arc-gap)),
+        transparent calc(270deg - var(--arc-gap)) 360deg
+    );
+}
+
+.circle-container:hover .arc-opposite::before {
+    background: conic-gradient(
+        from 135deg,
+        transparent 0deg calc(90deg - var(--arc-gap)/2),
+        var(--hover-color) calc(90deg - var(--arc-gap)/2) calc(180deg + var(--arc-gap)/2),
+        transparent calc(180deg + var(--arc-gap)/2) 360deg
+    );
+}
+
+.arc-main::before,
+.arc-opposite::before {
+    transition: background 0.4s ease;
+}
+
+</style>
+
+
+
+
+{% endblock extra_css %}
+
+{% block content %}
+<!-- {% if festival_offer %}
+Festival Offer Modal
+<div class="modal fade" id="festivalOfferModal" tabindex="-1" aria-labelledby="festivalOfferLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content p-4 text-white text-center"
+            style="border-radius: 20px; background: linear-gradient(45deg, #ff4e50, #f9d423); box-shadow: 0 0 40px rgba(0,0,0,0.8); animation: popIn 0.7s ease-out;">
+            <div class="modal-header border-0" style="background-color: rgba(0,0,0,0.1);">
+                <h5 class="modal-title w-100 fw-bold" id="festivalOfferLabel"
+                    style="font-size: 2rem; text-shadow: 1px 1px 3px #000;">
+                    🎊 {{ festival_offer.offer_name|upper }} 🎊
+                </h5>
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-2" data-bs-dismiss="modal"
+                    aria-label="Close" style="background-color: #fff; border-radius: 50%; padding: 8px;">
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="fs-1 fw-bold" style="color: #fff; text-shadow: 2px 2px 5px #000;">
+                    🧨 {{ festival_offer.percentage }}% OFF 🧨
+                </p>
+                <p class="fs-5" style="color: #f0f0f0;">Valid till: <strong>{{ festival_offer.end_date}}</strong></p>
+                <p style="font-style: italic; color: #fff9;">Don't miss the Chance! 🎁</p>
+            </div>
+        </div>
+    </div>
+</div> -->
+
+<!-- <style>
+    @keyframes slideDown {
+        0% {
+            transform: translateY(-100%) scale(0.9);
+            opacity: 0;
+        }
+
+        100% {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+    }
+
+    .modal.fade .modal-dialog {
+        transform: translateY(-100%);
+        transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+    }
+
+    .modal.show .modal-dialog {
+        transform: translateY(0);
+    }
+
+    .modal-content {
+        animation: slideDown 0.7s ease-out;
+        border-radius: 20px;
+        background: linear-gradient(45deg, #ff4e50, #f9d423);
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        text-align: center;
+        color: white;
+        border: 5px dashed white;
+    }
+</style>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const modal = new bootstrap.Modal(document.getElementById('festivalOfferModal'));
+        modal.show();
+    });
+</script>
+{% endif %} -->
+
+
+
+
+
+<div id="pvHeroCarousel" class="carousel slide">
+  <!-- Indicators with Progress Bars -->
+  <div class="carousel-indicators">
+    {% for banner in banners %}
+    <button type="button" 
+            data-bs-target="#pvHeroCarousel" 
+            data-bs-slide-to="{{ forloop.counter0 }}"
+            class="{% if forloop.first %}active{% endif %}"
+            aria-label="Slide {{ forloop.counter }}">
+      <div class="progress-track">
+        <div class="progress-fill"></div>
+      </div>
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Carousel Items -->
+  <div class="carousel-inner">
+    {% if first_banner_no_section %}
+    <div class="carousel-item active">
+      <a href="{% url 'all_view' %}" class="d-block w-100 h-100">
+        <img src="{{ first_banner_no_section.banner_image.url }}" class="d-block w-100" alt="{{ first_banner_no_section.title }}">
+      </a>
+    </div>
+    {% endif %}
+
+    {% for banner in other_banners %}
+    <div class="carousel-item {% if not first_banner_no_section and forloop.first %}active{% endif %}">
+      <a {% if banner.section %}href="{% url 'viewall_products' banner.section %}"{% endif %} class="d-block w-100 h-100">
+        <img src="{{ banner.banner_image.url }}" class="d-block w-100" alt="{{ banner.title }}">
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Navigation Controls -->
+  <button class="carousel-control-prev" type="button" data-bs-target="#pvHeroCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Previous</span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#pvHeroCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Next</span>
+  </button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const carouselEl = document.getElementById('pvHeroCarousel');
+  if (!carouselEl) return;
+
+  // Configuration
+  const SLIDE_DURATION = 5000; // 5 seconds per slide (visible duration)
+  const TRANSITION_DURATION = 1000; // 1 second transition
+  
+  const indicators = carouselEl.querySelectorAll('.carousel-indicators button');
+  const slides = carouselEl.querySelectorAll('.carousel-item');
+  
+  if (!indicators.length || !slides.length) return;
+
+  let currentIndex = 0;
+  let progressInterval = null;
+  let progressStartTime = null;
+  let isPaused = false;
+  let isTransitioning = false;
+
+  // Initialize Bootstrap Carousel
+  const carousel = new bootstrap.Carousel(carouselEl, {
+    interval: false,
+    ride: false,
+    wrap: true,
+    touch: true,
+    pause: false
+  });
+
+  // Animate progress bar smoothly using requestAnimationFrame
+  function animateProgressBar() {
+    if (isPaused || isTransitioning) return;
+    
+    const now = performance.now();
+    if (!progressStartTime) progressStartTime = now;
+    
+    const elapsed = now - progressStartTime;
+    const progress = Math.min(elapsed / SLIDE_DURATION, 1);
+    
+    const activeIndicator = indicators[currentIndex];
+    const progressFill = activeIndicator?.querySelector('.progress-fill');
+    
+    if (progressFill) {
+      progressFill.style.width = `${progress * 100}%`;
+    }
+    
+    // Continue animation if not complete
+    if (progress < 1) {
+      progressInterval = requestAnimationFrame(animateProgressBar);
+    } else {
+      // Progress complete - trigger next slide
+      goToNextSlide();
+    }
+  }
+
+  // Reset specific progress bar
+  function resetProgressBar(index) {
+    const indicator = indicators[index];
+    const progressFill = indicator?.querySelector('.progress-fill');
+    if (progressFill) {
+      progressFill.style.transition = 'none';
+      progressFill.style.width = '0%';
+      void progressFill.offsetWidth; // Force reflow
+    }
+  }
+
+  // Reset all progress bars
+  function resetAllProgressBars() {
+    indicators.forEach((indicator) => {
+      const progressFill = indicator.querySelector('.progress-fill');
+      if (progressFill) {
+        progressFill.style.transition = 'none';
+        progressFill.style.width = '0%';
+      }
+    });
+  }
+
+  // Update active indicator
+  function updateActiveIndicator(index) {
+    indicators.forEach((indicator, i) => {
+      if (i === index) {
+        indicator.classList.add('active');
+        indicator.setAttribute('aria-current', 'true');
+      } else {
+        indicator.classList.remove('active');
+        indicator.removeAttribute('aria-current');
+      }
+    });
+  }
+
+  // Start progress animation
+  function startProgress() {
+    stopProgress();
+    progressStartTime = performance.now();
+    progressInterval = requestAnimationFrame(animateProgressBar);
+  }
+
+  // Stop progress animation
+  function stopProgress() {
+    if (progressInterval) {
+      cancelAnimationFrame(progressInterval);
+      progressInterval = null;
+    }
+    progressStartTime = null;
+  }
+
+  // Go to next slide
+  function goToNextSlide() {
+    if (isTransitioning) return;
+    
+    isTransitioning = true;
+    stopProgress();
+    
+    // Store previous index
+    const previousIndex = currentIndex;
+    
+    // Calculate next index
+    currentIndex = (currentIndex + 1) % slides.length;
+    
+    // Update active indicator immediately
+    updateActiveIndicator(currentIndex);
+    
+    // Trigger Bootstrap carousel transition
+    carousel.to(currentIndex);
+    
+    // Wait for transition to complete
+    setTimeout(() => {
+      // Reset previous slide's progress bar
+      resetProgressBar(previousIndex);
+      
+      // Start new progress bar
+      isTransitioning = false;
+      if (!isPaused) {
+        startProgress();
+      }
+    }, TRANSITION_DURATION);
+  }
+
+  // Go to specific slide
+  function goToSlide(index) {
+    if (index === currentIndex || isTransitioning) return;
+    
+    isTransitioning = true;
+    stopProgress();
+    
+    // Store previous index
+    const previousIndex = currentIndex;
+    
+    // Update current index
+    currentIndex = index;
+    
+    // Update active indicator immediately
+    updateActiveIndicator(currentIndex);
+    
+    // Trigger Bootstrap carousel transition
+    carousel.to(currentIndex);
+    
+    // Wait for transition to complete
+    setTimeout(() => {
+      // Reset all progress bars except current
+      indicators.forEach((_, i) => {
+        if (i !== currentIndex) {
+          resetProgressBar(i);
+        }
+      });
+      
+      // Start new progress bar
+      isTransitioning = false;
+      if (!isPaused) {
+        startProgress();
+      }
+    }, TRANSITION_DURATION);
+  }
+
+  // Pause auto-slide
+  function pauseAutoSlide() {
+    if (isPaused) return;
+    isPaused = true;
+    stopProgress();
+  }
+
+  // Resume auto-slide
+  function resumeAutoSlide() {
+    if (!isPaused) return;
+    isPaused = false;
+    if (!isTransitioning) {
+      startProgress();
+    }
+  }
+
+  // Event Listeners
+  
+  // Pause on hover
+  carouselEl.addEventListener('mouseenter', pauseAutoSlide);
+  carouselEl.addEventListener('mouseleave', resumeAutoSlide);
+
+  // Pause on touch for mobile
+  carouselEl.addEventListener('touchstart', pauseAutoSlide, { passive: true });
+  carouselEl.addEventListener('touchend', function() {
+    setTimeout(resumeAutoSlide, 2000);
+  });
+
+  // Manual indicator clicks
+  indicators.forEach((indicator, index) => {
+    indicator.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      goToSlide(index);
+    });
+  });
+
+  // Keyboard navigation
+  carouselEl.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prevIndex = (currentIndex - 1 + slides.length) % slides.length;
+      goToSlide(prevIndex);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      goToNextSlide();
+    }
+  });
+
+  // Handle visibility change (pause when tab is hidden)
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      pauseAutoSlide();
+    } else {
+      resumeAutoSlide();
+    }
+  });
+
+  // Initialize the carousel
+  function init() {
+    // Ensure first slide is active
+    slides[0]?.classList.add('active');
+    updateActiveIndicator(0);
+    resetAllProgressBars();
+    
+    // Start progress bar after brief delay
+    setTimeout(() => {
+      startProgress();
+    }, 100);
+  }
+
+  // Start everything
+  init();
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', function() {
+    stopProgress();
+  });
+
+  // Handle window resize
+  let resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      if (!isPaused && !isTransitioning) {
+        stopProgress();
+        resetProgressBar(currentIndex);
+        startProgress();
+      }
+    }, 250);
+  });
+});
+</script>
+
+<style>
+   .scroll-container {
+    width: 100%;
+    overflow: hidden;
+    background: #F7E7E8;
+    padding: 10px 0;
+    border-top: 1px solid #B3B3B3;
+    border-bottom: 1px solid #B3B3B3;
+}
+
+.scroll-content {
+    display: flex;
+    width: max-content;
+    animation: scrollText 20s linear infinite;
+    will-change: transform;
+    transform: translate3d(0,0,0);
+}
+
+.scroll-content span {
+    white-space: nowrap;
+    margin-right: 2rem;
+    padding: 0 1rem;
+}
+
+@keyframes scrollText {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+/* Mobile tuning */
+@media (max-width: 768px) {
+    .scroll-content {
+        animation-duration: 18s;
+    }
+}
+
+@media (max-width: 480px) {
+    .scroll-content {
+        animation-duration: 16s;
+        font-size: 14px;
+    }
+}
+
+</style>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const scrollContent = document.querySelector('.scroll-content');
+    if (scrollContent) {
+        scrollContent.innerHTML += scrollContent.innerHTML;
+    }
+});
+</script>
+
+
+<!-- scroll -->
+<div class="scroll-container">
+    <div class="scroll-content">
+        {% if ScrollBar %}
+        <span>{{ ScrollBar.scroll_bar }}</span>
+        {% else %}
+        <span>No scroll text available</span>
+        {% endif %}
+       
+    </div>
+</div>
+
+<!-- text1 -->
+<div class="essence-container">
+    <div class="essence-heading">Essence unleashed</div>
+    <div class="essence-description">
+        Discover our exclusive collection of fragrances inspired by renowned brands. Each scent is meticulously crafted
+        to deliver luxury, elegance, and sophistication at an affordable price, with a focus on high-quality,
+        long-lasting, alcohol-free formulas that offer timeless aromas without compromise.
+    </div>
+</div>
+
+
+<!-- text2 -->
+<div class="category-container">
+    <div>
+        <span class="category-text" style="font-family: 'Jomolhari';">Our Famous Category of</span>
+        <span class="category-brand" style="font-family: 'Brush Script MT', cursive;">Perfume Valley</span>
+    </div>
+</div>
+
+<!-- circle -->
+line no 2188 to 2257 home page 
+
+
+<!-- circle -->
+<section class="section-container mobile-scroll1">
+    <div class="container mt-5 ">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <!-- Carousel Wrapper -->
+                <div class="carousel-wrapper" style="position:relative;">
+                    <!-- Scrollable subcategory circles -->
+                    <div class="scroll-wrapper circle-row" id="subcategoryScroll">
+                        {% for subcategory in subcategories %}
+                        {% if subcategory.sub_image %}
+                        <div class="circle-container me-2 mt-3">
+                            <div class="clickable-circle circle" 
+                                     data-url="{% url 'products_list' %}?subcategory={{ subcategory.id }}">
+                                <img src="{{ subcategory.sub_image.url }}" alt="{{ subcategory.name }}">
+                            </div>
+                            <div class="arc-main"></div>
+                            <div class="arc-opposite"></div>
+                            <div class="circle-text">{{ subcategory.name }}</div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    <!-- dots under the row -->
+                   
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+ <div class="scroll-dots" id="subcategoryDots">
+    {% for subcategory in subcategories %}
+    <span class="{% if forloop.first %}active{% endif %}"></span>
+    {% endfor %}
+ </div>
+
+
+<section class="section-container mobile-scroll1">
+    <div class="container mt-3">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <div class="carousel-wrapper" style="position:relative;">
+                    <div class="scroll-wrapper circle-row" id="categoryScroll">
+                        {% for category in section_categories %}
+                        {% if category.gif_file %}
+                        <div class="circle-container me-2 mt-3">
+                            <div class="clickable-circle circle" data-url="{% url 'products_list' %}?category={{ category.id }}">
+                                <img src="{{ category.gif_file.url }}" alt="{{ category.name }}">
+                            </div>
+                            <div class="arc-main"></div>
+                            <div class="arc-opposite"></div>
+                            <div class="circle-text">{{ category.name }}</div>
+                        </div>
+                        {% else %}
+                        <h1>not found</h1>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    <!-- dots under the row -->
+                   
+                </div>
+            </div>
+        </div>
+    </div>
+</section> 
+ <div class="scroll-dots" id="categoryDots">
+        {% for category in section_categories %}
+        <span class="{% if forloop.first %}active{% endif %}"></span>
+        {% endfor %}
+ </div>
+ 
+<style>
+    @media (max-width: 768px) {
+        .scroll-wrapper {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .scroll-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+        .scroll-dots {
+            display: block;
+            text-align: center;
+            margin-top: 6px;
+            padding: 10px 0;
+            background: #F7E7E8;
+            border-radius: 20px;
+        }
+        .scroll-dots span {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin: 0 4px;
+            border-radius: 50%;
+            background-color: #f7e7e8;
+            border: 1.5px solid #981945;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .scroll-dots span.active {
+            background-color: #981945;
+            transform: scale(1.2);
+        }
+        .carousel-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .scroll-wrapper {
+            overflow-x: auto;
+            flex: 1;
+            scroll-behavior: smooth;
+            display: flex;
+            scrollbar-width: none;
+        }
+        .scroll-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+    }
+    @media (min-width: 769px) {
+        .scroll-dots {
+            display: none;
+        }
+    }
+</style>
+
+
+
+
+<!-- Circle 2 -->
+
+
+<br><br>
+
+<div class="container-fluid products-section-container">
+    <div class="text-center products-header">
+        <h1 class="products-section-subtitle">Best Selling of</h1>
+        <h1 class="products-section-title" style="font-family: 'Brush Script MT', cursive;">Perfume Valley</h1>
+    </div>
+<div class="products-wrapper">
+    <div class="position-relative">
+        <!-- Navigation Buttons: Only visible on hover or scroll/edge interaction -->
+        <div class="products-arrow products-arrow-left">&#10094;</div>
+        <div class="products-arrow products-arrow-right">&#10095;</div>
+        <style>
+           /* ✅ Arrows Styling */
+.products-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 30px;
+  color: #333;
+  background-color: white;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 20;
+}
+
+.products-arrow:hover{
+    background-color: #981945;
+    color:white;
+}
+
+.products-arrow-left { left: 5px; }
+.products-arrow-right { right: 5px; }
+
+.position-relative:hover .products-arrow {
+  opacity: 0.5;
+}
+
+.products-arrow.show {
+  opacity: 0.4;
+  pointer-events: auto;
+}
+
+
+.products-arrow.edge-hover {
+  opacity: 1; /* fully visible only on edge hover */
+  pointer-events: auto;
+}
+
+@media (max-width: 485px) {
+  .products-arrow-left,
+  .products-arrow-right {
+    display: none !important;
+  }
+}
+
+</style>
+
+      <script>
+        function initProductCarousel(scrollRowId, containerSelector) {
+        const scrollRow = document.getElementById(scrollRowId);
+        if (!scrollRow) return; // guard if row not present
+
+        const container = scrollRow.closest(containerSelector);
+        if (!container) return; // guard if container not found
+
+        const leftArrow = container.querySelector(".products-arrow-left");
+        const rightArrow = container.querySelector(".products-arrow-right");
+        // if arrows are missing, bail out gracefully
+        if (!leftArrow && !rightArrow) return;
+
+        function updateArrows() {
+            const maxScrollLeft = scrollRow.scrollWidth - scrollRow.clientWidth;
+            if (leftArrow) leftArrow.classList.toggle("show", scrollRow.scrollLeft > 0);
+            if (rightArrow) rightArrow.classList.toggle("show", scrollRow.scrollLeft < Math.max(0, maxScrollLeft - 2));
+        }
+
+        if (leftArrow) {
+            leftArrow.addEventListener("click", () => {
+                scrollRow.scrollBy({ left: -300, behavior: "smooth" });
+            });
+        }
+        if (rightArrow) {
+            rightArrow.addEventListener("click", () => {
+                scrollRow.scrollBy({ left: 300, behavior: "smooth" });
+            });
+        }
+
+        // Only attach listeners if scrollRow exists (already guarded) and updateArrows will safely handle missing arrows
+        scrollRow.addEventListener("scroll", updateArrows);
+        window.addEventListener("resize", updateArrows);
+
+        // ensure arrows reflect initial state
+        updateArrows();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+        initProductCarousel("bestSellingScrollRow", ".products-section-container");
+        initProductCarousel("newArrivalsScrollRow", ".products-section-container");
+        initProductCarousel("trendingScrollRow", ".products-section-container");
+        });
+        </script>
+
+
+
+  
+    <div class="products-scroll-row" id="bestSellingScrollRow" style="scroll-behavior:smooth;">
+        {% for product in best_selling %}
+        <div class="product-card position-relative">
+
+            <!-- Trending Products Badge -->
+            <div class="badge-container position-absolute" style="top: 10px; left: 10px; z-index: 2;">
+                <span style="background-color: #981945; color: white; font-size: 14px; font-family: Jomolhari; font-weight: 600; padding: 5px 10px; border-radius: 5px;"> ⚡Best Selling</span>
+            </div>
+
+            <!-- Out of Stock Badge -->
+            {% if product.stock_status == 'Out of Stock' %}
+            <div class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center" style="z-index: 5; top: 0; left: 0; background-color: rgba(255,255,255,0.5);">
+                <span style="background-color: rgba(222, 26, 26, 0.7); color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;">Out of Stock</span>
+            </div>
+            {% elif product.stock_status == 'Low Stock' %}
+            <!-- Low Stock Badge -->
+            <div class="position-absolute" style="top: 10px; right: 10px; z-index: 3;">
+                <span class="blink" style="background-color: orange; color: white; padding: 5px 10px; border-radius: 5px;">Low Stock</span>
+            </div>
+            {% endif %}
+
+            <!-- Favorite Icon -->
+            <div class="favorite {% if product.id in wishlist_product_ids %}active{% endif %}" data-product-id="{{ product.id }}">
+                <img src="{% static 'images2/favorite.svg' %}" alt="">
+            </div>
+
+            <!-- Product Image -->
+            <div class="product-img-container {% if product.stock_status == 'outofstock' %}blur-image{% endif %}">
+                {% if product.image1 and product.image2 %}
+                <img src="{{ product.image1.url }}"
+                     class="product-img "
+                     alt="{{ product.name }}"
+                     loading="lazy"
+                    
+                     style="object-fit:fill;"
+                     {% if product.stock_status != 'outofstock' %}
+                     onmouseover="this.src='{{ product.image2.url }}'"
+                     onmouseout="this.src='{{ product.image1.url }}'"
+                     {% endif %}>
+                {% endif %}
+            </div>
+
+            <!-- Add to Cart (Disabled if out of stock) -->
+            <div class="addcart"
+                 style="background-color:#6D3F0BF2; height: 55px; color: white; font-size:18px; font-weight:normal; font-family: Jomolhari; text-transform: capitalize; padding:20px;">
+                {% if product.stock_status == 'Out of Stock' %}
+                <div class="d-flex align-items-center text-muted" style="pointer-events: none;">
+                    <div class="cart">
+                        <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart">
+                    </div>
+                    <div>Out of Stock</div>
+                </div>
+                {% else %}
+                <a href="{% url 'product_detail' product.id %}" class="d-flex align-items-center" style="text-decoration: none; color: inherit;">
+                    <div class="cart">
+                        <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart">
+                    </div>
+                    <div>Add to Cart</div>
+                </a>
+                {% endif %}
+            </div>
+
+                       
+            <div class="product-info ">
+        
+                <div class="product-name mb-2">{{ product.name }}</div>
+<div class="product-price text-start"><span style="color: #DC3545;">₹{{ product.min_price }} - ₹{{ product.max_price }}</span><span style="text-decoration: line-through; margin-inline-start:15px;">₹{{ product.s_price }} - ₹{{ product.e_price }}</span></div>
+                <span class="badge-rating">
+                    <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
+                    {{ product.average_rating|default:"0.0"|floatformat:1 }} | {{ product.review_count|default:0 }}
+                </span> 
+               
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Navigation Dots -->
+    <div class="scroll-dots" id="bestSellingDots">
+        {% for product in best_selling %}
+        <span class="{% if forloop.first %}active{% endif %}"></span>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+/* Products Wrapper */
+.products-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Scroll Dots Styling */
+.scroll-dots {
+    display: block;
+    text-align: center;
+    margin-top: 15px;
+    padding: 10px 0;
+    background: #F7E7E8;
+    border-radius: 20px;
+}
+
+.scroll-dots span {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin: 0 4px;
+    border-radius: 50%;
+    background-color: #f7e7e8;
+    border: 1.5px solid #981945;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.scroll-dots span.active {
+    background-color: #981945;
+    transform: scale(1.2);
+}
+
+.scroll-dots span:hover {
+    background-color: rgba(152, 25, 69, 0.5);
+    transform: scale(1.1);
+}
+
+/* Make products scroll horizontally if needed */
+.products-scroll-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 15px;
+    padding: 10px 0;
+}
+
+.products-scroll-row::-webkit-scrollbar {
+    display: none;
+}
+
+.product-card {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+}
+
+/* Hide dots on desktop if not needed */
+@media (min-width: 769px) {
+    .scroll-dots {
+        display: none;
+    }
+}
+</style>
+
+<script>
+function updateDots(scrollId, dotsId) {
+    const scrollEl = document.getElementById(scrollId);
+    const dotsContainer = document.getElementById(dotsId);
+    
+    if (!scrollEl || !dotsContainer) return;
+    
+    const dots = dotsContainer.querySelectorAll('span');
+    if (!dots.length) return;
+    
+    const children = scrollEl.children;
+    let activeIdx = 0;
+    let maxVisibleArea = 0;
+    
+    // Find which product card has the most visible area
+    for (let i = 0; i < children.length; i++) {
+        const rect = children[i].getBoundingClientRect();
+        const parentRect = scrollEl.getBoundingClientRect();
+        
+        // Calculate visible area of this card
+        const visibleLeft = Math.max(rect.left, parentRect.left);
+        const visibleRight = Math.min(rect.right, parentRect.right);
+        const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+        
+        // If this card has more visible area than previous cards
+        if (visibleWidth > maxVisibleArea) {
+            maxVisibleArea = visibleWidth;
+            activeIdx = i;
+        }
+    }
+    
+    // Update active dot
+    dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === activeIdx);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const bestSellingScroll = document.getElementById('bestSellingScrollRow');
+    const bestSellingDots = document.getElementById('bestSellingDots');
+    
+    if (!bestSellingScroll || !bestSellingDots) return;
+    
+    const dots = bestSellingDots.querySelectorAll('span');
+    
+    // Update dots on scroll immediately (no debounce for instant response)
+    bestSellingScroll.addEventListener('scroll', function() {
+        updateDots('bestSellingScrollRow', 'bestSellingDots');
+    });
+    
+    // Click on dot to scroll to corresponding product
+    dots.forEach((dot, idx) => {
+        dot.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active from all dots first
+            dots.forEach(d => d.classList.remove('active'));
+            
+            // Add active to clicked dot
+            this.classList.add('active');
+            
+            const targetCard = bestSellingScroll.children[idx];
+            if (targetCard) {
+                targetCard.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    inline: 'center',
+                    block: 'nearest'
+                });
+            }
+        });
+    });
+    
+    // Initialize on page load
+    updateDots('bestSellingScrollRow', 'bestSellingDots');
+});
+</script>
+<div class="text-center mt-4">
+    <a href="{% url 'viewall_products' 'best-seller' %}" class="custom-view-all-btn">View All</a>
+</div>
+
+
+<!-- card2 -->
+<div class="container-fluid products-section-container">
+    <div class="text-center products-header">
+        <h1 class="products-section-subtitle">New Arrivals of</h1>
+        <h1 class="products-section-title" style="font-family: 'Brush Script MT', cursive;">Perfume Valley</h1>
+    </div>
+
+    <div class="products-wrapper">
+        <div class="position-relative">
+
+            <div class="products-arrow products-arrow-left">&#10094;</div>
+            <div class="products-arrow products-arrow-right">&#10095;</div>
+
+            <div class="products-scroll-row" id="newArrivalsScrollRow" style="scroll-behavior:smooth;">
+                {% for i in new_arrival %}
+                <div class="product-card position-relative">
+
+                    <!-- producting Products Badge -->
+                    <div class="badge-container position-absolute" style="top: 10px; left: 10px; z-index: 2;">
+                        <span style="background-color: #981945; color: white; font-size: 14px; font-family: Jomolhari; font-weight: 600; padding: 5px 10px; border-radius: 5px;">⚡New Arrivals</span>
+                    </div>
+
+                    <!-- Out of Stock Badge -->
+                    {% if i.stock_status == 'Out of Stock' %}
+                    <div class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center" style="z-index: 5; top: 0; left: 0; background-color: rgba(255,255,255,0.5);">
+                        <span style="background-color: rgba(222, 26, 26, 0.7); color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;">Out of Stock</span>
+                    </div>
+                    {% elif i.stock_status == 'Low Stock' %}
+                    <!-- Low Stock Badge -->
+                    <div class="position-absolute" style="top: 10px; right: 10px; z-index: 3;">
+                        <span class="blink" style="background-color: orange; color: white; padding: 5px 10px; border-radius: 5px;">Low Stock</span>
+                    </div>
+                    {% endif %}
+
+                    <!-- Favorite Icon -->
+                    <div class="favorite {% if i.id in wishlist_product_ids %}active{% endif %}" data-product-id="{{ i.id }}">
+                        <img src="{% static 'images2/favorite.svg' %}" alt="">
+                    </div>
+
+                    <!-- Product Image -->
+                    <div class="product-img-container {% if i.stock_status == 'outofstock' %}blur-image{% endif %}">
+                        {% if i.image1 and i.image2 %}
+                        <img src="{{ i.image1.url }}"
+                             class="product-img "
+                             alt="{{ i.name }}"
+                             loading="lazy"
+                             
+                             style="object-fit:fill;"
+                             {% if i.stock_status != 'outofstock' %}
+                             onmouseover="this.src='{{ i.image2.url }}'"
+                             onmouseout="this.src='{{ i.image1.url }}'"
+                             {% endif %}>
+                        {% endif %}
+                    </div>
+
+                     <!-- Add to Cart (Disabled if out of stock) -->
+                    <div class="addcart"
+                         style="background-color:#6D3F0BF2; height: 55px; color: white; font-size:18px; font-weight:normal; font-family: Jomolhari; text-transform: capitalize; padding:20px;">
+                        {% if i.stock_status == 'Out of Stock' %}
+                        <div class="d-flex align-items-center text-muted" style="pointer-events: none;">
+                            <div class="cart">
+                                <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart">
+                            </div>
+                            <div>Out of Stock</div>
+                        </div>
+                        {% else %}
+                        <a href="{% url 'product_detail' i.id %}" class="d-flex align-items-center" style="text-decoration: none; color: inherit;">
+                            <div class="cart">
+                                <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart">
+                            </div>
+                            <div>Add to Cart</div>
+                        </a>
+                        {% endif %}
+                    </div>
+
+                               
+                    <div class="product-info ">
+                
+                        <div class="product-name mb-2">{{ i.name }}</div>
+<div class="product-price text-start "> <span style="color: #DC3545;"> ₹{{ i.min_price }} - ₹{{ i.max_price }}</span><span style="text-decoration: line-through; margin-inline-start:15px;">₹{{ i.s_price }} - ₹{{ i.e_price }}</span></div>                         <span class="badge-rating">
+                            <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
+                            {{ i.average_rating|default:"0.0"|floatformat:1 }} | {{ i.review_count|default:0 }}
+                        </span> 
+                       
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+           
+        </div>
+
+        <!-- Navigation Dots -->
+        <div class="scroll-dots" id="newArrivalsDots">
+            {% for i in new_arrival %}
+            <span class="{% if forloop.first %}active{% endif %}"></span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Products Wrapper */
+.products-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Scroll Dots Styling */
+.scroll-dots {
+    display: block;
+    text-align: center;
+    margin-top: 15px;
+    padding: 10px 0;
+    background: #F7E7E8;
+    border-radius: 20px;
+}
+
+.scroll-dots span {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin: 0 4px;
+    border-radius: 50%;
+    background-color: #f7e7e8;
+    border: 1.5px solid #981945;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.scroll-dots span.active {
+    background-color: #981945;
+    transform: scale(1.2);
+}
+
+.scroll-dots span:hover {
+    background-color: rgba(152, 25, 69, 0.5);
+    transform: scale(1.1);
+}
+
+/* Make products scroll horizontally if needed */
+.products-scroll-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 15px;
+    padding: 10px 0;
+}
+
+.products-scroll-row::-webkit-scrollbar {
+    display: none;
+}
+
+.product-card {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+}
+
+/* Hide dots on desktop if not needed */
+@media (min-width: 769px) {
+    .scroll-dots {
+        display: none;
+    }
+}
+</style>
+
+<script>
+function updateDots(scrollId, dotsId) {
+    const scrollEl = document.getElementById(scrollId);
+    const dotsContainer = document.getElementById(dotsId);
+    
+    if (!scrollEl || !dotsContainer) return;
+    
+    const dots = dotsContainer.querySelectorAll('span');
+    if (!dots.length) return;
+    
+    const children = scrollEl.children;
+    let activeIdx = 0;
+    let maxVisibleArea = 0;
+    
+    // Find which product card has the most visible area
+    for (let i = 0; i < children.length; i++) {
+        const rect = children[i].getBoundingClientRect();
+        const parentRect = scrollEl.getBoundingClientRect();
+        
+        // Calculate visible area of this card
+        const visibleLeft = Math.max(rect.left, parentRect.left);
+        const visibleRight = Math.min(rect.right, parentRect.right);
+        const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+        
+        // If this card has more visible area than previous cards
+        if (visibleWidth > maxVisibleArea) {
+            maxVisibleArea = visibleWidth;
+            activeIdx = i;
+        }
+    }
+    
+    // Update active dot
+    dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === activeIdx);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const newArrivalsScroll = document.getElementById('newArrivalsScrollRow');
+    const newArrivalsDots = document.getElementById('newArrivalsDots');
+    
+    if (!newArrivalsScroll || !newArrivalsDots) return;
+    
+    const dots = newArrivalsDots.querySelectorAll('span');
+    
+    // Update dots on scroll immediately (no debounce for instant response)
+    newArrivalsScroll.addEventListener('scroll', function() {
+        updateDots('newArrivalsScrollRow', 'newArrivalsDots');
+    });
+    
+    // Click on dot to scroll to corresponding product
+    dots.forEach((dot, idx) => {
+        dot.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active from all dots first
+            dots.forEach(d => d.classList.remove('active'));
+            
+            // Add active to clicked dot
+            this.classList.add('active');
+            
+            const targetCard = newArrivalsScroll.children[idx];
+            if (targetCard) {
+                targetCard.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    inline: 'center',
+                    block: 'nearest'
+                });
+            }
+        });
+    });
+    
+    // Initialize on page load
+    updateDots('newArrivalsScrollRow', 'newArrivalsDots');
+});
+</script>
+<div class="text-center mt-4">
+    <a href="{% url 'viewall_products' 'new-arrival' %}" class="custom-view-all-btn">View All</a>
+</div>
+
+
+<!-- <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const row  = document.getElementById('newArrivalsScrollRow');
+    const prev = document.getElementById('newArrivalsPrev');
+    const next = document.getElementById('newArrivalsNext');
+    const scrollAmount = 340;
+
+    if (prev && row) {
+        prev.addEventListener('click', () => {
+            row.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        });
+    }
+
+    if (next && row) {
+        next.addEventListener('click', () => {
+            row.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        });
+    }
+});
+</script> -->
+
+ 
+<!-- card3 -->
+<div class="container-fluid products-section-container">
+    <div class="text-center products-header">
+        <h1 class="products-section-subtitle">Trending Products of</h1>
+        <h1 class="products-section-title" style="font-family: 'Brush Script MT', cursive;">Perfume Valley</h1>
+    </div>
+
+    <div class="products-wrapper">
+        <div class="position-relative">
+
+            <div class="products-arrow products-arrow-left">&#10094;</div>
+            <div class="products-arrow products-arrow-right">&#10095;</div>
+
+            <div class="products-scroll-row" id="trendingScrollRow" style="scroll-behavior:smooth;">
+                {% for trend in trending %}
+                <div class="product-card position-relative">
+
+                    <!-- Trending Products Badge -->
+                    <div class="badge-container position-absolute" style="top: 10px; left: 10px; z-index: 2;">
+                        <span style="background-color: #981945; color: white; font-size: 14px; font-family: Jomolhari; font-weight: 600; padding: 5px 10px; border-radius: 5px;">⚡Trending</span>
+                    </div>
+
+                    <!-- Out of Stock Badge -->
+                    {% if trend.stock_status == 'Out of Stock' %}
+                    <div class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center" style="z-index: 5; top: 0; left: 0; background-color: rgba(255,255,255,0.5);">
+                        <span style="background-color: rgba(222, 26, 26, 0.7); color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;">Out of Stock</span>
+                    </div>
+                    {% elif trend.stock_status == 'Low Stock' %}
+                    <!-- Low Stock Badge -->
+                    <div class="position-absolute" style="top: 10px; right: 10px; z-index: 3;">
+                        <span class="blink" style="background-color: orange; color: white; padding: 5px 10px; border-radius: 5px;">Low Stock</span>
+                    </div>
+                    {% endif %}
+
+                    <!-- Favorite Icon -->
+                    <div class="favorite {% if trend.id in wishlist_product_ids %}active{% endif %}" data-product-id="{{ trend.id }}">
+                        <img src="{% static 'images2/favorite.svg' %}" alt="">
+                    </div>
+
+                    <!-- Product Image -->
+                    <div class="product-img-container {% if trend.stock_status == 'outofstock' %}blur-image{% endif %}">
+                        {% if trend.image1 and trend.image2 %}
+                        <img src="{{ trend.image1.url }}"
+                             class="product-img "
+                             alt="{{ trend.name }}"
+                             loading="lazy"
+                            
+                             style="object-fit:fill;"
+                             {% if trend.stock_status != 'outofstock' %}
+                             onmouseover="this.src='{{ trend.image2.url }}'"
+                             onmouseout="this.src='{{ trend.image1.url }}'"
+                             {% endif %}>
+                        {% endif %}
+                    </div>
+
+                    <!-- Add to Cart (Disabled if out of stock) -->
+                    <div class="addcart"
+                         style="background-color:#6D3F0BF2; height: 55px; color: white; font-size:18px; font-weight:normal; font-family: Jomolhari; text-transform: capitalize; padding:20px;">
+                        {% if trend.stock_status == 'Out of Stock' %}
+                        <div class="d-flex align-items-center text-muted" style="pointer-events: none;">
+                            <div class="cart">
+                                <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart">
+                            </div>
+                            <div>Out of Stock</div>
+                        </div>
+                        {% else %}
+                        <a href="{% url 'product_detail' trend.id %}" class="d-flex align-items-center" style="text-decoration: none; color: inherit;">
+                            <div class="cart">
+                                <img src="{% static 'images2/shopping_cart.svg' %}" alt="Cart">
+                            </div>
+                            <div>Add to Cart</div>
+                        </a>
+                        {% endif %}
+                    </div>
+
+                               
+                    <div class="product-info ">
+                
+                        <div class="product-name mb-2">{{ trend.name }}</div>
+<div class="product-price text-start "> <span style="color: #DC3545;">₹{{ trend.min_price }} - ₹{{ trend.max_price }}</span> <span style="text-decoration: line-through; margin-inline-start:15px;">₹{{ trend.s_price }} - ₹{{ trend.e_price }}</span></div>                         <span class="badge-rating">
+                            <i class="bi bi-star-fill me-1" style="color:#AF9164;"></i>
+                            {{ trend.average_rating|default:"0.0"|floatformat:1 }} | {{ trend.review_count|default:0 }}
+                        </span> 
+                       
+                    </div>
+                </div>
+                {% endfor %}
+
+            </div>
+            
+        </div>
+
+        <!-- Navigation Dots -->
+        <div class="scroll-dots" id="trendingDots">
+            {% for trend in trending %}
+            <span class="{% if forloop.first %}active{% endif %}"></span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+/* Products Wrapper */
+.products-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Scroll Dots Styling */
+.scroll-dots {
+    display: block;
+    text-align: center;
+    margin-top: 15px;
+    padding: 10px 0;
+    background: #F7E7E8;
+    border-radius: 20px;
+}
+
+.scroll-dots span {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin: 0 4px;
+    border-radius: 50%;
+    background-color: #f7e7e8;
+    border: 1.5px solid #981945;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.scroll-dots span.active {
+    background-color: #981945;
+    transform: scale(1.2);
+}
+
+.scroll-dots span:hover {
+    background-color: rgba(152, 25, 69, 0.5);
+    transform: scale(1.1);
+}
+
+/* Make products scroll horizontally if needed */
+.products-scroll-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 15px;
+    padding: 10px 0;
+}
+
+.products-scroll-row::-webkit-scrollbar {
+    display: none;
+}
+
+.product-card {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+}
+
+/* Hide dots on desktop if not needed */
+@media (min-width: 769px) {
+    .scroll-dots {
+        display: none;
+    }
+}
+</style>
+
+<script>
+function updateDots(scrollId, dotsId) {
+    const scrollEl = document.getElementById(scrollId);
+    const dotsContainer = document.getElementById(dotsId);
+    
+    if (!scrollEl || !dotsContainer) return;
+    
+    const dots = dotsContainer.querySelectorAll('span');
+    if (!dots.length) return;
+    
+    const children = scrollEl.children;
+    let activeIdx = 0;
+    let maxVisibleArea = 0;
+    
+    // Find which product card has the most visible area
+    for (let i = 0; i < children.length; i++) {
+        const rect = children[i].getBoundingClientRect();
+        const parentRect = scrollEl.getBoundingClientRect();
+        
+        // Calculate visible area of this card
+        const visibleLeft = Math.max(rect.left, parentRect.left);
+        const visibleRight = Math.min(rect.right, parentRect.right);
+        const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+        
+        // If this card has more visible area than previous cards
+        if (visibleWidth > maxVisibleArea) {
+            maxVisibleArea = visibleWidth;
+            activeIdx = i;
+        }
+    }
+    
+    // Update active dot
+    dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === activeIdx);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const trendingScroll = document.getElementById('trendingScrollRow');
+    const trendingDots = document.getElementById('trendingDots');
+    
+    if (!trendingScroll || !trendingDots) return;
+    
+    const dots = trendingDots.querySelectorAll('span');
+    
+    // Update dots on scroll immediately (no debounce for instant response)
+    trendingScroll.addEventListener('scroll', function() {
+        updateDots('trendingScrollRow', 'trendingDots');
+    });
+    
+    // Click on dot to scroll to corresponding product
+    dots.forEach((dot, idx) => {
+        dot.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active from all dots first
+            dots.forEach(d => d.classList.remove('active'));
+            
+            // Add active to clicked dot
+            this.classList.add('active');
+            
+            const targetCard = trendingScroll.children[idx];
+            if (targetCard) {
+                targetCard.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    inline: 'center',
+                    block: 'nearest'
+                });
+            }
+        });
+    });
+    
+    // Initialize on page load
+    updateDots('trendingScrollRow', 'trendingDots');
+});
+</script>
+<div class="text-center mt-4">
+    <a href="{% url 'viewall_products' 'trending' %}" class="custom-view-all-btn">View All</a>
+</div>
+<!-- <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const row = document.getElementById('trendingScrollRow');
+        const prev = document.getElementById('trendingPrev');
+        const next = document.getElementById('trendingNext');
+        const scrollAmount = 340; // Adjust to your card width + gap
+
+        prev.addEventListener('click', () => {
+            row.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        });
+        next.addEventListener('click', () => {
+            row.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        });
+    });
+</script> -->
+
+<br>
+
+<!-- filepath: e:\PerfumeValley\PerfumeValley\templates\user_panel\home1.html -->
+<div class="container11" style="background-color: #FBF0EF;">
+    <div class="featured-section">
+        
+        <div class="featured-title"
+            style="color: #404040;text-align: center;font-family: Jomolhari;font-size: 48px;font-style: normal;font-weight: 400;line-height: 70px;">
+            Our <span class="highlight" style="font-family: 'Brush Script MT', cursive;">Featured Videos</span>
+        </div>
+        <div class="featured-description">
+            Explore our exclusive collection of videos showcasing our premium products and their unique features.
+        </div>
+    </div>
+
+    <div class="video-scroll-wrapper position-relative">
+        <!-- Navigation Arrows -->
+        <div class="products-arrow products-arrow-left">&#10094;</div>
+        <div class="products-arrow products-arrow-right">&#10095;</div>
+      
+        <div class="video-scroll-row" id="videoScrollRow">
+            {% for video in videos %}
+
+            <div class="video-card">
+
+                <a href="" class="video-link" data-id="{{ video.id }}">
+                    <video class="product-img img-fluid" autoplay loop muted playsinline>
+                        <source src="{{ video.video.url }}" type="video/mp4">
+                        Your Browser doesn't support Video tag.
+                    </video>
+                </a>
+                <div class="video-title" style="text-align: center; margin-top: 10px;">
+                    <h5>{{ video.title }}</h5>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const videoWrapper = document.querySelector('.video-scroll-wrapper');
+    const videoRow = document.getElementById('videoScrollRow');
+    const leftArrow = videoWrapper.querySelector('.products-arrow-left');
+    const rightArrow = videoWrapper.querySelector('.products-arrow-right');
+
+    if (!videoRow || !leftArrow || !rightArrow) return;
+
+    function updateArrows() {
+        const maxScroll = videoRow.scrollWidth - videoRow.clientWidth;
+        leftArrow.classList.toggle('show', videoRow.scrollLeft > 0);
+        rightArrow.classList.toggle('show', videoRow.scrollLeft < maxScroll - 2);
+    }
+
+    leftArrow.addEventListener('click', () => {
+        videoRow.scrollBy({ left: -300, behavior: 'smooth' });
+    });
+
+    rightArrow.addEventListener('click', () => {
+        videoRow.scrollBy({ left: 300, behavior: 'smooth' });
+    });
+
+    videoRow.addEventListener('scroll', updateArrows);
+    window.addEventListener('resize', updateArrows);
+    updateArrows();
+});
+</script>
+<!-- Bootstrap Modal -->
+<!-- Modal -->
+<div class="modal fade" id="videoModal" tabindex="-1" aria-labelledby="videoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content position-relative">
+            <!-- Close Button -->
+            <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"
+                aria-label="Close"
+                style="z-index:1051; background-color: #6D3F0BF2; border-radius: 50%; width: 2.5rem; height: 2.5rem;">
+            </button>
+
+            <!-- Content will be injected here -->
+            <div class="modal-body" id="videoModalBody">
+                <!-- Split layout injected dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ----------------------------
+       VIDEO SLIDER AUTO SCROLL FIXED
+    ----------------------------- */
+
+    const row = document.getElementById('videoScrollRow');
+
+    if (row) {
+        const cards = row.querySelectorAll('.video-card');
+
+        // ❌ No video cards → stop here safely
+        if (cards.length === 0) return;
+
+        let currentIndex = 0;
+
+        // Safe visible count
+        let visibleCount = 1;
+        if (cards[0]) {
+            visibleCount = Math.floor(row.parentElement.offsetWidth / cards[0].offsetWidth);
+        }
+
+        function updateVisibleCount() {
+            if (cards[0]) {
+                visibleCount = Math.max(1, Math.floor(row.parentElement.offsetWidth / cards[0].offsetWidth));
+            }
+        }
+
+        function moveToNext() {
+            updateVisibleCount();
+            currentIndex++;
+
+            if (currentIndex > cards.length - visibleCount) {
+                currentIndex = 0;
+            }
+
+            if (cards[0]) {
+                row.style.transform = `translateX(-${currentIndex * (cards[0].offsetWidth + 24)}px)`;
+            }
+        }
+
+        let interval = setInterval(moveToNext, 2500);
+
+        row.parentElement.addEventListener('mouseenter', () => clearInterval(interval));
+        row.parentElement.addEventListener('mouseleave', () => interval = setInterval(moveToNext, 2500));
+
+        window.addEventListener('resize', () => {
+            updateVisibleCount();
+            if (cards[0]) {
+                row.style.transform = `translateX(-${currentIndex * (cards[0].offsetWidth + 24)}px)`;
+            }
+        });
+    }
+
+    /* ----------------------------
+       MODAL LOGIC (UNCHANGED)
+    ----------------------------- */
+
+    document.body.addEventListener('click', function (e) {
+        const videoBtn = e.target.closest('.video-link');
+        const productBtn = e.target.closest('.view-product-in-video-btn');
+        const modalElement = document.getElementById('videoModal');
+        const modal = new bootstrap.Modal(modalElement);
+        const modalBody = document.getElementById('videoModalBody');
+
+        // Product modal split layout
+        if (productBtn) {
+            e.preventDefault();
+            const productUrl = productBtn.getAttribute('data-url');
+            const videoUrl = productBtn.closest('.product')?.getAttribute('data-video-url') || '';
+
+            // Mobile → No modal
+            if (window.innerWidth <= 480) {
+                const url = new URL(productUrl, window.location.origin);
+                url.searchParams.delete('from_video');
+                window.location.href = url.pathname;
+                return;
+            }
+
+            modalBody.innerHTML = `
+                <div class="modal-split-layout">
+                  <div class="left-video">
+                    <video controls autoplay muted playsinline>
+                      <source src="${videoUrl}" type="video/mp4" />
+                    </video>
+                  </div>
+                  <div class="right-iframe">
+                    <iframe id="videoModalIframe" src="${productUrl}" allowfullscreen></iframe>
+                  </div>
+                </div>`;
+
+            const iframe = modalBody.querySelector('iframe');
+            iframe.onload = function () {
+                const innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+                setTimeout(() => {
+                    const header = innerDoc.querySelector('header') || innerDoc.querySelector('.site-header') || innerDoc.querySelector('.navbar');
+                    const footer = innerDoc.querySelector('footer') || innerDoc.querySelector('.site-footer');
+
+                    if (header) header.style.display = 'none';
+                    if (footer) footer.style.display = 'none';
+
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        header, .site-header, .navbar, footer, .site-footer {
+                          display: none !important;
+                          visibility: hidden !important;
+                          height: 0 !important;
+                          overflow: hidden;
+                        }`;
+                    innerDoc.head.appendChild(style);
+                }, 100);
+            };
+
+            modal.show();
+        }
+
+        // Load full video
+        if (videoBtn) {
+            e.preventDefault();
+            const videoId = videoBtn.getAttribute('data-id');
+
+            fetch(`/video/${videoId}/`)
+                .then(response => response.text())
+                .then(html => {
+                    modalBody.innerHTML = html;
+                    modal.show();
+                })
+                .catch(err => {
+                    modalBody.innerHTML = `<div class="p-3 text-danger">Error loading video content.</div>`;
+                    modal.show();
+                });
+        }
+    });
+
+    // Cleanup modal
+    const videoModal = document.getElementById('videoModal');
+    videoModal.addEventListener('hidden.bs.modal', () => {
+        const iframe = document.getElementById('videoModalIframe');
+        if (iframe) iframe.remove();
+        document.getElementById('videoModalBody').innerHTML = '';
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+
+});
+</script>
+
+
+
+
+
+
+<!-- Shop by Occasions -->
+<div class="container12" style="background-color: #FBF0EF;">
+    <div class="shop-by-section">
+        <div class="shop-title">
+            <span class="shop-by">Shop By </span>
+            <span class="highlight" style="font-family: 'Brush Script MT', cursive;">Occasions</span>
+        </div>
+    </div>
+</div>
+
+
+<section class="section-container mobile-scroll1" style="background-color: #FBF0EF;">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <!-- Carousel Wrapper -->
+                <div class="carousel-wrapper" style="position:relative;">
+                    <div class="scroll-wrapper circle-row" id="occasionScroll">
+                        {% for occasion in occasions %}
+                        {% if occasion.sub_image %}
+                        <div class="circle-container me-2 mb-2">
+                            <div class="clickable-circle circle" 
+                                 data-url="{% url 'products_list' %}?subcategory={{ occasion.id }}">
+                                <img src="{{ occasion.sub_image.url }}" alt="{{ occasion.name }}" loading="lazy" decoding="async">
+                            </div>
+                            <div class="arc-main"></div>
+                            <div class="arc-opposite"></div>
+                            <div class="circle-text">{{ occasion.name }}</div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+ <div class="scroll-dots" id="occasionDots">
+        {% for occasion in occasions %}
+        <span class="{% if forloop.first %}active{% endif %}"></span>
+        {% endfor %}
+ </div> 
+<!-- <div class="d-flex justify-content-between align-items-center w-100 px-5" style="background-color: #FBF0EF;">
+          <button class="btn custom-nav-button">
+              <img src="{% static 'images2/arrow_r (2).svg' %}">
+          </button>
+          <div class="d-flex align-items-center mt-3">
+              <div class="custom-pagination-dot4 active"></div>
+              <div class="custom-pagination-dot4"></div>
+              <div class="custom-pagination-dot4"></div>
+          </div>
+          <button class="btn custom-nav-button ">
+              <img src="{% static 'images2/arrow_r (1).svg' %}">
+          </button>
+      </div> -->
+
+<script>
+function updateDots(scrollId, dotsId) {
+    const scrollEl = document.getElementById(scrollId);
+    const dots = document.getElementById(dotsId).querySelectorAll('span');
+    if (!scrollEl || !dots.length) return;
+    const children = scrollEl.children;
+    let activeIdx = 0;
+    for (let i = 0; i < children.length; i++) {
+        const rect = children[i].getBoundingClientRect();
+        const parentRect = scrollEl.getBoundingClientRect();
+        if (rect.left >= parentRect.left && rect.right <= parentRect.right) {
+            activeIdx = i;
+            break;
+        }
+    }
+    dots.forEach((dot, idx) => dot.classList.toggle('active', idx === activeIdx));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Subcategory dots
+    const subScroll = document.getElementById('subcategoryScroll');
+    const subDots = document.getElementById('subcategoryDots').querySelectorAll('span');
+    subScroll.addEventListener('scroll', () => updateDots('subcategoryScroll', 'subcategoryDots'));
+    subDots.forEach((dot, idx) => {
+        dot.addEventListener('click', function() {
+            subScroll.children[idx].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        });
+    });
+
+    // Category dots
+    const catScroll = document.getElementById('categoryScroll');
+    const catDots = document.getElementById('categoryDots').querySelectorAll('span');
+    catScroll.addEventListener('scroll', () => updateDots('categoryScroll', 'categoryDots'));
+    catDots.forEach((dot, idx) => {
+        dot.addEventListener('click', function() {
+            catScroll.children[idx].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        });
+    });
+    
+//    occasion dots 
+    const occasionScroll = document.getElementById('occasionScroll');
+    const occasionDots = document.getElementById('occasionDots').querySelectorAll('span');
+    occasionScroll.addEventListener('scroll', () => updateDots('occasionScroll', 'occasionDots'));
+    occasionDots.forEach((dot, idx) => {
+        dot.addEventListener('click', function() {
+            occasionScroll.children[idx].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        });
+    });
+});
+</script>
+
+<!--Why Trust Us   -->
+
+<div class="container12 " style="background-color: #F7E7E8;">
+    <div class="shop-by-section">
+        <div class="shop-title">
+            <div class="why"
+                style="font-family: 'Jomolhari';font-style: normal;font-weight: 400;font-size: 40px;line-height: 70px;display: flex;align-items: center;text-align: center;color: #404040;">
+                Why <span class="highlight" style="font-family: 'Brush Script MT', cursive;">Trust Us?</span></div>
+        </div>
+    </div>
+
+
+    <div class="oval-container">
+        <!-- Background image as an <img> tag -->
+        <div class="middle">
+        </div>
+
+
+        <!-- Foreground items -->
+        <div class="oval-item">
+            <div class="oval-img"><img src="{% static 'images2/Timer.svg' %}" alt="Person 1"></div>
+            <p class="name-text">LONG <br>LASTING</p>
+        </div>
+        <div class="oval-item">
+            <div class="oval-img"><img src="{% static 'images2/Spray.svg' %}" alt="Person 1"></div>
+            <p class="name-text">VARIETY OF <br> FRAGRANCE</p>
+        </div>
+        <div class="oval-item">
+            <div class="oval-img"><img src="{% static 'images2/premium quality.svg' %}" alt="Person 1"></div>
+            <p class="name-text">PREMIUM <br> QUALITY</p>
+        </div>
+        <div class="oval-item">
+            <div class="oval-img"><img src="{% static 'images2/Price tag.svg' %}" alt="Person 1"></div>
+            <p class="name-text">BEST IN<br> PRICE</p>
+        </div>
+        <div class="oval-item">
+            <div class="oval-img p-5"><img src="{% static 'images2/Frame.png' %}" alt="Person 1"></div>
+            <p class="name-text">REGISTERED <br> TRADE MARK</p>
+        </div>
+        <div class="oval-item">
+            <div class="oval-img"><img src="{% static 'images2/Leaf.svg' %}" alt="Person 1"></div>
+            <p class="name-text">100%<br> VEGAN</p>
+        </div>
+    </div>
+</div>
+
+
+<!-- reviews -->
+
+<div class="container-fluid products-section-container">
+    <div class="shop-by-section">
+        <div class="shop-title">
+            <p class="shop-by">What our clients are </p>
+            <span class="separator"> </span>
+            <span class="highlight" style="font-family: 'Brush Script MT', cursive;">Saying</span>
+        </div>
+    </div>
+
+    <!-- Bootstrap Carousel Wrapper -->
+    <!-- Dummy Bootstrap Carousel for Reviews (Backend-ready) -->
+    <div id="productsCarousel4" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+    <div class="carousel-inner">
+        {% for review in out_reviews %}
+            {% if forloop.counter0|divisibleby:3 %}
+                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                    <div class="d-flex justify-content-center flex-wrap gap-4">
+            {% endif %}
+
+            <div class="product-card card1">
+                <div class="mt-3">
+                    <div class="star-rating mb-3">
+                        {% for i in "12345" %}
+                            <img src="{% static 'images2/star.png' %}" alt="Star">
+                        {% endfor %}
+                    </div>
+                    <h1 class="card-title">{{ review.review }}</h1>
+                    <div class="mt-2" style="font-size: 14px; color: #888;">
+                        — {{ review.client_name }}
+                    </div>
+                </div>
+            </div>
+
+            {% if forloop.counter|divisibleby:3 or forloop.last %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <button class="carousel-control-prev" type="button" data-bs-target="#productsCarousel4" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#productsCarousel4" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+    </button>
+</div>
+
+    <!-- 
+        Backend developer notes:
+        - Replace dummy review cards with a loop over your reviews queryset.
+        - Each carousel-item can contain multiple reviews (e.g., group reviews in sets of 3).
+        - Use Django template tags to render review text, rating, and user name.
+        - Example for backend:
+            {% for review_group in reviews|slice:":3" %}
+                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                    <div class="d-flex justify-content-center flex-wrap gap-4">
+                        {% for review in review_group %}
+                            ... review card ...
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+    -->
+
+
+<div class="container12" style="background-color: #F7E7E8;">
+    <div class="shop-by-section">
+        <div class="shop-title">
+            <p class="shop-by">Stay Updated: Join Our </p>
+            <span class="separator"> </span>
+            <span class="highlight" style="font-family: 'Brush Script MT', cursive;">Insights Newsletter</span>
+        </div>
+    </div>
+
+   <div class="container d-flex justify-content-center align-items-center">
+                    <form action="{% url 'sub_add' %}" method="post">
+                        {% csrf_token %}
+        <div class="input-group" style="max-width: 500px; width: 100%;">
+                {% csrf_token %}
+            <input type="email" name="email" class="email-input form-control" placeholder="Enter your Email">
+            <button type="submit" class="subscribe-btn" onclick="confirm('You have been registered to our newsletter')">Subscribe</button>
+            
+        </div>
+        </form>
+    </div>
+    
+    
+    <br>
+
+</div>
+
+
+
+<br>
+
+
+
+<!--circle js for active until it loads state -->
+
+
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const containers = document.querySelectorAll('.circle-container');
+        let redirectTimer = null;
+
+        containers.forEach(container => {
+            const clickable = container.querySelector('.clickable-circle');
+
+            // Ensure clickable element exists before attaching the event listener
+            if (clickable) {
+                clickable.setAttribute('tabindex', '-1');
+                clickable.addEventListener('click', function (e) {
+                    e.stopPropagation();
+
+                    // Clear old redirect timer
+                    clearTimeout(redirectTimer);
+
+                    // Remove active state from all containers
+                    containers.forEach(c => c.classList.remove('active'));
+                    container.classList.add('active'); // Add active state to clicked container
+
+                    // Show spinner and add active state to clicked circle
+                    // clickable.style.opacity = 0.7;
+
+                    // Debug: Log the data-url
+                    const redirectUrl = clickable.getAttribute('data-url');
+                    console.log("Redirecting to: " + redirectUrl);
+
+                    // Mark redirect so we don’t repeat after going back
+                    sessionStorage.setItem('justRedirected', 'true');
+
+                    // Redirect after a short delay (e.g., 2 seconds)
+                    redirectTimer = setTimeout(() => {
+                        if (redirectUrl) {
+                            window.location.href = redirectUrl;
+                        } else {
+                            console.log("Redirect URL is missing or invalid.");
+                        }
+                    }, 1000); // 2 seconds delay
+                });
+            } else {
+                console.warn('Clickable circle element not found!');
+            }
+        });
+
+        // Remove active state on outside click
+        document.body.addEventListener('click', function () {
+            document.querySelectorAll('.circle-container').forEach(c => c.classList.remove('active'));
+        });
+
+        // When coming back with back button
+        window.addEventListener("pageshow", function () {
+            if (sessionStorage.getItem('justRedirected')) {
+                sessionStorage.removeItem('justRedirected');
+                document.querySelectorAll('.clickable-circle').forEach(el => {
+                    // el.style.opacity = 1; // Reset opacity
+                });
+            }
+        });
+    });
+</script>
+<script>
+   const carousel = document.querySelector('#productsCarousel1');
+const dots = document.querySelectorAll('.custom-pagination-dot4-1');
+
+if (carousel) {   // <--- FIX
+    carousel.addEventListener('slide.bs.carousel', function (event) {
+        const activeIndex = event.to;
+
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === activeIndex);
+        });
+    });
+}
+
+
+
+    const carousel2 = document.querySelector('#productsCarousel2');
+    const dots2 = document.querySelectorAll('.custom-pagination-dot4-2');
+
+    if (carousel2) {   // <--- FIX
+    carousel2.addEventListener('slide.bs.carousel', function (event) {
+        const activeIndex = event.to;
+
+        dots2.forEach((dot, index) => {
+            dot.classList.toggle('active', index === activeIndex);
+        });
+    });
+}
+    
+    const carousel3 = document.querySelector('#productsCarousel3');
+    const dots3 = document.querySelectorAll('.custom-pagination-dot4-3');
+    if (carousel3) {
+    carousel3.addEventListener('slide.bs.carousel', function (event) {
+        const activeIndex = event.to;
+        dots3.forEach((dot, index) => {
+            dot.classList.toggle('active', index === activeIndex);
+        });
+    });
+    }
+
+    const carousel4 = document.querySelector('#productsCarousel4');
+    const dots4 = document.querySelectorAll('.custom-pagination-dot4-4');
+    if (carousel4) {
+    carousel4.addEventListener('slide.bs.carousel', function (event) {
+        const activeIndex = event.to;
+        dots4.forEach((dot, index) => {
+            dot.classList.toggle('active', index === activeIndex);
+        });
+    });
+    }
+
+    const carousel5 = document.querySelector('#productsCarousel5');
+    const dots5 = document.querySelectorAll('.custom-pagination-dot4-5');
+    if (carousel5) {
+    carousel5.addEventListener('slide.bs.carousel', function (event) {
+        const activeIndex = event.to;
+        dots5.forEach((dot, index) => {
+            dot.classList.toggle('active', index === activeIndex);
+        });
+    });
+}
+</script>
+
+
+
+<!-- Optional: Uncomment if you want to restore the last active circle on page load -->
+<!-- <script>
+    const circles = document.querySelectorAll('.circle-container');
+    const saved = localStorage.getItem('activeCircle');
+  
+    circles.forEach(circle => {
+      const name = circle.innerText.trim();
+      if (name === saved) {
+        circle.classList.add('active');
+      }
+  
+      circle.onclick = () => {
+        circles.forEach(c => c.classList.remove('active'));
+        circle.classList.add('active');
+        localStorage.setItem('activeCircle', name);
+      };
+    });
+  </script> -->
+
+
+<!-- <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const row  = document.getElementById('bestSellingScrollRow');
+    const prev = document.getElementById('bestSellingPrev');
+    const next = document.getElementById('bestSellingNext');
+    const scrollAmount = 340;
+
+    if (prev && row) {
+        prev.addEventListener('click', () => {
+            row.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        });
+    }
+
+    if (next && row) {
+        next.addEventListener('click', () => {
+            row.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        });
+    }
+});
+</script> -->
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Favorite icon click handler
+  document.querySelectorAll('.favorite').forEach(icon => {
+    icon.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const productId = this.dataset.productId;
+      const isActive = this.classList.contains('active');
+      const iconElem = this;
+
+      try {
+        const response = await fetch(
+          isActive ? '{% url "remove_from_wishlist" %}' : '{% url "add_to_wishlist" %}', 
+          {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': '{{ csrf_token }}',
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `product_id=${productId}`
+          }
+        );
+        
+        const data = await response.json();
+        if (data.success) {
+          // Ensure only this icon toggles, not all
+          if (isActive) {
+            iconElem.classList.remove('active');
+          } else {
+            iconElem.classList.add('active');
+          }
+          // Optional: Show toast notification
+          if (typeof showToast === 'function') showToast(data.message);
+        } else if (data.login_required) {
+          window.location.href = '{% url "email_login" %}?next=' + encodeURIComponent(window.location.pathname);
+        }
+      } catch (error) {
+        console.error('Wishlist error:', error);
+      }
+    });
+  });
+});
+</script>
+
+
+{% endblock content %}
+

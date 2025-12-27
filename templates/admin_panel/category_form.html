@@ -1,0 +1,50 @@
+<!-- admin_panel/category_form.html -->
+<form id="editCategoryForm" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label for="editCategoryName" class="form-label">Category Name</label>
+    <input type="text" class="form-control" id="editCategoryName" name="name" value="{{ category.name }}" required>
+  </div>
+  <div class="mb-3">
+    <label for="editCategoryBanner" class="form-label">Banner Image</label>
+    <input type="file" class="form-control" id="editCategoryBanner" name="banner">
+    {% if category.banner %}
+      <img src="{{ category.banner.url }}" alt="Current Banner" height="60" class="mt-2">
+    {% endif %}
+  </div>
+  <div class="mb-3">
+    <label for="editCategoryGif" class="form-label">GIF/Image</label>
+    <input type="file" class="form-control" id="editCategoryGif" name="gif_file">
+    {% if category.gif_file %}
+      <img src="{{ category.gif_file.url }}" alt="Current GIF" height="60" class="mt-2">
+    {% endif %}
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-maroon">Update Category</button>
+  </div>
+</form>
+<script>
+document.getElementById('editCategoryForm')?.addEventListener('submit', function(e) {
+  e.preventDefault();
+  var form = e.target;
+  var formData = new FormData(form);
+  var categoryId = '{{ category.id }}';
+  fetch(`/admin-panel/categories/${categoryId}/update/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Failed to update category.');
+    }
+  })
+  .catch(() => alert('Something went wrong!'));
+});
+</script>

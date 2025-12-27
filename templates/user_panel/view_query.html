@@ -1,0 +1,44 @@
+{% extends 'layouts/main.html' %}
+{% load static %}
+{% block title %}View Query{% endblock title %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Query Details</h3>
+                    <a href="{% url 'user_profile' %}" class="btn btn-sm btn-outline-secondary float-end">Back to Profile</a>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Subject:</h5>
+                        <p>{{ query.subject }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <h5>Message:</h5>
+                        <p>{{ query.message }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <h5>Status:</h5>
+                        <span class="badge bg-{% if query.status == 'Solved' %}success{% else %}warning{% endif %}">
+                            {{ query.status }}
+                        </span>
+                    </div>
+                    <div class="mb-4">
+                        <h5>Submitted On:</h5>
+                        <p>{{ query.created_at|date:"F d, Y H:i" }}</p>
+                    </div>
+                    {% if query.status == 'Solved' %}
+                    <div class="mb-4">
+                        <h5>Resolved On:</h5>
+                        <p>{{ query.updated_at|date:"F d, Y H:i" }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
