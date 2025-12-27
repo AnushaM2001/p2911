@@ -956,13 +956,21 @@ function renderSelectedFilters(filters) {
    RENDER PRODUCT CARD
 ------------------------------ */
 function renderProduct(prod) {
-    const discountPercentage = prod.discounted_price && prod.price
-        ? Math.round(((prod.price - prod.discounted_price) / prod.price) * 100)
-        : null;
+    const discountPercentage =
+  prod.is_offer_active && prod.discounted_price && prod.price
+    ? Math.round(((prod.price - prod.discounted_price) / prod.price) * 100)
+    : null;
+
 
     return `
     <div class="col-6 col-md-4 col-lg-3 mb-4">
-      <div class="filter-box position-relative product-card ${prod.stock_status === 'Out of Stock' ? 'disabled-card' : ''}">
+<div class="filter-box position-relative product-card 
+     ${prod.stock_status === 'Out of Stock' ? 'disabled-card' : ''}"
+     data-product-id="${prod.id}"
+     data-min-price="${prod.min_price}"
+     data-max-price="${prod.max_price}"
+     data-min-original="${prod.min_original_price}"
+     data-max-original="${prod.max_original_price}">
         <div class="favorite ${prod.is_favorite ? 'active' : ''}" data-product-id="${prod.id}">
           <img src="{% static 'images2/favorite.svg' %}">
         </div>
@@ -971,7 +979,12 @@ function renderProduct(prod) {
           ${prod.image2 ? `<img src="${prod.image2}" class="card-img-top hover-img ${prod.stock_status === 'Out of Stock' ? 'blurred' : ''}">` : ''}
           ${prod.stock_status === 'Out of Stock' ? `<div class="out-of-stock-overlay"><span>Out of Stock</span></div>` : ''}
           ${prod.stock_status === 'Low Stock' ? `<span class="low-stock-blink">Low Stock</span>` : ''}
-          ${prod.discounted_price && prod.offer_code ? `<div class="offer-info-bar" id="offer-${prod.id}"><span class="offer-badge"><span id="countdown-${prod.id}" data-endtime="${prod.offer_end_time}"></span></span></div>` : ''}
+${prod.is_offer_active ? `
+  <div class="offer-info-bar" id="offer-${prod.id}">
+    <span class="offer-badge">
+      <span id="countdown-${prod.id}" data-endtime="${prod.offer_end_time}"></span>
+    </span>
+  </div>` : ''}
           ${prod.is_best_seller ? `<span class="badge badge-best_seller">⚡Bestseller</span>` : ''}
           ${prod.is_trending ? `<span class="badge badge-trending">⚡Trending</span>` : ''}
           ${prod.is_new_arrival ? `<span class="badge badge-new">⚡New Arrival</span>` : ''}
@@ -983,15 +996,23 @@ function renderProduct(prod) {
             ${(prod.average_rating ?? 0).toFixed(1)} | ${prod.review_count || 0}
           </span>
           <h5 class="filter-title">${prod.name}</h5>
-          ${prod.discounted_price ? `
-            <div class="d-flex align-items-center mb-2">
-              <p class="filter-text text-danger fw-bold">₹${prod.discounted_price}</p>
-              <p class="text-muted mb-0"><del>₹${prod.price}</del></p>
-              <span class="discount-percentage">${discountPercentage}% OFF</span>
-            </div>` : `
-            <div class="d-flex align-items-center mb-2">
-              <p class="filter-text fw-bold text-danger">₹${prod.min_price} - ₹${prod.max_price}<span style="text-decoration:line-through;color: #777; margin-left: 5px;">₹${prod.min_original_price} - ₹${prod.max_original_price}</span></p>
-            </div>`}
+          ${prod.is_offer_active ? `
+  <div class="d-flex align-items-center mb-2">
+    <p class="filter-text text-danger fw-bold">₹${prod.discounted_price}</p>
+    <p class="text-muted mb-0"><del>₹${prod.price}</del></p>
+    <span class="discount-percentage">${discountPercentage}% OFF</span>
+  </div>
+` : `
+  <div class="d-flex align-items-center mb-2">
+    <p class="filter-text fw-bold text-danger">
+      ₹${prod.min_price} - ₹${prod.max_price}
+      <span style="text-decoration:line-through;color:#777;margin-left:5px;">
+        ₹${prod.min_original_price} - ₹${prod.max_original_price}
+      </span>
+    </p>
+  </div>
+`}
+
         </div>
       </div>
     </div>`;
@@ -1067,30 +1088,59 @@ function resetFilters() {
    COUNTDOWN TIMER
 ------------------------------ */
 function startCountdowns() {
-    document.querySelectorAll('[id^="countdown-"]').forEach(function(el) {
-        const endTime = new Date(el.getAttribute('data-endtime'));
+  document.querySelectorAll('[id^="countdown-"]').forEach(el => {
+    const endTimeStr = el.getAttribute('data-endtime');
+    if (!endTimeStr) return;
 
-        function update() {
-            if (!el) return;
-            const now = new Date();
-            const dist = endTime - now;
-            if (dist <= 0) {
-                el.innerText = "Expired";
-                const bar = el.closest(".offer-info-bar");
-                if (bar) bar.remove();
-                return;
-            }
-            const d = Math.floor(dist / (1000 * 60 * 60 * 24));
-            const h = Math.floor(dist / (1000 * 60 * 60) % 24);
-            const m = Math.floor((dist / (1000 * 60)) % 60);
-            const s = Math.floor((dist / 1000) % 60);
-            el.innerText = ` ⚡ ${d}d ${h}h ${m}m ${s}s`;
+    const endTime = new Date(endTimeStr).getTime();
+    const card = el.closest('.filter-box');
+    if (!card) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const dist = endTime - now;
+
+      // ⛔ OFFER EXPIRED
+      if (dist <= 0) {
+        clearInterval(interval);
+
+        // 1️⃣ Remove offer bar
+        const offerBar = card.querySelector('.offer-info-bar');
+        if (offerBar) offerBar.remove();
+
+        // 2️⃣ Replace discounted price with normal price
+        const priceBlock = card.querySelector('.filter-card .d-flex');
+        if (priceBlock) {
+          const minPrice = card.dataset.minPrice;
+          const maxPrice = card.dataset.maxPrice;
+          const minOrig = card.dataset.minOriginal;
+          const maxOrig = card.dataset.maxOriginal;
+
+          priceBlock.innerHTML = `
+            <p class="filter-text fw-bold text-danger">
+              ₹${minPrice} - ₹${maxPrice}
+              <span style="text-decoration:line-through;color:#777;margin-left:5px;">
+                ₹${minOrig} - ₹${maxOrig}
+              </span>
+            </p>`;
         }
 
-        update();
-        setInterval(update, 1000);
-    });
+        // 3️⃣ Optional visual cue
+        card.classList.add('offer-expired');
+        return;
+      }
+
+      // ⏳ Update countdown
+      const d = Math.floor(dist / (1000 * 60 * 60 * 24));
+      const h = Math.floor((dist / (1000 * 60 * 60)) % 24);
+      const m = Math.floor((dist / (1000 * 60)) % 60);
+      const s = Math.floor((dist / 1000) % 60);
+
+      el.innerText = `⚡ ${d}d ${h}h ${m}m ${s}s`;
+    }, 1000);
+  });
 }
+
 
 /* ------------------------------
    INFINITE SCROLL

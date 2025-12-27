@@ -836,14 +836,13 @@ def ajax_filter_products(request):
     now = timezone.now()
     active_offers = cache.get('active_offers_cache')
     if active_offers is None:
-        active_offers = list(
-            PremiumFestiveOffer.objects.filter(is_active=True)
-            .filter(
-                Q(premium_festival__in=['Welcome', 'Premium']) |
-                Q(start_date__lte=now, end_date__gte=now)
-            )
-            .only('id', 'code', 'start_date', 'end_date')
+        active_offers = [
+        offer for offer in PremiumFestiveOffer.objects.filter(
+            is_active=True,
+            premium_festival="Festival"
         )
+        if offer.offer_active_now()
+    ]
         cache.set('active_offers_cache', active_offers, 300)
     
     # ========== USER WISHLIST ==========
@@ -1018,6 +1017,7 @@ def ajax_filter_products(request):
                     "min_original_price": float(price_info.get('min_original', product_original)),
                     "max_original_price": float(price_info.get('max_original', product_original)),
                     "discounted_price": discounted_price,
+                    "is_offer_active": bool(offer_applied),
                     "offer_code": offer_applied.code if offer_applied else None,
                     "offer_start_time": offer_applied.start_date if offer_applied else None,
                     "offer_end_time": offer_applied.end_date if offer_applied else None,
@@ -1199,6 +1199,7 @@ def ajax_filter_products(request):
                     "min_original_price": float(price_info.get('min_original', var_original)),
                     "max_original_price": float(price_info.get('max_original', var_original)),
                     "discounted_price": discounted_price,
+                    "is_offer_active": bool(offer_applied),
                     "offer_code": offer_applied.code if offer_applied else None,
                     "offer_start_time": offer_applied.start_date if offer_applied else None,
                     "offer_end_time": offer_applied.end_date if offer_applied else None,
@@ -2088,8 +2089,14 @@ def view_cart(request):
     platform_fee = Decimal('0.00')
     gift_wrap_display = Decimal('0.00')
     now = timezone.now()
-    active_offers = PremiumFestiveOffer.objects.filter(Q(is_active=True, start_date__lte=now, end_date__gte=now)| Q(premium_festival="Welcome",
-        is_active=True) | Q(premium_festival="Premium", is_active=True))
+    active_offers = list(
+    PremiumFestiveOffer.objects.filter(
+        is_active=True,
+        premium_festival="Festival",
+        start_date__lte=now,
+        end_date__gte=now
+    )
+)
 
     for cart_item in cart_items:
         if cart_item.selected_flavours:
@@ -2118,15 +2125,16 @@ def view_cart(request):
             valid_offers = [offer for offer in active_offers if offer.apply_offer(gift_set)]
             if valid_offers:
                 best_offer = max(valid_offers, key=lambda x: x.percentage)
+                discounted_price = selling_price - ( (selling_price * best_offer.percentage) / Decimal('100'))
                 offer_applied = best_offer
-                discounted_price = selling_price
         elif variant:
             selling_price = variant.price
             valid_offers = [offer for offer in active_offers if offer.apply_offer(variant)]
             if valid_offers:
                 best_offer = max(valid_offers, key=lambda x: x.percentage)
+                discounted_price = selling_price - ((selling_price * best_offer.percentage) / Decimal('100'))
                 offer_applied = best_offer
-                discounted_price = selling_price - ((selling_price * best_offer.percentage) / 100)
+
         else:
             selling_price = product.price
 

@@ -376,12 +376,14 @@ class PremiumFestiveOffer(models.Model):
   # OFFER STATUS + DATE VALIDATION
   # -------------------------------
   def offer_active_now(self):
-    if not self.is_active:
-      return False
+    
 
     # Welcome & Premium  always active
-    if self.premium_festival in ["Welcome", "Premium"]:
-      return True
+    if self.premium_festival != "Festival":
+      return False
+    
+    if not self.is_active:
+      return False
 
     # Festival  requires dates
     if not self.start_date or not self.end_date:

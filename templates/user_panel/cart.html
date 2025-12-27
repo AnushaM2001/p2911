@@ -322,7 +322,7 @@ html, body {
           <div class="d-flex align-items-center">
             
             {% if item.gift_set %}
-            {% if item.discounted_price %}
+{% if item.offer_applied and item.offer_applied.premium_festival == "Festival" %}
         <span class="text-success font-weight-bold">₹{{ item.discounted_price|floatformat:2  }}</span>
         <del class="text-muted" style="margin-left:10px;">₹{{ item.gift_set.price }}</del>
         {% if item.offer_applied %}
@@ -335,7 +335,7 @@ html, body {
             {% endif %}
             
           {% elif item.product_variant %}
-          {% if item.discounted_price %}
+{% if item.offer_applied and item.offer_applied.premium_festival == "Festival" %}
         <span class="text-success font-weight-bold">₹{{ item.discounted_price|floatformat:2  }}</span>
         <del class="text-muted" style="margin-left:10px;">₹{{ item.original_price }}</del>
         {% if item.offer_applied %}
