@@ -527,25 +527,19 @@ html, body {
     
         <div class="p-2" style="background-color: #fff; border-radius: 5px;">
           <p class="mb-1 fw-bold">Applicable</p>
-       {% if premium_offer_visible or welcome_offer_visible %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <span class="fw-bold">
-        {% if welcome_offer_visible %}
-          🎉 Welcome Offer
-        {% else %}
-          ⭐ Premium Offer
-        {% endif %}
-      </span>
-      <br>
-      <small class="text-muted">
-        Code: <span class="text-primary">{{ premium_offer_code }}</span>
-      </small>
-    </div>
-
-    
+      {% if welcome_offer %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <span class="fw-bold">🎉 Welcome Offer</span><br>
+    <small class="text-muted">
+      Use code
+      <span class="text-primary">{{ welcome_offer.code }} Get {{ welcome_offer.percentage }}% off</span>
+      on your first order
+    </small>
   </div>
+</div>
 {% endif %}
+
 
 
 
@@ -635,12 +629,13 @@ html, body {
         <span>Platform Fee</span>
         <span data-price="platform_fee">₹{{ platform_fee|floatformat:2 }}</span> 
     </div>
-    <div id="coupon-discount-row"
+   <div id="coupon-discount-row"
      class="d-flex justify-content-between mb-2"
      style="display:none;">
-    <span>Discount</span>  
+    <span>Discount</span>
     <span data-price="discount" class="text-success">-₹0.00</span>
 </div>
+
 
 
     
@@ -657,6 +652,16 @@ html, body {
     <span id="premium-label">Premium Discount</span>
     <span data-price="premium_discount" class="text-success">-₹0.00</span>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const couponRow = document.getElementById('coupon-discount-row');
+    const premiumRow = document.getElementById('premium-discount-row');
+
+    if (couponRow) couponRow.style.display = 'none';
+    if (premiumRow) premiumRow.style.display = 'none';
+});
+</script>
+
 
     
     <hr>

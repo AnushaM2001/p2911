@@ -2336,7 +2336,9 @@ def view_cart(request):
     premium_offer_percentage = request.session.get('premium_offer_percentage')
 
     premium_base_amount = current_cart_total + gift_wrap_display - discount
-
+    welcome_offer = PremiumFestiveOffer.objects.filter(
+        is_active=True,
+        premium_festival="Welcome").exists()
     if premium_offer_code and premium_offer_percentage:
         try:
             offer = PremiumFestiveOffer.objects.filter(
@@ -2422,6 +2424,7 @@ def view_cart(request):
         'rating_percentage': rating_percentage,
         'average_rating': average_rating,
         "welcome_offer_visible": welcome_offer_visible,
+        "welcome_offer": welcome_offer,
 
     }
     # Save applied coupon discount into session for later use
