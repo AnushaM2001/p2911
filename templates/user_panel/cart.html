@@ -629,18 +629,13 @@ html, body {
         <span>Platform Fee</span>
         <span data-price="platform_fee">₹{{ platform_fee|floatformat:2 }}</span> 
     </div>
-   {% if discount > 0 %}
+   
 <div id="coupon-discount-row"
-     class="d-flex justify-content-between mb-2">
+     class="d-flex justify-content-between mb-2"
+     style="display:none;">
     <span>Discount</span>
-    <span data-price="discount" class="text-success">
-        -₹{{ discount|floatformat:2 }}
-    </span>
+    <span data-price="discount" class="text-success">-₹0.00</span>
 </div>
-{% endif %}
-
-
-
 
     
     {% if gift_wrap_display %}
@@ -650,24 +645,13 @@ html, body {
     </div>
     {% endif %}
 
-       {% if premium_discount > 0 %}
+       
    <div id="premium-discount-row"
      class="d-flex justify-content-between mb-2"
      style="display:none;">
     <span id="premium-label">Premium Discount</span>
     <span data-price="premium_discount" class="text-success">-₹0.00</span>
 </div>
-{% endif %}
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    const couponRow = document.getElementById('coupon-discount-row');
-    const premiumRow = document.getElementById('premium-discount-row');
-
-    if (couponRow) couponRow.style.display = 'none';
-    if (premiumRow) premiumRow.style.display = 'none';
-});
-</script>
-
 
     
     <hr>
@@ -821,26 +805,32 @@ window.updateOrderSummary = function (prices, meta = {}) {
 
     // ---- COUPON ROW VISIBILITY ----
     const couponRow = document.getElementById('coupon-discount-row');
-    const couponAmount = parseFloat(prices.discount) || 0;
+    const couponAmount = Number(prices.discount || 0);
 
-    if (couponAmount > 0) {
-        couponRow.style.display = 'flex';
-    } else {
-        couponRow.style.display = 'none';
-    }
+    couponRow.style.display = couponAmount > 0 ? 'flex' : 'none';
 
-    // ---- PREMIUM / WELCOME ROW ----
+    // -------- PREMIUM / WELCOME ROW --------
     const premiumRow = document.getElementById('premium-discount-row');
     const premiumLabel = document.getElementById('premium-label');
-    const premiumAmount = parseFloat(prices.premium_discount) || 0;
+    const premiumAmount = Number(prices.premium_discount || 0);
 
     if (premiumAmount > 0) {
         premiumRow.style.display = 'flex';
-        premiumLabel.textContent = meta.welcome ? 'Welcome Discount' : 'Premium Discount';
+        premiumLabel.textContent =
+            meta.welcome ? 'Welcome Discount' : 'Premium Discount';
     } else {
         premiumRow.style.display = 'none';
     }
 };
+
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    updateOrderSummary({
+        discount: 0,
+        premium_discount: 0
+    });
+});
 </script>
 
 
