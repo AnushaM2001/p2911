@@ -725,37 +725,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- BACKEND-DRIVEN SUMMARY ----------
     function refreshOrderSummary() {
-        fetch('/sync-redis-cart/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify({})
-        })
-        .then(res => res.json())
-       .then(data => {
-    if (data.status === 'success') {
+    fetch('/sync-redis-cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
 
-        updateOrderSummary(data.order_summary);
+            // ✅ Update right-side totals
+            updateOrderSummary(data.order_summary);
 
-        // ✅ UPDATE QUANTITIES
-        if (data.quantities) {
-            Object.entries(data.quantities).forEach(([itemId, qty]) => {
-                const el = document.querySelector(
-                    `.cart-item[data-item-id="${itemId}"] .quantity-display`
-                );
-                if (el) el.textContent = qty;
+            // ✅ Update quantities
+            if (data.quantities) {
+                Object.entries(data.quantities).forEach(([itemId, qty]) => {
+                    const el = document.querySelector(
+                        `.cart-item[data-item-id="${itemId}"] .quantity-display`
+                    );
+                    if (el) el.textContent = qty;
+                });
+            }
+
+            // ✅ Update cart count
+            document.querySelectorAll('.cart-count').forEach(el => {
+                el.textContent = data.cart_count;
             });
         }
-
-        document.querySelectorAll('.cart-count').forEach(el => {
-            el.textContent = data.cart_count;
-        });
-    }
-});
-
-    }
+    });
+}
 
     // ---------- DISPLAY ONLY ----------
   
@@ -1016,48 +1017,70 @@ document.addEventListener("click", function (e) {
 
     // APPLY COUPON
     if (e.target.classList.contains("apply-coupon-btn")) {
-        e.preventDefault();
+    e.preventDefault();
 
-        fetch("{% url 'apply_coupon' %}", {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": "{{ csrf_token }}",
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-                code: e.target.dataset.code
-            })
+    fetch("{% url 'apply_coupon' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+            code: e.target.dataset.code
         })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === "success") {
-                refreshOrderSummary();
-                alert(data.message);
-            } else {
-                alert(data.message);
-            }
-        });
-    }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+
+            // ✅ INSTANT UI UPDATE
+            updateOrderSummary({
+                subtotal: data.totals.products_total,
+                delivery: data.totals.delivery,
+                platform_fee: data.totals.platform_fee,
+                gift_wrap: data.totals.gift_wrap,
+                discount: data.totals.coupon_discount,
+                premium_discount: data.totals.premium_discount,
+                total: data.totals.final_total
+            });
+
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
 
     // REMOVE COUPON
     if (e.target.classList.contains("remove-coupon-btn")) {
-        e.preventDefault();
+    e.preventDefault();
 
-        fetch("{% url 'remove_coupon' %}", {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": "{{ csrf_token }}"
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === "success") {
-                refreshOrderSummary();
-                alert(data.message);
-            }
-        });
-    }
-});
+    fetch("{% url 'remove_coupon' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}"
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+
+            // ✅ INSTANT UI UPDATE
+            updateOrderSummary({
+                subtotal: data.totals.products_total,
+                delivery: data.totals.delivery,
+                platform_fee: data.totals.platform_fee,
+                gift_wrap: data.totals.gift_wrap,
+                discount: data.totals.coupon_discount,
+                premium_discount: data.totals.premium_discount,
+                total: data.totals.final_total
+            });
+        };
+    });
+  };
+})
+
+
 </script>
 
 <script>

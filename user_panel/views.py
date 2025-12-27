@@ -1667,16 +1667,47 @@ from django.http import JsonResponse
 import redis, json
 from decimal import Decimal
 
-from decimal import Decimal
-from django.db.models import Sum
 
 def calculate_cart_totals(request):
     cart_items = Cart.objects.filter(user=request.user)
+    now = timezone.now()
+
+    festival_offers = list(
+        PremiumFestiveOffer.objects.filter(
+            is_active=True,
+            premium_festival="Festival",
+            start_date__lte=now,
+            end_date__gte=now
+        )
+    )
 
     products_total = Decimal('0.00')
+
     for item in cart_items:
-        price = item.price or item.product_variant.price or item.product.price
-        products_total += Decimal(price) * item.quantity
+        price = Decimal('0.00')
+
+        if item.gift_set:
+            base_price = Decimal(item.price or 0)
+            valid = [o for o in festival_offers if o.apply_offer(item.gift_set)]
+            if valid:
+                best = max(valid, key=lambda o: o.percentage)
+                price = base_price - (base_price * best.percentage / Decimal('100'))
+            else:
+                price = base_price
+
+        elif item.product_variant:
+            base_price = Decimal(item.product_variant.price)
+            valid = [o for o in festival_offers if o.apply_offer(item.product_variant)]
+            if valid:
+                best = max(valid, key=lambda o: o.percentage)
+                price = base_price - (base_price * best.percentage / Decimal('100'))
+            else:
+                price = base_price
+
+        else:
+            price = Decimal(item.product.price)
+
+        products_total += price * item.quantity
 
     delivery = max(
         (Decimal(item.product.delivery_charges or 0) for item in cart_items),
@@ -1692,10 +1723,11 @@ def calculate_cart_totals(request):
 
     coupon_discount = Decimal(request.session.get('applied_coupon_discount', 0))
 
+    # ✅ PREMIUM DISCOUNT (TOTAL LEVEL)
     premium_discount = Decimal('0.00')
     pct = request.session.get('premium_offer_percentage')
     if pct:
-        premium_discount = (products_total * Decimal(pct)) / 100
+        premium_discount = (products_total * Decimal(pct)) / Decimal('100')
 
     final_total = (
         products_total
