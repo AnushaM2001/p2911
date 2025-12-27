@@ -1970,20 +1970,79 @@ def cart_count(request):
         })
 
 
+# @require_POST
+# @login_required(login_url='email_login')
+# def apply_coupon(request):
+#     code = request.POST.get('code')
+
+#     try:
+#         coupon = Coupon.objects.get(code=code, is_active=True)
+
+#         if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
+#             return JsonResponse({
+#                 "status": "error",
+#                 "message": "Coupon already used"
+#             })
+
+#         request.session['applied_coupon'] = coupon.code
+#         request.session['applied_coupon_discount'] = float(coupon.discount)
+
+#         totals = calculate_cart_totals(request)
+
+#         return JsonResponse({
+#             "status": "success",
+#             "message": "Coupon applied",
+#             "totals": totals
+#         })
+
+#     except Coupon.DoesNotExist:
+#         return JsonResponse({
+#             "status": "error",
+#             "message": "Invalid coupon"
+#         })
+# @require_POST
+# @login_required(login_url='email_login')
+# def remove_coupon(request):
+#     request.session.pop('applied_coupon', None)
+#     request.session.pop('applied_coupon_discount', None)
+
+#     totals = calculate_cart_totals(request)
+
+#     return JsonResponse({
+#         "status": "success",
+#         "message": "Coupon removed",
+#         "totals": totals
+#     })
+
 @require_POST
 @login_required(login_url='email_login')
 def apply_coupon(request):
-    code = request.POST.get('code')
+    code = request.POST.get('code', '').strip()
 
     try:
         coupon = Coupon.objects.get(code=code, is_active=True)
 
+        # ❌ Already used
         if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
             return JsonResponse({
                 "status": "error",
                 "message": "Coupon already used"
             })
 
+        # ✅ Check minimum cart value
+        totals_before = calculate_cart_totals(request)
+        if totals_before["products_total"] < coupon.required_amount:
+            return JsonResponse({
+                "status": "error",
+                "message": f"Shop above ₹{coupon.required_amount} to use this coupon"
+            })
+
+        # ❌ REMOVE premium/welcome if exists
+        request.session.pop('premium_offer_code', None)
+        request.session.pop('premium_offer_percentage', None)
+        request.session.pop('premium_offer_type', None)
+
+        # ✅ Apply coupon
         request.session['applied_coupon'] = coupon.code
         request.session['applied_coupon_discount'] = float(coupon.discount)
 
@@ -1991,8 +2050,16 @@ def apply_coupon(request):
 
         return JsonResponse({
             "status": "success",
-            "message": "Coupon applied",
-            "totals": totals
+            "message": f"You saved ₹{coupon.discount}!",
+            "totals": {
+                "products_total": float(totals["products_total"]),
+                "delivery": float(totals["delivery"]),
+                "platform_fee": float(totals["platform_fee"]),
+                "gift_wrap": float(totals["gift_wrap"]),
+                "coupon_discount": float(totals["coupon_discount"]),
+                "premium_discount": float(totals["premium_discount"]),
+                "final_total": float(totals["final_total"]),
+            }
         })
 
     except Coupon.DoesNotExist:
@@ -2011,58 +2078,95 @@ def remove_coupon(request):
     return JsonResponse({
         "status": "success",
         "message": "Coupon removed",
-        "totals": totals
+        "totals": {
+            "products_total": float(totals["products_total"]),
+            "delivery": float(totals["delivery"]),
+            "platform_fee": float(totals["platform_fee"]),
+            "gift_wrap": float(totals["gift_wrap"]),
+            "coupon_discount": float(totals["coupon_discount"]),
+            "premium_discount": float(totals["premium_discount"]),
+            "final_total": float(totals["final_total"]),
+        }
     })
-
 
 
 
 @login_required(login_url='email_login')
 def apply_premium_offer(request):
-    if request.method == "POST":
-        code_entered = request.POST.get('code', '').strip()
-        try:
-            offer = PremiumFestiveOffer.objects.get(code__iexact=code_entered)
-            if PremiumOfferUsage.objects.filter(user=request.user, offer_code=offer.code).exists():
-                return JsonResponse({'status': 'error', 'message': "Already used."})
+    if request.method != "POST":
+        return JsonResponse({'status': 'error', 'message': "Invalid request."})
 
-            request.session['premium_offer_code'] = offer.code
-            request.session['premium_offer_percentage'] = float(offer.percentage)
-            PremiumOfferUsage.objects.create(user=request.user, offer_code=offer.code)
+    code_entered = request.POST.get('code', '').strip()
+    now = timezone.now()
 
-            total_price, premium_discount = calculate_cart_totals(request)
+    try:
+        offer = PremiumFestiveOffer.objects.get(
+            code__iexact=code_entered,
+            is_active=True,
+            start_date__lte=now,
+            end_date__gte=now,
+            premium_festival__in=["Premium", "Welcome"]
+        )
 
-            return JsonResponse({
-                'status': 'success',
-                'message': f"{offer.percentage}% discount applied!",
-                'total_price': str(total_price),
-                'premium_discount': str(premium_discount),
-            })
-        except PremiumFestiveOffer.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': "Invalid code."})
-    return JsonResponse({'status': 'error', 'message': "Invalid request."})
+        if PremiumOfferUsage.objects.filter(user=request.user, offer_code=offer.code).exists():
+            return JsonResponse({'status': 'error', 'message': "Offer already used."})
+
+        # ✅ Save to session
+        request.session['premium_offer_code'] = offer.code
+        request.session['premium_offer_percentage'] = float(offer.percentage)
+
+        PremiumOfferUsage.objects.create(user=request.user, offer_code=offer.code)
+
+        totals = calculate_cart_totals(request)
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f"{offer.percentage}% premium discount applied!",
+            'totals': {
+                'subtotal': float(totals['products_total']),
+                'delivery': float(totals['delivery']),
+                'platform_fee': float(totals['platform_fee']),
+                'gift_wrap': float(totals['gift_wrap']),
+                'discount': float(totals['coupon_discount']),
+                'premium_discount': float(totals['premium_discount']),
+                'total': float(totals['final_total']),
+            }
+        })
+
+    except PremiumFestiveOffer.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': "Invalid or expired premium code."})
 
 
 @login_required(login_url='email_login')
 def remove_premium_offer(request):
-    if request.method == "POST":
-        code = request.session.get('premium_offer_code')
-        if code:
-            PremiumOfferUsage.objects.filter(user=request.user, offer_code=code).delete()
-            request.session.pop('premium_offer_code', None)
-            request.session.pop('premium_offer_percentage', None)
-            request.session.pop(f"premium_offer_used_{code}", None)
+    if request.method != "POST":
+        return JsonResponse({'status': 'error', 'message': "Invalid request."})
 
-            total_price, premium_discount = calculate_cart_totals(request)
+    code = request.session.get('premium_offer_code')
 
-            return JsonResponse({
-                'status': 'success',
-                'message': "Coupon removed.",
-                'total_price': str(total_price),
-                'premium_discount': str(premium_discount),
-            })
-        return JsonResponse({'status': 'error', 'message': "No offer to remove."})
-    return JsonResponse({'status': 'error', 'message': "Invalid request."})
+    if not code:
+        return JsonResponse({'status': 'error', 'message': "No premium offer applied."})
+
+    PremiumOfferUsage.objects.filter(user=request.user, offer_code=code).delete()
+
+    request.session.pop('premium_offer_code', None)
+    request.session.pop('premium_offer_percentage', None)
+
+    totals = calculate_cart_totals(request)
+
+    return JsonResponse({
+        'status': 'success',
+        'message': "Premium offer removed.",
+        'totals': {
+            'subtotal': float(totals['products_total']),
+            'delivery': float(totals['delivery']),
+            'platform_fee': float(totals['platform_fee']),
+            'gift_wrap': float(totals['gift_wrap']),
+            'discount': float(totals['coupon_discount']),
+            'premium_discount': float(totals['premium_discount']),
+            'total': float(totals['final_total']),
+        }
+    })
 
 
 
@@ -2219,21 +2323,40 @@ def view_cart(request):
 
     # Premium offer
     premium_discount = Decimal('0.00')
+    premium_offer_visible = False
+    welcome_offer_visible = False
+
     premium_offer_code = request.session.get('premium_offer_code')
     premium_offer_percentage = request.session.get('premium_offer_percentage')
-    premium_offer_visible = False
+
+# base amount for premium/welcome
+    premium_base_amount = current_cart_total + gift_wrap_display - discount
+
     if premium_offer_code and premium_offer_percentage:
         try:
             premium_offer_percentage = Decimal(premium_offer_percentage)
+
             if premium_offer_percentage > 0:
-                premium_discount = (total_price * premium_offer_percentage) / Decimal('100')
+                premium_discount = (
+                premium_base_amount * premium_offer_percentage
+            ) / Decimal('100')
+
                 premium_offer_visible = True
+
+            # 👇 detect welcome vs premium
+            offer_type = PremiumFestiveOffer.objects.filter(
+                code=premium_offer_code
+            ).values_list('premium_festival', flat=True).first()
+
+            if offer_type == "Welcome":
+                welcome_offer_visible = True
+
         except (ValueError, TypeError):
             pass
 
-    total_price = current_cart_total + gift_wrap_display - premium_discount - discount
+# FINAL TOTAL
+    total_price = premium_base_amount - premium_discount
     total_price = max(total_price, Decimal('0.00'))
-    print("Total price :", total_price)
 
     # Razorpay
     cart_hash_data = f"{request.user.id}_{total_items}_{float(total_price)}"
@@ -2293,6 +2416,8 @@ def view_cart(request):
         'from_video': from_video,
         'rating_percentage': rating_percentage,
         'average_rating': average_rating,
+        "welcome_offer_visible": welcome_offer_visible,
+
     }
     # Save applied coupon discount into session for later use
     request.session['applied_coupon_discount'] = float(discount)

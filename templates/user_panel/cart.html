@@ -513,24 +513,28 @@ html, body {
     
         <div class="p-2" style="background-color: #fff; border-radius: 5px;">
           <p class="mb-1 fw-bold">Applicable</p>
-          {% if applicable_offers %}
-          {% for offer in applicable_offers %}
+         {% if premium_offer_visible %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <span class="fw-bold">
+        {% if welcome_offer_visible %}
+          🎉 Welcome Offer
+        {% else %}
+          ⭐ Premium Offer
+        {% endif %}
+      </span>
+      <br>
+      <small class="text-muted">
+        Code: <span class="text-primary">{{ premium_offer_code }}</span>
+      </small>
+    </div>
 
-          <div class="d-flex justify-content-between mb-3 align-items-center">
-            <div class="festival-offers">
-                <span class="fw-bold text-dark">
-                    {% if offer.code %}
-                        <span class="badge bg-success text-white">Get {{ offer.percentage }}% OFF</span> 
-                        with code <span class="text-primary">{{ offer.code }}</span>
-                    {% else %}
-                        <span class="badge bg-danger text-white">Get {{ offer.percentage }}% OFF</span>
-                    {% endif %}
-                </span>
-            </div>
-        </div>
-        
-{% endfor %}
+    <div class="text-success fw-bold">
+      -₹{{ premium_discount|floatformat:2 }}
+    </div>
+  </div>
 {% endif %}
+
 
     
           <!-- Coupon 1 -->
@@ -593,7 +597,11 @@ html, body {
         </div>
       </div>
     
-    
+    <div id="coupon-success-msg"
+     class="alert alert-success mt-2"
+     style="display:none;">
+</div>
+
 
     <!-- Order Summary -->
     
@@ -613,12 +621,14 @@ html, body {
         <span>Platform Fee</span>
         <span data-price="platform_fee">₹{{ platform_fee|floatformat:2 }}</span> 
     </div>
-    {% if applied_coupon %}
-    <div class="d-flex justify-content-between mb-2">
-        <span>Discount</span>  
-        <span data-price="discount" style="color: green;">-₹{{ discount|floatformat:2 }}</span>    
-    </div>
-    {% endif %}
+    <div id="coupon-discount-row" class="d-flex justify-content-between mb-2"
+     {% if not applied_coupon %}style="display:none"{% endif %}>
+    <span>Discount</span>  
+    <span data-price="discount" style="color: green;">
+        -₹{{ discount|floatformat:2 }}
+    </span>    
+</div>
+
     
     {% if gift_wrap_display %}
     <div class="d-flex justify-content-between mb-2">
@@ -929,89 +939,57 @@ function initiatePayment() {
   }, 6000); // 1 minute
 </script>
 
-
-
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('premium-offer-form');
-    const input = document.getElementById('premium-offer-code');
-    const btn = document.getElementById('premium-offer-btn');
-    const messageDiv = document.getElementById('premium-offer-message');
+document.addEventListener('DOMContentLoaded', function () {
 
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
+  const form = document.getElementById('premium-offer-form');
+  const input = document.getElementById('premium-offer-code');
+  const btn = document.getElementById('premium-offer-btn');
+  const messageDiv = document.getElementById('premium-offer-message');
 
-      const isRemoving = btn.textContent.trim().toLowerCase() === 'remove';
-      const url = isRemoving ? "{% url 'remove_premium_offer' %}" : "{% url 'apply_premium_coupon' %}";
-      const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
-      const codeValue = input.value;
-
-      fetch(url, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': csrfToken,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: new URLSearchParams(isRemoving ? {} : { code: codeValue })
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            if (isRemoving) {
-              input.readOnly = false;
-              input.value = '';
-              btn.textContent = 'Apply';
-              messageDiv.innerHTML = `<div class="alert alert-info">${data.message}</div>`;
-            } else {
-              input.readOnly = true;
-              btn.textContent = 'Remove';
-              messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-            }
-          } else {
-            messageDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
-          }
-        })
-        .catch(err => {
-          messageDiv.innerHTML = `<div class="alert alert-danger">Something went wrong. Please try again.</div>`;
-          console.error(err);
-        });
-    });
-  });
-</script>
-
-  <script>
-  document.getElementById('premium-offer-form').addEventListener('submit', function (e) {
+  form.addEventListener('submit', function (e) {
     e.preventDefault();
 
-    const form = e.target;
-    const formData = new FormData(form);
-    const url = form.action;
+    const isRemoving = btn.textContent.trim().toLowerCase() === 'remove';
+    const url = isRemoving
+      ? "{% url 'remove_premium_offer' %}"
+      : "{% url 'apply_premium_coupon' %}";
 
     fetch(url, {
       method: 'POST',
       headers: {
-        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: formData
+      body: isRemoving ? null : new URLSearchParams({ code: input.value })
     })
-    .then(response => response.json())
+    .then(res => res.json())
     .then(data => {
-      alert(data.message);
-
       if (data.status === 'success') {
-        // Reload cart section to reflect updated amount or update values manually
-        location.reload(); // Simple solution
-        // OR update total price dynamically here (preferred for a smoother UX)
-        document.getElementById('total-price').innerText = data.total_price;
-        document.getElementById('premium-discount').innerText = data.premium_discount;
+
+        updateOrderSummary(data.totals);
+
+        if (isRemoving) {
+          input.readOnly = false;
+          input.value = '';
+          btn.textContent = 'Apply';
+        } else {
+          input.readOnly = true;
+          btn.textContent = 'Remove';
+        }
+
+        messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+      } else {
+        messageDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
       }
-    })
-    .catch(error => {
-      console.error('Error:', error);
     });
   });
+
+});
 </script>
+
+
+  
 <script>
 document.addEventListener("click", function (e) {
 
@@ -1043,6 +1021,8 @@ document.addEventListener("click", function (e) {
                 premium_discount: data.totals.premium_discount,
                 total: data.totals.final_total
             });
+             markCouponApplied(e.target.dataset.code, data.totals.coupon_discount);
+           
 
         } else {
             alert(data.message);
@@ -1075,50 +1055,63 @@ document.addEventListener("click", function (e) {
                 premium_discount: data.totals.premium_discount,
                 total: data.totals.final_total
             });
+            resetCouponUI();
+
         };
     });
   };
 })
 
+function markCouponApplied(code, discountAmount) {
 
-</script>
+    document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
+        const btnCode = btn.dataset.code;
 
-<script>
-document.getElementById("premium-offer-btn")?.addEventListener("click", function () {
-
-    const action = this.dataset.action;
-    const codeInput = document.getElementById("premium-offer-code");
-
-    const payload = action === "apply"
-        ? { code: codeInput.value }
-        : {};
-
-    fetch(
-        action === "apply"
-            ? "{% url 'apply_premium_coupon' %}"
-            : "{% url 'remove_premium_offer' %}",
-        {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": "{{ csrf_token }}",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-        }
-    )
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === "success") {
-            updateOrderSummary(data.order_summary);
-            showToast(data.message);
-            location.reload(); // optional
+        if (btnCode === code) {
+            btn.outerHTML = `
+              <div class="d-flex gap-2">
+                <button class="btn btn-success btn-sm" disabled>Applied</button>
+                <button class="btn btn-danger btn-sm remove-coupon-btn">Remove</button>
+              </div>
+            `;
         } else {
-            showToast(data.message);
+            btn.disabled = true;
         }
     });
-});
+
+    // ✅ SHOW SUCCESS MESSAGE
+    const msg = document.getElementById('coupon-success-msg');
+    if (msg) {
+        msg.innerHTML = `🎉 You saved <strong>₹${discountAmount}</strong> with this coupon!`;
+        msg.style.display = 'block';
+    }
+
+    // Show discount row
+    const row = document.getElementById('coupon-discount-row');
+    if (row) row.style.display = 'flex';
+}
+
+
+function resetCouponUI() {
+    document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
+        btn.disabled = false;
+    });
+
+    // Hide discount row
+    const row = document.getElementById('coupon-discount-row');
+    if (row) row.style.display = 'none';
+
+    // ❌ HIDE SUCCESS MESSAGE
+    const msg = document.getElementById('coupon-success-msg');
+    if (msg) {
+        msg.style.display = 'none';
+        msg.innerHTML = '';
+    }
+}
+
 
 </script>
+
 
 
 
