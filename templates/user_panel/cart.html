@@ -527,7 +527,7 @@ html, body {
     
         <div class="p-2" style="background-color: #fff; border-radius: 5px;">
           <p class="mb-1 fw-bold">Applicable</p>
-       {% if welcome_offer_visible %}
+       {% if premium_offer_visible or welcome_offer_visible %}
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
       <span class="fw-bold">
@@ -543,9 +543,7 @@ html, body {
       </small>
     </div>
 
-    <div class="text-success fw-bold">
-      -₹{{ premium_discount|floatformat:2 }}
-    </div>
+    
   </div>
 {% endif %}
 
@@ -637,13 +635,13 @@ html, body {
         <span>Platform Fee</span>
         <span data-price="platform_fee">₹{{ platform_fee|floatformat:2 }}</span> 
     </div>
-    <div id="coupon-discount-row" class="d-flex justify-content-between mb-2"
-     {% if not applied_coupon %}style="display:none"{% endif %}>
+    <div id="coupon-discount-row"
+     class="d-flex justify-content-between mb-2"
+     style="display:none;">
     <span>Discount</span>  
-    <span data-price="discount" style="color: green;">
-        -₹{{ discount|floatformat:2 }}
-    </span>    
+    <span data-price="discount" class="text-success">-₹0.00</span>
 </div>
+
 
     
     {% if gift_wrap_display %}
@@ -653,12 +651,13 @@ html, body {
     </div>
     {% endif %}
     
-    {% if premium_discount %}
-    <div class="d-flex justify-content-between mb-2">
-        <span>Premium Discount</span>
-        <span data-price="premium_discount" style="color: green;">-₹{{ premium_discount|floatformat:2 }}</span>
-    </div>
-    {% endif %}
+   <div id="premium-discount-row"
+     class="d-flex justify-content-between mb-2"
+     style="display:none;">
+    <span id="premium-label">Premium Discount</span>
+    <span data-price="premium_discount" class="text-success">-₹0.00</span>
+</div>
+
     
     <hr>
     
@@ -790,7 +789,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <script>
-window.updateOrderSummary = function (prices) {
+window.updateOrderSummary = function (prices, meta = {}) {
+
     const set = (key, val, negative=false) => {
         const el = document.querySelector(`[data-price="${key}"]`);
         if (!el) return;
@@ -799,6 +799,7 @@ window.updateOrderSummary = function (prices) {
         el.textContent = (negative ? '-₹' : '₹') + num.toFixed(2);
     };
 
+    // ---- SET VALUES ----
     set('subtotal', prices.subtotal);
     set('delivery', prices.delivery);
     set('platform_fee', prices.platform_fee);
@@ -806,6 +807,28 @@ window.updateOrderSummary = function (prices) {
     set('discount', prices.discount, true);
     set('premium_discount', prices.premium_discount, true);
     set('total', prices.total || prices.final_total);
+
+    // ---- COUPON ROW VISIBILITY ----
+    const couponRow = document.getElementById('coupon-discount-row');
+    const couponAmount = parseFloat(prices.discount) || 0;
+
+    if (couponAmount > 0) {
+        couponRow.style.display = 'flex';
+    } else {
+        couponRow.style.display = 'none';
+    }
+
+    // ---- PREMIUM / WELCOME ROW ----
+    const premiumRow = document.getElementById('premium-discount-row');
+    const premiumLabel = document.getElementById('premium-label');
+    const premiumAmount = parseFloat(prices.premium_discount) || 0;
+
+    if (premiumAmount > 0) {
+        premiumRow.style.display = 'flex';
+        premiumLabel.textContent = meta.welcome ? 'Welcome Discount' : 'Premium Discount';
+    } else {
+        premiumRow.style.display = 'none';
+    }
 };
 </script>
 

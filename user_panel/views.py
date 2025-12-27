@@ -2339,25 +2339,26 @@ def view_cart(request):
 
     if premium_offer_code and premium_offer_percentage:
         try:
-            premium_offer_percentage = Decimal(premium_offer_percentage)
-
             offer = PremiumFestiveOffer.objects.filter(
             code=premium_offer_code,
-            is_active=True
+            is_active=True,
+            premium_festival__in=["Premium", "Welcome"]
         ).first()
 
             if offer:
+                premium_offer_percentage = Decimal(premium_offer_percentage)
                 premium_discount = (
-                premium_base_amount * premium_offer_percentage
-            ) / Decimal('100')
-
+                    premium_base_amount * premium_offer_percentage
+                ) / Decimal('100')
+            # ✅ SINGLE SOURCE OF TRUTH
                 premium_offer_visible = True
 
                 if offer.premium_festival == "Welcome":
                     welcome_offer_visible = True
 
         except Exception:
-            pass
+           pass
+
 
     total_price = premium_base_amount - premium_discount
     total_price = max(total_price, Decimal('0.00'))
