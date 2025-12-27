@@ -2096,32 +2096,35 @@ def apply_premium_offer(request):
     if request.method != "POST":
         return JsonResponse({'status': 'error', 'message': "Invalid request."})
 
-    code_entered = request.POST.get('code', '').strip()
-    now = timezone.now()
+    code_entered = request.POST.get('code', '').strip().upper()
 
     try:
         offer = PremiumFestiveOffer.objects.get(
             code__iexact=code_entered,
             is_active=True,
-            start_date__lte=now,
-            end_date__gte=now,
             premium_festival__in=["Premium", "Welcome"]
         )
 
-        if PremiumOfferUsage.objects.filter(user=request.user, offer_code=offer.code).exists():
+        if PremiumOfferUsage.objects.filter(
+            user=request.user,
+            offer_code=offer.code
+        ).exists():
             return JsonResponse({'status': 'error', 'message': "Offer already used."})
 
-        # ✅ Save to session
+        # save session
         request.session['premium_offer_code'] = offer.code
         request.session['premium_offer_percentage'] = float(offer.percentage)
 
-        PremiumOfferUsage.objects.create(user=request.user, offer_code=offer.code)
+        PremiumOfferUsage.objects.create(
+            user=request.user,
+            offer_code=offer.code
+        )
 
         totals = calculate_cart_totals(request)
 
         return JsonResponse({
             'status': 'success',
-            'message': f"{offer.percentage}% premium discount applied!",
+            'message': f"{offer.percentage}% discount applied!",
             'totals': {
                 'subtotal': float(totals['products_total']),
                 'delivery': float(totals['delivery']),
@@ -2134,7 +2137,10 @@ def apply_premium_offer(request):
         })
 
     except PremiumFestiveOffer.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': "Invalid or expired premium code."})
+        return JsonResponse({
+            'status': 'error',
+            'message': "Invalid premium / welcome code."
+        })
 
 
 @login_required(login_url='email_login')
