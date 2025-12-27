@@ -2031,7 +2031,7 @@ def apply_coupon(request):
 
         # ✅ Check minimum cart value
         totals_before = calculate_cart_totals(request)
-        if totals_before["products_total"] < coupon.required_amount:
+        if totals_before["final_total"] < coupon.required_amount:
             return JsonResponse({
                 "status": "error",
                 "message": f"Shop above ₹{coupon.required_amount} to use this coupon"
