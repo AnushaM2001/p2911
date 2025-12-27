@@ -2336,9 +2336,17 @@ def view_cart(request):
     premium_offer_percentage = request.session.get('premium_offer_percentage')
 
     premium_base_amount = current_cart_total + gift_wrap_display - discount
-    welcome_offer = PremiumFestiveOffer.objects.filter(
-        is_active=True,
-        premium_festival="Welcome").exists()
+    welcome_offer = (
+    PremiumFestiveOffer.objects
+    .filter(is_active=True, premium_festival="Welcome")
+    .exclude(
+        code__in=PremiumOfferUsage.objects
+        .filter(user=request.user)
+        .values_list("offer_code", flat=True)
+    )
+    .first()
+)
+
     if premium_offer_code and premium_offer_percentage:
         try:
             offer = PremiumFestiveOffer.objects.filter(

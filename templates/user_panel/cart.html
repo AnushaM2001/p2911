@@ -629,12 +629,16 @@ html, body {
         <span>Platform Fee</span>
         <span data-price="platform_fee">₹{{ platform_fee|floatformat:2 }}</span> 
     </div>
-   <div id="coupon-discount-row"
-     class="d-flex justify-content-between mb-2"
-     style="display:none;">
+   {% if discount > 0 %}
+<div id="coupon-discount-row"
+     class="d-flex justify-content-between mb-2">
     <span>Discount</span>
-    <span data-price="discount" class="text-success">-₹0.00</span>
+    <span data-price="discount" class="text-success">
+        -₹{{ discount|floatformat:2 }}
+    </span>
 </div>
+{% endif %}
+
 
 
 
@@ -645,13 +649,15 @@ html, body {
         <span data-price="gift_wrap" style="color: green;">+₹{{ gift_wrap_display|floatformat:2 }}</span>    
     </div>
     {% endif %}
-    
+
+       {% if premium_discount > 0 %}
    <div id="premium-discount-row"
      class="d-flex justify-content-between mb-2"
      style="display:none;">
     <span id="premium-label">Premium Discount</span>
     <span data-price="premium_discount" class="text-success">-₹0.00</span>
 </div>
+{% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const couponRow = document.getElementById('coupon-discount-row');
