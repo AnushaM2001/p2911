@@ -2329,32 +2329,30 @@ def view_cart(request):
     premium_offer_code = request.session.get('premium_offer_code')
     premium_offer_percentage = request.session.get('premium_offer_percentage')
 
-# base amount for premium/welcome
     premium_base_amount = current_cart_total + gift_wrap_display - discount
 
     if premium_offer_code and premium_offer_percentage:
         try:
             premium_offer_percentage = Decimal(premium_offer_percentage)
 
-            if premium_offer_percentage > 0:
+            offer = PremiumFestiveOffer.objects.filter(
+            code=premium_offer_code,
+            is_active=True
+        ).first()
+
+            if offer:
                 premium_discount = (
                 premium_base_amount * premium_offer_percentage
             ) / Decimal('100')
 
                 premium_offer_visible = True
 
-            # 👇 detect welcome vs premium
-            offer_type = PremiumFestiveOffer.objects.filter(
-                code=premium_offer_code
-            ).values_list('premium_festival', flat=True).first()
+                if offer.premium_festival == "Welcome":
+                    welcome_offer_visible = True
 
-            if offer_type == "Welcome":
-                welcome_offer_visible = True
-
-        except (ValueError, TypeError):
+        except Exception:
             pass
 
-# FINAL TOTAL
     total_price = premium_base_amount - premium_discount
     total_price = max(total_price, Decimal('0.00'))
 
