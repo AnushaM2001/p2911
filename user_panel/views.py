@@ -1766,6 +1766,14 @@ def sync_redis_cart(request):
         # 3️⃣ Festival info
         festival_pct = request.session.get("premium_offer_percentage", 0)
         festival_active = bool(festival_pct)
+        festival_offers = list(
+                PremiumFestiveOffer.objects.filter(
+        is_active=True,
+        premium_festival="Festival",
+        start_date__lte=now,
+        end_date__gte=now
+    )
+)
 
         # 4️⃣ Build item list for UI (LEFT SIDE)
         items = []
@@ -1778,9 +1786,27 @@ def sync_redis_cart(request):
                 else item.gift_set.price if item.gift_set
                 else item.product.price
             )
-
+            price = Decimal('0.00')
             # final price (after festival, already saved in DB)
-            final_price = item.price
+            if item.gift_set:
+                base_price = Decimal(item.gift_set.price)
+                valid = [o for o in festival_offers if o.apply_offer(item.gift_set)]
+                if valid:
+                    best = max(valid, key=lambda o: o.percentage)
+                    price = base_price - (base_price * best.percentage / Decimal('100'))
+                else:
+                    price = base_price
+            elif item.product_variant:
+                base_price = Decimal(item.product_variant.price)
+                valid = [o for o in festival_offers if o.apply_offer(item.product_variant)]
+                if valid:
+                    best = max(valid, key=lambda o: o.percentage)
+                    price = base_price - (base_price * best.percentage / Decimal('100'))
+                else:
+                    price = base_price
+            else:
+                price = Decimal(item.product.price)
+            final_price = price
 
             items.append({
                 "id": item.id,

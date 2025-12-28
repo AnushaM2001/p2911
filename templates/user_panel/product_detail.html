@@ -1656,12 +1656,13 @@ document.addEventListener("DOMContentLoaded", function () {
                         <div style="text-align:left;">
                             <div class="product-name">${firstItem.name}</div>
 <div class="product-price">
-  ₹${Number(firstItem.final_price).toFixed(2)}
+  ₹${Number(firstItem.final_price || 0).toFixed(2)}
 </div>
 
                         </div>
                     `;
-                }
+                }    
+
 
                 if (progressBar) {
                     progressBar.style.transition = 'none';
