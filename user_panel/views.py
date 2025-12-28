@@ -1730,23 +1730,17 @@ def calculate_cart_totals(request):
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from django.utils import timezone
-
-
-
 @login_required(login_url='email_login')
 def sync_redis_cart(request):
     if request.method != "POST":
         return JsonResponse({"status": "error"}, status=405)
 
     try:
-        # 1️⃣ Totals
+        # 1️⃣ Calculate totals (already includes festival logic)
         totals = calculate_cart_totals(request)
         subtotal = totals["products_total"]
 
-        # 2️⃣ Cart items
+        # 2️⃣ Fetch cart items
         cart_items = Cart.objects.filter(
             user=request.user
         ).select_related("product", "product_variant", "gift_set")
@@ -1755,37 +1749,42 @@ def sync_redis_cart(request):
         festival_pct = request.session.get("premium_offer_percentage", 0)
         festival_active = bool(festival_pct)
 
+        # 4️⃣ Build item list for UI (LEFT SIDE)
         items = []
         quantities = {}
 
         for item in cart_items:
+            # original price (before festival)
             original_price = (
                 item.product_variant.price if item.product_variant
                 else item.gift_set.price if item.gift_set
                 else item.product.price
             )
 
+            # final price (after festival, already saved in DB)
+            final_price = item.price
+
             items.append({
                 "id": item.id,
                 "name": item.product.name,
                 "quantity": item.quantity,
+
                 "original_price": float(original_price),
-                "final_price": float(item.price),
+                "final_price": float(final_price),
+
                 "festival_active": festival_active,
                 "festival_percentage": festival_pct,
+
                 "image": item.product.image1.url if item.product.image1 else ""
             })
 
             quantities[str(item.id)] = item.quantity
-
-        # 4️⃣ Coupon eligibility (🔥 KEY PART)
         now = timezone.now()
 
         eligible_coupons = Coupon.objects.filter(
             is_active=True,
             required_amount__lte=subtotal,
-            valid_from__lte=now,
-            valid_to__gte=now
+            
         )
 
         # Optional: exclude already-used coupons
@@ -1794,11 +1793,12 @@ def sync_redis_cart(request):
                 id__in=request.user.used_coupons.values_list("coupon_id", flat=True)
             )
 
-        # 5️⃣ Response
+
+        # 5️⃣ Final response
         return JsonResponse({
             "status": "success",
 
-            "cart_items": items,
+            "cart_items": items,   # ✅ LEFT SIDE DATA
 
             "order_summary": {
                 "subtotal": float(totals["products_total"]),
@@ -1810,10 +1810,8 @@ def sync_redis_cart(request):
             },
 
             "cart_count": totals["cart_count"],
-            "quantities": quantities,
+            "quantities": quantities,  # ✅ qty sync
             "applied_coupon": request.session.get("applied_coupon"),
-
-            # 🔥 SEND ELIGIBLE COUPONS
             "eligible_coupons": list(
                 eligible_coupons.values_list("code", flat=True)
             )
