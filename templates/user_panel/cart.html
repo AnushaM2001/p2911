@@ -560,9 +560,17 @@ html, body {
                   {% if coupon.id in used_coupons %}
                       <span class="text-danger">Already used ₹{{ coupon.discount }}</span>
                   {% elif coupon not in eligible_coupons %}
-                      <span class="text-warning">Shop Above ₹{{ coupon.required_amount }} 
-                          <b style="color: green;">Save ₹{{ coupon.discount }}</b>
-                      </span>
+                      <button
+  class="btn btn-outline-secondary btn-sm"
+  data-code="{{ coupon.code }}"
+  data-required="{{ coupon.required_amount }}"
+  data-discount="{{ coupon.discount }}"
+  disabled>
+  Shop above ₹{{ coupon.required_amount }}<span style="color: green;">Save ₹{{ coupon.discount }}</span>
+                      
+</button>
+ 
+                          
                   {% else %}
                       <span class="text-success">You save ₹{{ coupon.discount }}</span>
                   {% endif %}
@@ -582,11 +590,14 @@ html, body {
         </div>
 
     {% elif coupon in eligible_coupons and coupon.id not in used_coupons %}
-        <button
-          class="btn btn-outline-primary btn-sm apply-coupon-btn"
-          data-code="{{ coupon.code }}">
-          Apply Coupon
-        </button>
+       <button
+  class="btn btn-outline-primary btn-sm apply-coupon-btn"
+  data-code="{{ coupon.code }}"
+  data-required="{{ coupon.required_amount }}"
+  data-discount="{{ coupon.discount }}">
+  Apply Coupon
+</button>
+
 
     {% else %}
         <button class="btn btn-outline-secondary btn-sm" disabled>
