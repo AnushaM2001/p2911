@@ -800,7 +800,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-  function updateCouponEligibilityUI(eligibleCoupons) {
+function updateCouponEligibilityUI(eligibleCoupons) {
 
     document.querySelectorAll('[data-code]').forEach(btn => {
         const code = btn.dataset.code;
@@ -809,23 +809,31 @@ document.addEventListener('DOMContentLoaded', function () {
         // Skip applied coupon
         if (btn.dataset.applied === "true") return;
 
+        const required = btn.dataset.required;
+        const discount = btn.dataset.discount;
+
         if (eligibleCoupons.includes(code)) {
             // ✅ Eligible
-            btn.textContent = 'Apply Coupon';
+            btn.innerHTML = 'Apply Coupon';
             btn.disabled = false;
             btn.classList.remove('btn-outline-secondary');
             btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
+
         } else {
-            // ❌ Not eligible
-            btn.textContent = 'Not Eligible';
+            // ❌ Not eligible → SHOW MESSAGE
+            btn.innerHTML = `
+                Shop above ₹${required}
+                <br>
+                <small class="text-success">You save ₹${discount}</small>
+            `;
             btn.disabled = true;
             btn.classList.remove('btn-outline-primary', 'apply-coupon-btn');
             btn.classList.add('btn-outline-secondary');
         }
     });
 }
+</script>
 
-  </script>
 <script>
 window.updateOrderSummary = function (prices, meta = {}) {
 
