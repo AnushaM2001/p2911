@@ -782,6 +782,10 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 window.updateOrderSummary = function (prices, meta = {}) {
 
+    /* 🔑 REQUIRED STATE (FIX) */
+    const appliedCoupon = meta.applied_coupon || null;
+    const cartTotal = Number(prices.total || prices.final_total || 0);
+
     /* ---------------- PRICE UPDATE ---------------- */
     const set = (key, val, negative = false) => {
         const el = document.querySelector(`[data-price="${key}"]`);
@@ -795,104 +799,79 @@ window.updateOrderSummary = function (prices, meta = {}) {
     set('delivery', prices.delivery);
     set('platform_fee', prices.platform_fee);
     set('gift_wrap', prices.gift_wrap || 0);
-    set('discount', prices.discount, true);
-    set('premium_discount', prices.premium_discount, true);
+    set('discount', prices.discount || 0, true);
+    set('premium_discount', prices.premium_discount || 0, true);
     set('total', prices.total || prices.final_total);
 
-    /* ---------------- DISCOUNT ROW ---------------- */
+    /* ---------------- ROW VISIBILITY ---------------- */
 
-/* ---------------- COUPON ROW ---------------- */
-const couponRow = document.getElementById('coupon-discount-row');
-const couponAmount = Number(prices.discount || 0);
+    const couponRow = document.getElementById('coupon-discount-row');
+    couponRow && (couponRow.style.display =
+        Number(prices.discount || 0) > 0 ? 'flex' : 'none');
 
-if (couponRow) {
-    couponRow.style.display = couponAmount > 0 ? 'flex' : 'none';
-}
-
-/* ---------------- PREMIUM ROW ---------------- */
-const premiumRow = document.getElementById('premium-discount-row');
-const premiumAmount = Number(prices.premium_discount || 0);
-
-if (premiumRow) {
-    premiumRow.style.display = premiumAmount > 0 ? 'flex' : 'none';
-}
-
-
+    const premiumRow = document.getElementById('premium-discount-row');
+    premiumRow && (premiumRow.style.display =
+        Number(prices.premium_discount || 0) > 0 ? 'flex' : 'none');
 
     /* ================= COUPON AUTO UPDATE ================= */
 
     document.querySelectorAll('.coupon-row').forEach(row => {
 
-    const coupon = row.querySelector('.coupon');
-    const msg = row.querySelector('.coupon-message');
+        const coupon = row.querySelector('.coupon');
+        const msg = row.querySelector('.coupon-message');
 
-    const applyBtn = row.querySelector('.apply-coupon-btn');
-    const removeBtn = row.querySelector('.remove-coupon-btn');
-    const notEligibleBtn = row.querySelector('.not-eligible-btn');
+        const applyBtn = row.querySelector('.apply-coupon-btn');
+        const removeBtn = row.querySelector('.remove-coupon-btn');
+        const notEligibleBtn = row.querySelector('.not-eligible-btn');
 
-    const required = Number(coupon.dataset.required || 0);
-    const used = coupon.dataset.used === "1";
-    const code = coupon.dataset.code;
+        const required = Number(coupon.dataset.required || 0);
+        const used = coupon.dataset.used === "1";
+        const code = coupon.dataset.code;
 
-    // Reset all UI
-    applyBtn.classList.add('d-none');
-    removeBtn?.classList.add('d-none');
-    notEligibleBtn.classList.add('d-none');
+        // Reset
+        applyBtn.classList.add('d-none');
+        removeBtn?.classList.add('d-none');
+        notEligibleBtn.classList.add('d-none');
+        coupon.classList.remove('active', 'inactive');
 
-    coupon.classList.remove('active', 'inactive');
+        /* 1️⃣ ALREADY USED */
+        if (used) {
+            coupon.classList.add('inactive');
+            msg.innerHTML = `<span class="text-danger">Already used</span>`;
+            return;
+        }
 
-    /* -----------------------------
-       1️⃣ COUPON ALREADY USED
-    ----------------------------- */
-    if (used) {
+        /* 2️⃣ APPLIED */
+        if (appliedCoupon === code) {
+            coupon.classList.add('active');
+            msg.innerHTML = `<span class="text-success">Coupon applied</span>`;
+            removeBtn?.classList.remove('d-none');
+            return;
+        }
+
+        /* 3️⃣ ELIGIBLE */
+        if (cartTotal >= required) {
+            coupon.classList.add('active');
+            msg.innerHTML = `
+                <span class="text-success">
+                    You can apply this coupon
+                </span>
+            `;
+            applyBtn.classList.remove('d-none');
+            return;
+        }
+
+        /* 4️⃣ NOT ELIGIBLE */
         coupon.classList.add('inactive');
-        msg.innerHTML = `<span class="text-danger">Already used</span>`;
-        return;
-    }
-
-    /* -----------------------------
-       2️⃣ COUPON CURRENTLY APPLIED
-    ----------------------------- */
-    if (appliedCoupon === code) {
-        coupon.classList.add('active');
-
-        msg.innerHTML = `<span class="text-success">Coupon applied</span>`;
-        removeBtn?.classList.remove('d-none');
-        return;
-    }
-
-    /* -----------------------------
-       3️⃣ ELIGIBLE TO APPLY
-    ----------------------------- */
-    if (cartTotal >= required) {
-        coupon.classList.add('active');
-
         msg.innerHTML = `
-            <span class="text-success">
-                You can apply this coupon
+            <span class="text-warning">
+                Shop Above ₹${required}
             </span>
         `;
-        applyBtn.classList.remove('d-none');
-        return;
-    }
-
-    /* -----------------------------
-       4️⃣ NOT ELIGIBLE
-    ----------------------------- */
-    coupon.classList.add('inactive');
-
-    msg.innerHTML = `
-        <span class="text-warning">
-            Shop Above ₹${required}
-        </span>
-    `;
-    notEligibleBtn.classList.remove('d-none');
-});
-}
+        notEligibleBtn.classList.remove('d-none');
+    });
+};
 </script>
-
-
-
 
 <!-- Razorpay script -->
 <!-- <script src="https://checkout.razorpay.com/v1/checkout.js"></script> -->
