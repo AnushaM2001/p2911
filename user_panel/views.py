@@ -1691,7 +1691,24 @@ def calculate_cart_totals(request):
 
     gift_wrap = Decimal('150.00') if request.session.get('gift_wrap') else Decimal('0.00')
 
-    coupon_discount = Decimal(request.session.get('applied_coupon_discount', 0))
+    coupon_discount = Decimal('0.00')
+    applied_code = request.session.get("applied_coupon")
+    if applied_code:
+        try:
+            coupon = Coupon.objects.get(code=applied_code, is_active=True)
+            if products_total < coupon.required_amount:
+                request.session.pop("applied_coupon", None)
+                request.session.pop("applied_coupon_discount", None)
+            else:
+                coupon_discount = Decimal(
+                    request.session.get("applied_coupon_discount", 0)
+                )
+        except Coupon.DoesNotExist:
+            request.session.pop("applied_coupon", None)
+            request.session.pop("applied_coupon_discount", None)
+
+
+    # coupon_discount = Decimal(request.session.get('applied_coupon_discount', 0))
 
     # ✅ PREMIUM DISCOUNT (TOTAL LEVEL)
     premium_discount = Decimal('0.00')
@@ -1807,6 +1824,7 @@ def sync_redis_cart(request):
                 "platform_fee": float(totals["platform_fee"]),
                 "gift_wrap": float(totals["gift_wrap"]),
                 "premium_discount": float(totals["premium_discount"]),
+                "discount": float(totals["coupon_discount"]),
                 "total": float(totals["final_total"]),
             },
 
