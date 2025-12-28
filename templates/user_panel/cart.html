@@ -547,58 +547,65 @@ html, body {
     
           <!-- Coupon 1 -->
           {% for coupon in all_coupons %}
-          <div class="d-flex justify-content-between mb-2">
-              <div class="coupon
-                  {% if coupon in eligible_coupons and coupon.id not in used_coupons %}
-                      active
-                  {% else %}
-                      inactive
-                  {% endif %}
-              ">
-                  <span class="fw-bold">{{ coupon.code }}</span>
-                  
-                  {% if coupon.id in used_coupons %}
-                      <span class="text-danger">Already used ₹{{ coupon.discount }}</span>
-                  {% elif coupon not in eligible_coupons %}
-                      <span class="text-warning">Shop Above ₹{{ coupon.required_amount }} 
-                          <b style="color: green;">Save ₹{{ coupon.discount }}</b>
-                      </span>
-                  {% else %}
-                      <span class="text-success">You save ₹{{ coupon.discount }}</span>
-                  {% endif %}
-              </div>
-          
-             <div class="text-end">
-    {% if coupon.code == request.session.applied_coupon %}
-        <div class="d-flex gap-2">
+<div class="d-flex justify-content-between align-items-center mb-2 coupon-row">
+
+    <!-- LEFT : Coupon Info -->
+    <div class="coupon inactive"
+         data-code="{{ coupon.code }}"
+         data-required="{{ coupon.required_amount }}"
+         data-used="{% if coupon.id in used_coupons %}1{% else %}0{% endif %}">
+
+        <span class="fw-bold">{{ coupon.code }}</span>
+
+        <div class="coupon-message mt-1">
+            {% if coupon.id in used_coupons %}
+                <span class="text-danger">
+                    Already used ₹{{ coupon.discount }}
+                </span>
+
+            {% elif coupon not in eligible_coupons %}
+                <span class="text-warning">
+                    Shop Above ₹{{ coupon.required_amount }}
+                    <b class="text-success">Save ₹{{ coupon.discount }}</b>
+                </span>
+
+            {% else %}
+                <span class="text-success">
+                    You save ₹{{ coupon.discount }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- RIGHT : Buttons -->
+    <div class="text-end">
+
+        <!-- Applied -->
+        <div class="applied-group d-none">
             <button class="btn btn-success btn-sm" disabled>
                 Applied
             </button>
-
-            <button
-              class="btn btn-danger btn-sm remove-coupon-btn">
-              Remove
+            <button class="btn btn-danger btn-sm remove-coupon-btn">
+                Remove
             </button>
         </div>
 
-    {% elif coupon in eligible_coupons and coupon.id not in used_coupons %}
-        <button
-          class="btn btn-outline-primary btn-sm apply-coupon-btn"
-          data-code="{{ coupon.code }}">
-          Apply Coupon
+        <!-- Apply -->
+        <button class="btn btn-outline-primary btn-sm apply-coupon-btn d-none"
+                data-code="{{ coupon.code }}">
+            Apply Coupon
         </button>
 
-    {% else %}
-        <button class="btn btn-outline-secondary btn-sm" disabled>
+        <!-- Not Eligible -->
+        <button class="btn btn-outline-secondary btn-sm not-eligible-btn" disabled>
             Not Eligible
         </button>
-    {% endif %}
-</div>
+    </div>
 
-          </div>
-          <hr>
-          {% endfor %}
-          
+</div>
+<hr>
+{% endfor %}
+
     
           <!-- Coupon 2 -->
           
@@ -786,7 +793,8 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 window.updateOrderSummary = function (prices, meta = {}) {
 
-    const set = (key, val, negative=false) => {
+    /* ---------------- PRICE UPDATE ---------------- */
+    const set = (key, val, negative = false) => {
         const el = document.querySelector(`[data-price="${key}"]`);
         if (!el) return;
 
@@ -794,7 +802,6 @@ window.updateOrderSummary = function (prices, meta = {}) {
         el.textContent = (negative ? '-₹' : '₹') + num.toFixed(2);
     };
 
-    // ---- SET VALUES ----
     set('subtotal', prices.subtotal);
     set('delivery', prices.delivery);
     set('platform_fee', prices.platform_fee);
@@ -803,17 +810,26 @@ window.updateOrderSummary = function (prices, meta = {}) {
     set('premium_discount', prices.premium_discount, true);
     set('total', prices.total || prices.final_total);
 
-    // ---- COUPON ROW VISIBILITY ----
-    const couponRow = document.getElementById('coupon-discount-row');
-    const couponAmount = Number(prices.discount || 0);
+    /* ---------------- DISCOUNT ROW ---------------- */
 
-    couponRow.style.display = couponAmount > 0 ? 'flex' : 'none';
+const couponRow = document.getElementById('coupon-discount-row');
+const couponAmount = Number(prices.discount || 0);
 
-    // -------- PREMIUM / WELCOME ROW --------
-    const premiumRow = document.getElementById('premium-discount-row');
-    const premiumLabel = document.getElementById('premium-label');
-    const premiumAmount = Number(prices.premium_discount || 0);
+if (couponRow) {
+    if (couponAmount > 0) {
+        couponRow.style.display = 'flex';
+    } else {
+        couponRow.style.display = 'none';
+    }
+}
 
+/* ---------------- PREMIUM / WELCOME ROW ---------------- */
+
+const premiumRow = document.getElementById('premium-discount-row');
+const premiumLabel = document.getElementById('premium-label');
+const premiumAmount = Number(prices.premium_discount || 0);
+
+if (premiumRow) {
     if (premiumAmount > 0) {
         premiumRow.style.display = 'flex';
         premiumLabel.textContent =
@@ -821,8 +837,76 @@ window.updateOrderSummary = function (prices, meta = {}) {
     } else {
         premiumRow.style.display = 'none';
     }
-};
+}
 
+
+
+    /* ================= COUPON AUTO UPDATE ================= */
+
+    const cartTotal = Number(prices.total || prices.final_total || 0);
+    const appliedCoupon = meta.applied_coupon || null;
+
+    document.querySelectorAll('.coupon-row').forEach(row => {
+
+        const coupon = row.querySelector('.coupon');
+        const msg = row.querySelector('.coupon-message');
+
+        const applyBtn = row.querySelector('.apply-coupon-btn');
+        const appliedGroup = row.querySelector('.applied-group');
+        const notEligibleBtn = row.querySelector('.not-eligible-btn');
+
+        const required = Number(coupon.dataset.required || 0);
+        const used = coupon.dataset.used === "1";
+        const code = coupon.dataset.code;
+
+        // Reset
+        applyBtn.classList.add('d-none');
+        appliedGroup.classList.add('d-none');
+        notEligibleBtn.classList.add('d-none');
+
+        // Already used
+        if (used) {
+            coupon.classList.add('inactive');
+            coupon.classList.remove('active');
+            msg.innerHTML = `<span class="text-danger">Already used</span>`;
+            notEligibleBtn.classList.remove('d-none');
+            return;
+        }
+
+        // Applied
+        if (appliedCoupon === code) {
+            coupon.classList.add('active');
+            coupon.classList.remove('inactive');
+
+            msg.innerHTML = `<span class="text-success">Coupon applied</span>`;
+            appliedGroup.classList.remove('d-none');
+            return;
+        }
+
+        // Eligible
+        if (cartTotal >= required) {
+            coupon.classList.add('active');
+            coupon.classList.remove('inactive');
+
+            msg.innerHTML = `<span class="text-success">
+                You can apply this coupon
+            </span>`;
+            applyBtn.classList.remove('d-none');
+        }
+        // Not eligible
+        else {
+            coupon.classList.add('inactive');
+            coupon.classList.remove('active');
+
+            msg.innerHTML = `
+                <span class="text-warning">
+                    Shop Above ₹${required}
+                </span>
+            `;
+            notEligibleBtn.classList.remove('d-none');
+        }
+    });
+};
 </script>
 
 
@@ -1062,7 +1146,6 @@ document.addEventListener("click", function (e) {
                 premium_discount: data.totals.premium_discount,
                 total: data.totals.final_total
             });
-             markCouponApplied(e.target.dataset.code, data.totals.coupon_discount);
            
 
         } else {
@@ -1096,64 +1179,11 @@ document.addEventListener("click", function (e) {
                 premium_discount: data.totals.premium_discount,
                 total: data.totals.final_total
             });
-            resetCouponUI();
 
         };
     });
   };
 })
-
-function markCouponApplied(code, discountAmount) {
-
-    document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
-        const btnCode = btn.dataset.code;
-
-        if (btnCode === code) {
-            btn.textContent = 'Remove';
-            btn.classList.remove('btn-outline-primary');
-            btn.classList.add('btn-danger', 'remove-coupon-btn');
-            btn.classList.remove('apply-coupon-btn');
-            btn.dataset.applied = 'true';
-        } else {
-            btn.disabled = true;
-        }
-    });
-
-    // ✅ Success message
-    const msg = document.getElementById('coupon-success-msg');
-    if (msg) {
-        msg.innerHTML = `🎉 You saved <strong>₹${discountAmount}</strong> with this coupon!`;
-        msg.style.display = 'block';
-    }
-
-    const row = document.getElementById('coupon-discount-row');
-    if (row) row.style.display = 'flex';
-}
-function resetCouponUI() {
-    document.querySelectorAll('button[data-applied="true"]').forEach(btn => {
-        btn.textContent = 'Apply Coupon';
-        btn.classList.remove('btn-danger', 'remove-coupon-btn');
-        btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
-        btn.disabled = false;
-        btn.removeAttribute('data-applied');
-    });
-
-    document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
-        btn.disabled = false;
-    });
-
-    // Hide discount row
-    const row = document.getElementById('coupon-discount-row');
-    if (row) row.style.display = 'none';
-
-    // Hide success message
-    const msg = document.getElementById('coupon-success-msg');
-    if (msg) {
-        msg.style.display = 'none';
-        msg.innerHTML = '';
-    }
-}
-
 
 
 </script>

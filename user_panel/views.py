@@ -1577,90 +1577,57 @@ def add_to_cart(request, product_id):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-    
-from decimal import Decimal
-from django.db.models import Sum
+
+import traceback
 
 @require_POST
 def update_cart_item(request, item_id):
     try:
-        print(f"\n=== Starting update for item {item_id} ===")
-        print(f"User: {request.user}")
-        print(f"Action: {request.POST.get('action')}")
+        # 1️⃣ Fetch cart item
+        cart_item = get_object_or_404(
+            Cart, id=item_id, user=request.user
+        )
 
-        # Get cart item
-        cart_item = get_object_or_404(Cart, id=item_id, user=request.user)
-        print(f"Current quantity: {cart_item.quantity}")
-
-        # Update quantity
-        action = request.POST.get('action')
-        if action == 'increase':
+        # 2️⃣ Update quantity
+        action = request.POST.get("action")
+        if action == "increase":
             cart_item.quantity += 1
-        elif action == 'decrease' and cart_item.quantity > 1:
+        elif action == "decrease" and cart_item.quantity > 1:
             cart_item.quantity -= 1
-        else:
-            print(f"Invalid action or quantity: {action}, {cart_item.quantity}")
 
         cart_item.save()
-        print(f"New quantity: {cart_item.quantity}")
 
-        # Fetch all cart items
-        cart_items = Cart.objects.filter(user=request.user).select_related('product')
-        print(f"Total cart items: {cart_items.count()}")
+        # 3️⃣ Recalculate EVERYTHING using single source of truth
+        totals = calculate_cart_totals(request)
 
-        # Calculate base prices using Decimal for precision
-        subtotal = sum(Decimal(item.price) * item.quantity for item in cart_items)
-        delivery = sum(Decimal(item.product.delivery_charges or 0) for item in cart_items)
-        platform_fee = sum(Decimal(item.product.platform_fee or 0) for item in cart_items)
+        # 4️⃣ Total items count
+        total_items = Cart.objects.filter(
+            user=request.user
+        ).aggregate(total=Sum("quantity"))["total"] or 0
 
-        total_items = cart_items.aggregate(Sum('quantity'))['quantity__sum'] or 0
-        print(f"Subtotal: {subtotal}")
-        print(f"Delivery: {delivery}")
-        print(f"Platform fee: {platform_fee}")
+        # 5️⃣ Return clean response (frontend will sync cart)
+        return JsonResponse({
+            "status": "success",
+            "new_quantity": cart_item.quantity,
+            "cart_count": total_items,
 
-        # Get discounts and extras
-        coupon_discount = Decimal(request.session.get('coupon_discount', 0))
-        gift_wrap = request.session.get('gift_wrap', False)
-        gift_wrap_cost = Decimal(150) if gift_wrap else Decimal(0)
-
-        # Calculate total price
-        total_price = subtotal + delivery + platform_fee - coupon_discount + gift_wrap_cost
-        print(f"Coupon discount: {coupon_discount}")
-        print(f"Gift wrap cost: {gift_wrap_cost}")
-        print(f"Final total price: {total_price}")
-
-        # Prepare response
-        response_data = {
-            'status': 'success',
-            'new_quantity': cart_item.quantity,
-            'cart_count': total_items,
-            'item_count': total_items,
-            'prices': {
-                'subtotal': float(subtotal),
-                'delivery': float(delivery),
-                'platform_fee': float(platform_fee),
-                'discount': float(coupon_discount),
-                'gift_wrap': float(gift_wrap_cost),
-                'total_price': float(total_price)
+            # 🔥 Use server-calculated prices ONLY
+            "prices": {
+                "subtotal": float(totals["products_total"]),
+                "delivery": float(totals["delivery"]),
+                "platform_fee": float(totals["platform_fee"]),
+                "gift_wrap": float(totals["gift_wrap"]),
+                "premium_discount": float(totals["premium_discount"]),
+                "total_price": float(totals["final_total"]),
             }
-        }
-
-        print("=== Response Data ===")
-        print(response_data)
-
-        return JsonResponse(response_data)
+        })
 
     except Exception as e:
-        print(f"\n!!! ERROR in update_cart_item !!!")
-        print(f"Error type: {type(e)}")
-        print(f"Error message: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
-
         return JsonResponse({
-            'status': 'error',
-            'message': str(e)
+            "status": "error",
+            "message": str(e),
+            "trace": traceback.format_exc()
         }, status=400)
-
 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
@@ -1682,6 +1649,8 @@ def calculate_cart_totals(request):
     )
 
     products_total = Decimal('0.00')
+    festival_pct = request.session.get("premium_offer_percentage", 0)
+    festival_active = bool(festival_pct)
 
     for item in cart_items:
         price = Decimal('0.00')
@@ -1751,43 +1720,90 @@ def calculate_cart_totals(request):
         "premium_discount": premium_discount,
         "final_total": final_total,
         "cart_count": total_items,
+        "festival": {
+        "active": festival_active,
+        "percentage": festival_pct,
+        "label": "Festival Offer"
+    }
     }
 
-@login_required
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+
+@login_required(login_url='email_login')
 def sync_redis_cart(request):
     if request.method != "POST":
         return JsonResponse({"status": "error"}, status=405)
 
     try:
+        # 1️⃣ Calculate totals (already includes festival logic)
         totals = calculate_cart_totals(request)
 
-        cart_items = Cart.objects.filter(user=request.user).values("id", "quantity")
+        # 2️⃣ Fetch cart items
+        cart_items = Cart.objects.filter(
+            user=request.user
+        ).select_related("product", "product_variant", "gift_set")
 
-        quantities = {
-            str(item["id"]): item["quantity"]
-            for item in cart_items
-        }
+        # 3️⃣ Festival info
+        festival_pct = request.session.get("premium_offer_percentage", 0)
+        festival_active = bool(festival_pct)
 
+        # 4️⃣ Build item list for UI (LEFT SIDE)
+        items = []
+        quantities = {}
+
+        for item in cart_items:
+            # original price (before festival)
+            original_price = (
+                item.product_variant.price if item.product_variant
+                else item.gift_set.price if item.gift_set
+                else item.product.price
+            )
+
+            # final price (after festival, already saved in DB)
+            final_price = item.price
+
+            items.append({
+                "id": item.id,
+                "name": item.product.name,
+                "quantity": item.quantity,
+
+                "original_price": float(original_price),
+                "final_price": float(final_price),
+
+                "festival_active": festival_active,
+                "festival_percentage": festival_pct,
+
+                "image": item.product.image1.url if item.product.image1 else ""
+            })
+
+            quantities[str(item.id)] = item.quantity
+
+        # 5️⃣ Final response
         return JsonResponse({
             "status": "success",
+
+            "cart_items": items,   # ✅ LEFT SIDE DATA
+
             "order_summary": {
                 "subtotal": float(totals["products_total"]),
                 "delivery": float(totals["delivery"]),
                 "platform_fee": float(totals["platform_fee"]),
                 "gift_wrap": float(totals["gift_wrap"]),
-                "discount": float(totals["coupon_discount"]),
                 "premium_discount": float(totals["premium_discount"]),
                 "total": float(totals["final_total"]),
             },
+
             "cart_count": totals["cart_count"],
-            "quantities": quantities   # ✅ IMPORTANT
+            "quantities": quantities   # ✅ qty sync
         })
 
     except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
+        }, status=400)
 
-
-# @login_required
 # def sync_redis_cart(request):
 #     if request.method != "POST":
 #         return JsonResponse({"status": "error", "message": "POST only allowed"}, status=405)
