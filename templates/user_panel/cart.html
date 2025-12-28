@@ -757,10 +757,10 @@ document.addEventListener('DOMContentLoaded', function () {
     .then(data => {
         if (data.status === 'success') {
 
-            // ✅ Update right-side totals
+            // Totals
             updateOrderSummary(data.order_summary);
 
-            // ✅ Update quantities
+            // Quantities
             if (data.quantities) {
                 Object.entries(data.quantities).forEach(([itemId, qty]) => {
                     const el = document.querySelector(
@@ -770,19 +770,51 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
 
-            // ✅ Update cart count
+            // Cart count
             document.querySelectorAll('.cart-count').forEach(el => {
                 el.textContent = data.cart_count;
             });
+
+            // 🔥 AUTO ENABLE COUPONS
+            updateCouponEligibilityUI(data.eligible_coupons);
         }
     });
 }
+
 
     // ---------- DISPLAY ONLY ----------
   
 
 });
 </script>
+
+<script>
+  function updateCouponEligibilityUI(eligibleCoupons) {
+
+    document.querySelectorAll('[data-code]').forEach(btn => {
+        const code = btn.dataset.code;
+        if (!code) return;
+
+        // Skip applied coupon
+        if (btn.dataset.applied === "true") return;
+
+        if (eligibleCoupons.includes(code)) {
+            // ✅ Eligible
+            btn.textContent = 'Apply Coupon';
+            btn.disabled = false;
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
+        } else {
+            // ❌ Not eligible
+            btn.textContent = 'Not Eligible';
+            btn.disabled = true;
+            btn.classList.remove('btn-outline-primary', 'apply-coupon-btn');
+            btn.classList.add('btn-outline-secondary');
+        }
+    });
+}
+
+  </script>
 <script>
 window.updateOrderSummary = function (prices, meta = {}) {
 
