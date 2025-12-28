@@ -1485,7 +1485,7 @@ function updateQty(id, action) {
     .then(data => {
         if (data.status === "success") {
             if (qtySpan) qtySpan.textContent = data.new_quantity;
-            recalcCartSummaryFromDOM();
+            refreshOrderSummary();
             flashRow(id);
         }
     })
@@ -1518,7 +1518,7 @@ function removeItem(id) {
       }
 
       setTimeout(() => {
-        recalcCartSummaryFromDOM();
+refreshOrderSummary();
       }, 270);
     }
   })
@@ -1726,7 +1726,8 @@ function updateCartSidebar(items, summary) {
 
                    <p class="price-row">
   <span class="final-price">
-    ₹${Number(item.final_price).toFixed(2)}
+    ₹${Number(item.final_price || 0).toFixed(2)}
+
   </span>
 
   <span class="original-price ${item.festival_active ? '' : 'd-none'}">
@@ -1759,7 +1760,7 @@ function updateCartSidebar(items, summary) {
     document.getElementById("orderTotal").textContent =
         `₹${Number(summary.subtotal) + deliveryCharge + Number(summary.platform_fee)}`;
 
-    recalcCartSummaryFromDOM();
+
 }
 
 
@@ -2631,7 +2632,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </div>
 
+<!-- side cart bar js -->
+ <script>
+    function refreshOrderSummary() {
+    fetch('/sync-redis-cart/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
 
+            // 🔥 Use backend prices ONLY
+            updateCartSidebar(data.cart_items, data.order_summary);
+
+            // 🔥 Update coupon UI if present
+            if (typeof updateCouponEligibilityUI === "function") {
+                updateCouponEligibilityUI(data.eligible_coupons || []);
+            }
+        }
+    })
+    .catch(err => console.error("refreshOrderSummary error:", err));
+}
+
+ </script>
 <style>
   .modal-backdrop.show {
   background-color: rgba(0, 0, 0, 0.3) !important;

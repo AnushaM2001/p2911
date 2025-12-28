@@ -572,7 +572,7 @@ html, body {
  
                           
                   {% else %}
-                      <span class="text-success">Shop above ₹{{ coupon.required_amount }}<span style="color: green;">Save ₹{{ coupon.discount }}</span>
+                      <span class="text-danger">Shop above ₹{{ coupon.required_amount }}<span style="color: green; font-weight: bold;">Save ₹{{ coupon.discount }}</span>
                       </span>
                   {% endif %}
               </div>
@@ -823,9 +823,8 @@ function updateCouponEligibilityUI(eligibleCoupons) {
         } else {
             // ❌ Not eligible → SHOW MESSAGE
             btn.innerHTML = `
-                Shop above ₹${required}
-                <br>
-                <small class="text-success">You save ₹${discount}</small>
+                
+                <p class="text-success">Apply coupon</p>
             `;
             btn.disabled = true;
             btn.classList.remove('btn-outline-primary', 'apply-coupon-btn');
