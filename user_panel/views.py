@@ -1449,134 +1449,195 @@ def product_detail(request, product_id):
     })
 
 
+# @login_required(login_url='email_login')
+# def add_to_cart(request, product_id):
+#     product = get_object_or_404(Product, id=product_id)
+
+#     try:
+#         quantity = int(request.POST.get('quantity', 1))
+#         action = request.POST.get('action')
+#         variant_id = request.POST.get('variant_id')
+#         gift_set_id = request.POST.get('gift_set_id')
+#         selected_price = request.POST.get('selected_price')
+#         selected_flavours = request.POST.get('selected-flavours', '')
+
+#         if quantity < 1:
+#             raise ValueError("Quantity must be at least 1")
+#         if not variant_id and not gift_set_id:
+#             raise ValueError("Please select a product variant or gift set")
+
+#         cart_key = f"cart:{request.user.id}"
+
+#         if gift_set_id:
+#             item_key = f"giftset:{gift_set_id}"
+#             gift_set = get_object_or_404(GiftSet, id=gift_set_id)
+#             price = float(selected_price) if selected_price else float(gift_set.price)
+#         elif variant_id:
+#             item_key = f"variant:{variant_id}"
+#             variant = get_object_or_404(ProductVariant, id=variant_id)
+#             price = float(variant.price)
+#         else:
+#             item_key = f"product:{product_id}"
+#             price = float(product.price)
+
+#         cart_filter = {
+#             'user': request.user,
+#             'product': product,
+#             'product_variant_id': variant_id if variant_id else None,
+#             'gift_set_id': gift_set_id if gift_set_id else None
+#         }
+
+#         if selected_flavours:
+#             cart_filter['selected_flavours'] = selected_flavours
+
+#         cart_item = Cart.objects.filter(**cart_filter).first()
+
+#         if cart_item:
+#             cart_item.quantity += quantity
+#             cart_item.price = price
+#             if selected_flavours:
+#                 cart_item.selected_flavours = selected_flavours
+#             cart_item.save()
+#         else:
+#             cart_item = Cart.objects.create(
+#                 user=request.user,
+#                 product=product,
+#                 product_variant_id=variant_id if variant_id else None,
+#                 gift_set_id=gift_set_id if gift_set_id else None,
+#                 quantity=quantity,
+#                 price=price,
+#                 selected_flavours=selected_flavours or ''
+#             )
+
+#         current_item = r.hget(cart_key, item_key)
+#         current_quantity = json.loads(current_item)['quantity'] if current_item else 0
+#         new_quantity = current_quantity + quantity
+
+#         item_data = {
+#             'product_id': product_id,
+#             'variant_id': variant_id,
+#             'gift_set_id': gift_set_id,
+#             'quantity': new_quantity,
+#             'price': price,
+#             'selected_flavours': selected_flavours or '',
+#             'updated_at': time.time()
+#         }
+
+#         r.hset(cart_key, item_key, json.dumps(item_data))
+#         r.publish(
+#             f"cart_updates:{request.user.id}",
+#             json.dumps({
+#                 'action': 'update',
+#                 'item_key': item_key,
+#                 'quantity': new_quantity,
+#                 'cart_count': r.hlen(cart_key)
+#             })
+#         )
+
+#         # 🟩 NEW — Build complete sidebar data
+#         cart_items_db = Cart.objects.filter(user=request.user)
+
+#         cart_items_list = []
+#         subtotal = 0
+
+#         for item in cart_items_db:
+#             item_total = item.price * item.quantity
+#             subtotal += item_total
+
+#             cart_items_list.append({
+#                 "id": item.id,
+#                 "name": item.product.name,
+#                 "price": float(item.price),
+#                 "quantity": item.quantity,
+#                 "image": item.product.image1.url if item.product.image1 else "",
+#                 "offer": f"{item.product.offer.percentage}% Off" if hasattr(item.product, "offer") else ""
+#             })
+
+#         delivery_charge = item.product.delivery_charges if subtotal > 0 else 0
+#         platform_fee = item.product.platform_fee if subtotal > 0 else 0
+#         total = subtotal + delivery_charge + platform_fee
+
+#         # 🟩 NEW — Return full JSON needed for sidebar
+#         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+#             return JsonResponse({
+#                 'status': 'success',
+#                 'message': 'Item added to cart successfully!',
+#                 'cart_count': r.hlen(cart_key),
+
+#                 'cart_items': cart_items_list,
+#                 'order_summary': {
+#                     "subtotal": subtotal,
+#                     "delivery": delivery_charge,
+#                     "platform_fee": platform_fee,
+#                     "total": total
+#                 }
+#             })
+
+#         return redirect('view_cart')
+
+#     except Exception as e:
+#         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+from decimal import Decimal
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+
 @login_required(login_url='email_login')
+@require_POST
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
 
     try:
-        quantity = int(request.POST.get('quantity', 1))
-        action = request.POST.get('action')
-        variant_id = request.POST.get('variant_id')
-        gift_set_id = request.POST.get('gift_set_id')
-        selected_price = request.POST.get('selected_price')
-        selected_flavours = request.POST.get('selected-flavours', '')
+        quantity = int(request.POST.get("quantity", 1))
+        variant_id = request.POST.get("variant_id")
+        gift_set_id = request.POST.get("gift_set_id")
+        selected_price = request.POST.get("selected_price")
+        selected_flavours = request.POST.get("selected_flavours", "")
 
         if quantity < 1:
             raise ValueError("Quantity must be at least 1")
+
         if not variant_id and not gift_set_id:
-            raise ValueError("Please select a product variant or gift set")
+            raise ValueError("Please select a variant or gift set")
 
-        cart_key = f"cart:{request.user.id}"
-
-        if gift_set_id:
-            item_key = f"giftset:{gift_set_id}"
-            gift_set = get_object_or_404(GiftSet, id=gift_set_id)
-            price = float(selected_price) if selected_price else float(gift_set.price)
-        elif variant_id:
-            item_key = f"variant:{variant_id}"
-            variant = get_object_or_404(ProductVariant, id=variant_id)
-            price = float(variant.price)
-        else:
-            item_key = f"product:{product_id}"
-            price = float(product.price)
+        # 🔥 USE SELECTED PRICE (offer price)
+        price = Decimal(selected_price)
 
         cart_filter = {
-            'user': request.user,
-            'product': product,
-            'product_variant_id': variant_id if variant_id else None,
-            'gift_set_id': gift_set_id if gift_set_id else None
+            "user": request.user,
+            "product": product,
+            "product_variant_id": variant_id or None,
+            "gift_set_id": gift_set_id or None,
+            "selected_flavours": selected_flavours or ""
         }
-
-        if selected_flavours:
-            cart_filter['selected_flavours'] = selected_flavours
 
         cart_item = Cart.objects.filter(**cart_filter).first()
 
         if cart_item:
             cart_item.quantity += quantity
-            cart_item.price = price
-            if selected_flavours:
-                cart_item.selected_flavours = selected_flavours
+            cart_item.price = price   # 🔥 DO NOT reset to base price
             cart_item.save()
         else:
-            cart_item = Cart.objects.create(
+            Cart.objects.create(
                 user=request.user,
                 product=product,
-                product_variant_id=variant_id if variant_id else None,
-                gift_set_id=gift_set_id if gift_set_id else None,
+                product_variant_id=variant_id or None,
+                gift_set_id=gift_set_id or None,
                 quantity=quantity,
                 price=price,
-                selected_flavours=selected_flavours or ''
+                selected_flavours=selected_flavours or ""
             )
 
-        current_item = r.hget(cart_key, item_key)
-        current_quantity = json.loads(current_item)['quantity'] if current_item else 0
-        new_quantity = current_quantity + quantity
-
-        item_data = {
-            'product_id': product_id,
-            'variant_id': variant_id,
-            'gift_set_id': gift_set_id,
-            'quantity': new_quantity,
-            'price': price,
-            'selected_flavours': selected_flavours or '',
-            'updated_at': time.time()
-        }
-
-        r.hset(cart_key, item_key, json.dumps(item_data))
-        r.publish(
-            f"cart_updates:{request.user.id}",
-            json.dumps({
-                'action': 'update',
-                'item_key': item_key,
-                'quantity': new_quantity,
-                'cart_count': r.hlen(cart_key)
-            })
-        )
-
-        # 🟩 NEW — Build complete sidebar data
-        cart_items_db = Cart.objects.filter(user=request.user)
-
-        cart_items_list = []
-        subtotal = 0
-
-        for item in cart_items_db:
-            item_total = item.price * item.quantity
-            subtotal += item_total
-
-            cart_items_list.append({
-                "id": item.id,
-                "name": item.product.name,
-                "price": float(item.price),
-                "quantity": item.quantity,
-                "image": item.product.image1.url if item.product.image1 else "",
-                "offer": f"{item.product.offer.percentage}% Off" if hasattr(item.product, "offer") else ""
-            })
-
-        delivery_charge = item.product.delivery_charges if subtotal > 0 else 0
-        platform_fee = item.product.platform_fee if subtotal > 0 else 0
-        total = subtotal + delivery_charge + platform_fee
-
-        # 🟩 NEW — Return full JSON needed for sidebar
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Item added to cart successfully!',
-                'cart_count': r.hlen(cart_key),
-
-                'cart_items': cart_items_list,
-                'order_summary': {
-                    "subtotal": subtotal,
-                    "delivery": delivery_charge,
-                    "platform_fee": platform_fee,
-                    "total": total
-                }
-            })
-
-        return redirect('view_cart')
+        # ✅ DO NOT BUILD CART HERE
+        # ✅ ALWAYS RETURN SYNC RESPONSE
+        return sync_redis_cart(request)
 
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
+        }, status=400)
 
 import traceback
 
@@ -1747,6 +1808,10 @@ def calculate_cart_totals(request):
 
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from decimal import Decimal
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 
 @login_required(login_url='email_login')
 def sync_redis_cart(request):
@@ -1754,96 +1819,87 @@ def sync_redis_cart(request):
         return JsonResponse({"status": "error"}, status=405)
 
     try:
-        # 1️⃣ Calculate totals (already includes festival logic)
+        # 1️⃣ Totals
         totals = calculate_cart_totals(request)
         subtotal = totals["products_total"]
 
-        # 2️⃣ Fetch cart items
+        # 2️⃣ Time FIRST
+        now = timezone.now()
+
+        # 3️⃣ Festival offers
+        festival_offers = list(
+            PremiumFestiveOffer.objects.filter(
+                is_active=True,
+                premium_festival="Festival",
+                start_date__lte=now,
+                end_date__gte=now
+            )
+        )
+
+        # 4️⃣ Cart items
         cart_items = Cart.objects.filter(
             user=request.user
         ).select_related("product", "product_variant", "gift_set")
 
-        # 3️⃣ Festival info
-        festival_pct = request.session.get("premium_offer_percentage", 0)
-        festival_active = bool(festival_pct)
-        festival_offers = list(
-                PremiumFestiveOffer.objects.filter(
-        is_active=True,
-        premium_festival="Festival",
-        start_date__lte=now,
-        end_date__gte=now
-    )
-)
-
-        # 4️⃣ Build item list for UI (LEFT SIDE)
         items = []
         quantities = {}
 
         for item in cart_items:
-            # original price (before festival)
-            original_price = (
-                item.product_variant.price if item.product_variant
-                else item.gift_set.price if item.gift_set
-                else item.product.price
-            )
-            price = Decimal('0.00')
-            # final price (after festival, already saved in DB)
+
+            # ---------- ORIGINAL PRICE ----------
             if item.gift_set:
-                base_price = Decimal(item.gift_set.price)
+                original_price = Decimal(item.gift_set.price)
                 valid = [o for o in festival_offers if o.apply_offer(item.gift_set)]
-                if valid:
-                    best = max(valid, key=lambda o: o.percentage)
-                    price = base_price - (base_price * best.percentage / Decimal('100'))
-                else:
-                    price = base_price
+
             elif item.product_variant:
-                base_price = Decimal(item.product_variant.price)
+                original_price = Decimal(item.product_variant.price)
                 valid = [o for o in festival_offers if o.apply_offer(item.product_variant)]
-                if valid:
-                    best = max(valid, key=lambda o: o.percentage)
-                    price = base_price - (base_price * best.percentage / Decimal('100'))
-                else:
-                    price = base_price
+
             else:
-                price = Decimal(item.product.price)
-            final_price = price
+                original_price = Decimal(item.product.price)
+                valid = []
+
+            # ---------- FINAL PRICE ----------
+            if valid:
+                best = max(valid, key=lambda o: o.percentage)
+                final_price = original_price - (
+                    original_price * best.percentage / Decimal("100")
+                )
+                festival_active = True
+                festival_percentage = best.percentage
+            else:
+                final_price = original_price
+                festival_active = False
+                festival_percentage = 0
 
             items.append({
                 "id": item.id,
                 "name": item.product.name,
                 "quantity": item.quantity,
-
                 "original_price": float(original_price),
                 "final_price": float(final_price),
-
                 "festival_active": festival_active,
-                "festival_percentage": festival_pct,
-
+                "festival_percentage": festival_percentage,
                 "image": item.product.image1.url if item.product.image1 else ""
             })
 
             quantities[str(item.id)] = item.quantity
-        now = timezone.now()
 
+        # 5️⃣ Coupon eligibility
         eligible_coupons = Coupon.objects.filter(
             is_active=True,
-            required_amount__lte=subtotal,
-            
+            required_amount__lte=subtotal
         )
 
-        # Optional: exclude already-used coupons
         if hasattr(request.user, "used_coupons"):
             eligible_coupons = eligible_coupons.exclude(
                 id__in=request.user.used_coupons.values_list("coupon_id", flat=True)
             )
 
-
-        # 5️⃣ Final response
+        # 6️⃣ Response
         return JsonResponse({
             "status": "success",
-
-            "cart_items": items,   # ✅ LEFT SIDE DATA
-
+            "cart_items": items,
             "order_summary": {
                 "subtotal": float(totals["products_total"]),
                 "delivery": float(totals["delivery"]),
@@ -1853,9 +1909,8 @@ def sync_redis_cart(request):
                 "discount": float(totals["coupon_discount"]),
                 "total": float(totals["final_total"]),
             },
-
             "cart_count": totals["cart_count"],
-            "quantities": quantities,  # ✅ qty sync
+            "quantities": quantities,
             "applied_coupon": request.session.get("applied_coupon"),
             "eligible_coupons": list(
                 eligible_coupons.values_list("code", flat=True)
@@ -1867,6 +1922,127 @@ def sync_redis_cart(request):
             "status": "error",
             "message": str(e)
         }, status=400)
+
+
+# @login_required(login_url='email_login')
+# def sync_redis_cart(request):
+#     if request.method != "POST":
+#         return JsonResponse({"status": "error"}, status=405)
+
+#     try:
+#         # 1️⃣ Calculate totals (already includes festival logic)
+#         totals = calculate_cart_totals(request)
+#         subtotal = totals["products_total"]
+
+#         # 2️⃣ Fetch cart items
+#         cart_items = Cart.objects.filter(
+#             user=request.user
+#         ).select_related("product", "product_variant", "gift_set")
+
+#         # 3️⃣ Festival info
+#         festival_pct = request.session.get("premium_offer_percentage", 0)
+#         festival_active = bool(festival_pct)
+#         festival_offers = list(
+#                 PremiumFestiveOffer.objects.filter(
+#         is_active=True,
+#         premium_festival="Festival",
+#         start_date__lte=now,
+#         end_date__gte=now
+#     )
+# )
+
+#         # 4️⃣ Build item list for UI (LEFT SIDE)
+#         items = []
+#         quantities = {}
+
+#         for item in cart_items:
+#             # original price (before festival)
+#             original_price = (
+#                 item.product_variant.price if item.product_variant
+#                 else item.gift_set.price if item.gift_set
+#                 else item.product.price
+#             )
+#             price = Decimal('0.00')
+#             # final price (after festival, already saved in DB)
+#             if item.gift_set:
+#                 base_price = Decimal(item.gift_set.price)
+#                 valid = [o for o in festival_offers if o.apply_offer(item.gift_set)]
+#                 if valid:
+#                     best = max(valid, key=lambda o: o.percentage)
+#                     price = base_price - (base_price * best.percentage / Decimal('100'))
+#                 else:
+#                     price = base_price
+#             elif item.product_variant:
+#                 base_price = Decimal(item.product_variant.price)
+#                 valid = [o for o in festival_offers if o.apply_offer(item.product_variant)]
+#                 if valid:
+#                     best = max(valid, key=lambda o: o.percentage)
+#                     price = base_price - (base_price * best.percentage / Decimal('100'))
+#                 else:
+#                     price = base_price
+#             else:
+#                 price = Decimal(item.product.price)
+#             final_price = price
+
+#             items.append({
+#                 "id": item.id,
+#                 "name": item.product.name,
+#                 "quantity": item.quantity,
+
+#                 "original_price": float(original_price),
+#                 "final_price": float(final_price),
+
+#                 "festival_active": festival_active,
+#                 "festival_percentage": festival_pct,
+
+#                 "image": item.product.image1.url if item.product.image1 else ""
+#             })
+
+#             quantities[str(item.id)] = item.quantity
+#         now = timezone.now()
+
+#         eligible_coupons = Coupon.objects.filter(
+#             is_active=True,
+#             required_amount__lte=subtotal,
+            
+#         )
+
+#         # Optional: exclude already-used coupons
+#         if hasattr(request.user, "used_coupons"):
+#             eligible_coupons = eligible_coupons.exclude(
+#                 id__in=request.user.used_coupons.values_list("coupon_id", flat=True)
+#             )
+
+
+#         # 5️⃣ Final response
+#         return JsonResponse({
+#             "status": "success",
+
+#             "cart_items": items,   # ✅ LEFT SIDE DATA
+
+#             "order_summary": {
+#                 "subtotal": float(totals["products_total"]),
+#                 "delivery": float(totals["delivery"]),
+#                 "platform_fee": float(totals["platform_fee"]),
+#                 "gift_wrap": float(totals["gift_wrap"]),
+#                 "premium_discount": float(totals["premium_discount"]),
+#                 "discount": float(totals["coupon_discount"]),
+#                 "total": float(totals["final_total"]),
+#             },
+
+#             "cart_count": totals["cart_count"],
+#             "quantities": quantities,  # ✅ qty sync
+#             "applied_coupon": request.session.get("applied_coupon"),
+#             "eligible_coupons": list(
+#                 eligible_coupons.values_list("code", flat=True)
+#             )
+#         })
+
+#     except Exception as e:
+#         return JsonResponse({
+#             "status": "error",
+#             "message": str(e)
+#         }, status=400)
 
 # def sync_redis_cart(request):
 #     if request.method != "POST":
