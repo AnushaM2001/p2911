@@ -1795,7 +1795,8 @@ def sync_redis_cart(request):
             },
 
             "cart_count": totals["cart_count"],
-            "quantities": quantities   # ✅ qty sync
+            "quantities": quantities,  # ✅ qty sync
+            "applied_coupon": request.session.get("applied_coupon"),
         })
 
     except Exception as e:

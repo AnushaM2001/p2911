@@ -751,43 +751,32 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ---------- BACKEND-DRIVEN SUMMARY ----------
-    function refreshOrderSummary() {
+   function refreshOrderSummary() {
     fetch('/sync-redis-cart/', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: JSON.stringify({})
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
     })
     .then(res => res.json())
     .then(data => {
         if (data.status === 'success') {
 
-            // ✅ Update right-side totals
-            updateOrderSummary(data.order_summary);
+            updateOrderSummary(
+                data.order_summary,
+                {
+                    applied_coupon: data.applied_coupon || null
+                }
+            );
 
-            // ✅ Update quantities
-            if (data.quantities) {
-                Object.entries(data.quantities).forEach(([itemId, qty]) => {
-                    const el = document.querySelector(
-                        `.cart-item[data-item-id="${itemId}"] .quantity-display`
-                    );
-                    if (el) el.textContent = qty;
-                });
-            }
-
-            // ✅ Update cart count
+            // Update cart count
             document.querySelectorAll('.cart-count').forEach(el => {
                 el.textContent = data.cart_count;
             });
         }
     });
 }
-
-    // ---------- DISPLAY ONLY ----------
-  
-
 });
 </script>
 <script>
@@ -812,101 +801,94 @@ window.updateOrderSummary = function (prices, meta = {}) {
 
     /* ---------------- DISCOUNT ROW ---------------- */
 
+/* ---------------- COUPON ROW ---------------- */
 const couponRow = document.getElementById('coupon-discount-row');
 const couponAmount = Number(prices.discount || 0);
 
 if (couponRow) {
-    if (couponAmount > 0) {
-        couponRow.style.display = 'flex';
-    } else {
-        couponRow.style.display = 'none';
-    }
+    couponRow.style.display = couponAmount > 0 ? 'flex' : 'none';
 }
 
-/* ---------------- PREMIUM / WELCOME ROW ---------------- */
-
+/* ---------------- PREMIUM ROW ---------------- */
 const premiumRow = document.getElementById('premium-discount-row');
-const premiumLabel = document.getElementById('premium-label');
 const premiumAmount = Number(prices.premium_discount || 0);
 
 if (premiumRow) {
-    if (premiumAmount > 0) {
-        premiumRow.style.display = 'flex';
-        premiumLabel.textContent =
-            meta.welcome ? 'Welcome Discount' : 'Premium Discount';
-    } else {
-        premiumRow.style.display = 'none';
-    }
+    premiumRow.style.display = premiumAmount > 0 ? 'flex' : 'none';
 }
 
 
 
     /* ================= COUPON AUTO UPDATE ================= */
 
-    const cartTotal = Number(prices.total || prices.final_total || 0);
-    const appliedCoupon = meta.applied_coupon || null;
-
     document.querySelectorAll('.coupon-row').forEach(row => {
 
-        const coupon = row.querySelector('.coupon');
-        const msg = row.querySelector('.coupon-message');
+    const coupon = row.querySelector('.coupon');
+    const msg = row.querySelector('.coupon-message');
 
-        const applyBtn = row.querySelector('.apply-coupon-btn');
-        const appliedGroup = row.querySelector('.applied-group');
-        const notEligibleBtn = row.querySelector('.not-eligible-btn');
+    const applyBtn = row.querySelector('.apply-coupon-btn');
+    const removeBtn = row.querySelector('.remove-coupon-btn');
+    const notEligibleBtn = row.querySelector('.not-eligible-btn');
 
-        const required = Number(coupon.dataset.required || 0);
-        const used = coupon.dataset.used === "1";
-        const code = coupon.dataset.code;
+    const required = Number(coupon.dataset.required || 0);
+    const used = coupon.dataset.used === "1";
+    const code = coupon.dataset.code;
 
-        // Reset
-        applyBtn.classList.add('d-none');
-        appliedGroup.classList.add('d-none');
-        notEligibleBtn.classList.add('d-none');
+    // Reset all UI
+    applyBtn.classList.add('d-none');
+    removeBtn?.classList.add('d-none');
+    notEligibleBtn.classList.add('d-none');
 
-        // Already used
-        if (used) {
-            coupon.classList.add('inactive');
-            coupon.classList.remove('active');
-            msg.innerHTML = `<span class="text-danger">Already used</span>`;
-            notEligibleBtn.classList.remove('d-none');
-            return;
-        }
+    coupon.classList.remove('active', 'inactive');
 
-        // Applied
-        if (appliedCoupon === code) {
-            coupon.classList.add('active');
-            coupon.classList.remove('inactive');
+    /* -----------------------------
+       1️⃣ COUPON ALREADY USED
+    ----------------------------- */
+    if (used) {
+        coupon.classList.add('inactive');
+        msg.innerHTML = `<span class="text-danger">Already used</span>`;
+        return;
+    }
 
-            msg.innerHTML = `<span class="text-success">Coupon applied</span>`;
-            appliedGroup.classList.remove('d-none');
-            return;
-        }
+    /* -----------------------------
+       2️⃣ COUPON CURRENTLY APPLIED
+    ----------------------------- */
+    if (appliedCoupon === code) {
+        coupon.classList.add('active');
 
-        // Eligible
-        if (cartTotal >= required) {
-            coupon.classList.add('active');
-            coupon.classList.remove('inactive');
+        msg.innerHTML = `<span class="text-success">Coupon applied</span>`;
+        removeBtn?.classList.remove('d-none');
+        return;
+    }
 
-            msg.innerHTML = `<span class="text-success">
+    /* -----------------------------
+       3️⃣ ELIGIBLE TO APPLY
+    ----------------------------- */
+    if (cartTotal >= required) {
+        coupon.classList.add('active');
+
+        msg.innerHTML = `
+            <span class="text-success">
                 You can apply this coupon
-            </span>`;
-            applyBtn.classList.remove('d-none');
-        }
-        // Not eligible
-        else {
-            coupon.classList.add('inactive');
-            coupon.classList.remove('active');
+            </span>
+        `;
+        applyBtn.classList.remove('d-none');
+        return;
+    }
 
-            msg.innerHTML = `
-                <span class="text-warning">
-                    Shop Above ₹${required}
-                </span>
-            `;
-            notEligibleBtn.classList.remove('d-none');
-        }
-    });
-};
+    /* -----------------------------
+       4️⃣ NOT ELIGIBLE
+    ----------------------------- */
+    coupon.classList.add('inactive');
+
+    msg.innerHTML = `
+        <span class="text-warning">
+            Shop Above ₹${required}
+        </span>
+    `;
+    notEligibleBtn.classList.remove('d-none');
+});
+}
 </script>
 
 
@@ -1118,74 +1100,99 @@ document.getElementById('premium-offer-form').addEventListener('submit', functio
 <script>
 document.addEventListener("click", function (e) {
 
-    // APPLY COUPON
+    /* ================= APPLY COUPON ================= */
     if (e.target.classList.contains("apply-coupon-btn")) {
-    e.preventDefault();
+        e.preventDefault();
 
-    fetch("{% url 'apply_coupon' %}", {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-            code: e.target.dataset.code
+        const code = e.target.dataset.code;
+
+        fetch("{% url 'apply_coupon' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ code })
         })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === "success") {
+        .then(res => res.json())
+        .then(data => {
 
-            // ✅ INSTANT UI UPDATE
-            updateOrderSummary({
-                subtotal: data.totals.products_total,
-                delivery: data.totals.delivery,
-                platform_fee: data.totals.platform_fee,
-                gift_wrap: data.totals.gift_wrap,
-                discount: data.totals.coupon_discount,
-                premium_discount: data.totals.premium_discount,
-                total: data.totals.final_total
-            });
-           
+            if (data.status === "success") {
 
-        } else {
-            alert(data.message);
-        }
-    });
-}
+                /* ✅ Update totals */
+                updateOrderSummary({
+                    subtotal: data.totals.products_total,
+                    delivery: data.totals.delivery,
+                    platform_fee: data.totals.platform_fee,
+                    gift_wrap: data.totals.gift_wrap,
+                    discount: data.totals.coupon_discount,
+                    premium_discount: data.totals.premium_discount,
+                    total: data.totals.final_total
+                }, {
+                    applied_coupon: data.applied_coupon
+                });
 
+                /* ✅ Show success message in coupon row */
+                const row = document.querySelector(
+                    `.coupon[data-code="${data.applied_coupon}"]`
+                )?.closest(".coupon-row");
 
-    // REMOVE COUPON
+                if (row) {
+                    const msg = row.querySelector(".coupon-success-msg");
+                    msg.innerHTML = `
+                        <span class="text-success fw-semibold">
+                            🎉 Coupon applied successfully!
+                        </span>
+                    `;
+                }
+
+            } else {
+                alert(data.message || "Failed to apply coupon");
+            }
+        });
+    }
+
+    /* ================= REMOVE COUPON ================= */
     if (e.target.classList.contains("remove-coupon-btn")) {
-    e.preventDefault();
+        e.preventDefault();
 
-    fetch("{% url 'remove_coupon' %}", {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": "{{ csrf_token }}"
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === "success") {
+        fetch("{% url 'remove_coupon' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
 
-            // ✅ INSTANT UI UPDATE
-            updateOrderSummary({
-                subtotal: data.totals.products_total,
-                delivery: data.totals.delivery,
-                platform_fee: data.totals.platform_fee,
-                gift_wrap: data.totals.gift_wrap,
-                discount: data.totals.coupon_discount,
-                premium_discount: data.totals.premium_discount,
-                total: data.totals.final_total
-            });
+            if (data.status === "success") {
 
-        };
-    });
-  };
-})
+                /* ✅ Update totals */
+                updateOrderSummary({
+                    subtotal: data.totals.products_total,
+                    delivery: data.totals.delivery,
+                    platform_fee: data.totals.platform_fee,
+                    gift_wrap: data.totals.gift_wrap,
+                    discount: data.totals.coupon_discount,
+                    premium_discount: data.totals.premium_discount,
+                    total: data.totals.final_total
+                }, {
+                    applied_coupon: null
+                });
 
+                /* ✅ Optional remove message */
+                document.querySelectorAll(".coupon-message").forEach(msg => {
+                    msg.innerHTML = `
+                        <span class="text-muted">
+                            Coupon removed
+                        </span>
+                    `;
+                });
+            }
+        });
+    }
 
+});
 </script>
 
 
