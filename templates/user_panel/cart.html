@@ -960,29 +960,7 @@ function initiatePayment() {
   }
 </script>
 
-<script>
-  function handleCouponApply(form) {
-      // Find the button inside the form
-      var button = form.querySelector('.apply-button');
-      
-      // Immediately change button text and disable it
-      button.innerText = "Applied";
-      button.disabled = true;
-      button.style.color = 'gray'; // Optional: style it grey to show disabled
-  
-      // Allow form submission
-      return true;
-  }
-  </script>
-  <script>
-    const applyButtons = document.querySelectorAll('.apply-button');
-    applyButtons.forEach(btn => {
-        btn.innerText = 'Applied';
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
-        return true;
-    });
-</script>
+
 <script>
   document.addEventListener('DOMContentLoaded', function () {
       const form = document.getElementById('gift-wrap-form');
@@ -1098,7 +1076,6 @@ document.addEventListener("click", function (e) {
 
             if (data.status === "success") {
 
-                /* ✅ Update totals */
                 updateOrderSummary({
                     subtotal: data.totals.products_total,
                     delivery: data.totals.delivery,
@@ -1111,13 +1088,16 @@ document.addEventListener("click", function (e) {
                     applied_coupon: data.applied_coupon
                 });
 
-                /* ✅ Show success message in coupon row */
+                // 🔥 Sync buttons & eligibility
+                refreshOrderSummary();
+
+                // ✅ Show success message
                 const row = document.querySelector(
                     `.coupon[data-code="${data.applied_coupon}"]`
                 )?.closest(".coupon-row");
 
                 if (row) {
-                    const msg = row.querySelector(".coupon-success-msg");
+                    const msg = row.querySelector(".coupon-message");
                     msg.innerHTML = `
                         <span class="text-success fw-semibold">
                             🎉 Coupon applied successfully!
@@ -1146,7 +1126,6 @@ document.addEventListener("click", function (e) {
 
             if (data.status === "success") {
 
-                /* ✅ Update totals */
                 updateOrderSummary({
                     subtotal: data.totals.products_total,
                     delivery: data.totals.delivery,
@@ -1159,7 +1138,9 @@ document.addEventListener("click", function (e) {
                     applied_coupon: null
                 });
 
-                /* ✅ Optional remove message */
+                // 🔥 IMPORTANT: re-evaluate eligibility
+                refreshOrderSummary();
+
                 document.querySelectorAll(".coupon-message").forEach(msg => {
                     msg.innerHTML = `
                         <span class="text-muted">
@@ -1173,6 +1154,7 @@ document.addEventListener("click", function (e) {
 
 });
 </script>
+
 
 
 
