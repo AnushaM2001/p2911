@@ -1633,6 +1633,32 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import redis, json
 from decimal import Decimal
+def get_cart_item_price(item, festival_offers):
+    price = Decimal('0.00')
+
+    if item.gift_set:
+        base_price = Decimal(item.price or 0)
+        valid = [o for o in festival_offers if o.apply_offer(item.gift_set)]
+        if valid:
+            best = max(valid, key=lambda o: o.percentage)
+            price = base_price - (base_price * best.percentage / Decimal('100'))
+        else:
+            price = base_price
+
+    elif item.product_variant:
+        base_price = Decimal(item.product_variant.price)
+        valid = [o for o in festival_offers if o.apply_offer(item.product_variant)]
+        if valid:
+            best = max(valid, key=lambda o: o.percentage)
+            price = base_price - (base_price * best.percentage / Decimal('100'))
+        else:
+            price = base_price
+
+    else:
+        price = Decimal(item.product.price)
+
+    return price
+
 
 
 def calculate_cart_totals(request):
@@ -1748,6 +1774,14 @@ def sync_redis_cart(request):
         # 3️⃣ Festival info
         festival_pct = request.session.get("premium_offer_percentage", 0)
         festival_active = bool(festival_pct)
+        festival_offers = list(
+            PremiumFestiveOffer.objects.filter(
+        is_active=True,
+        premium_festival="Festival",
+        start_date__lte=now,
+        end_date__gte=now
+    )
+)
 
         # 4️⃣ Build item list for UI (LEFT SIDE)
         items = []
@@ -1760,17 +1794,17 @@ def sync_redis_cart(request):
                 else item.gift_set.price if item.gift_set
                 else item.product.price
             )
-
+            
             # final price (after festival, already saved in DB)
-            final_price = item.price
-
+            price = get_cart_item_price(item, festival_offers)
+            
             items.append({
                 "id": item.id,
                 "name": item.product.name,
                 "quantity": item.quantity,
 
                 "original_price": float(original_price),
-                "final_price": float(final_price),
+                "final_price": float(price),
 
                 "festival_active": festival_active,
                 "festival_percentage": festival_pct,

@@ -1656,8 +1656,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         <div style="text-align:left;">
                             <div class="product-name">${firstItem.name}</div>
 <div class="product-price">
-    ₹${Number(firstItem.final_price ?? firstItem.price ?? 0).toFixed(2)}
+  ₹${Number(firstItem.final_price).toFixed(2)}
 </div>
+
                         </div>
                     `;
                 }
@@ -1723,23 +1724,20 @@ function updateCartSidebar(items, summary) {
                 <div style="flex:1">
                     <h6>${item.name}</h6>
 
-                    <p class="price-row">
-    <span class="final-price">
-        ₹${Number(item.final_price ?? item.price ?? 0).toFixed(2)}
-    </span>
+                   <p class="price-row">
+  <span class="final-price">
+    ₹${Number(item.final_price).toFixed(2)}
+  </span>
 
-    <span class="original-price ${
-        item.festival_active ? '' : 'd-none'
-    }">
-        ₹${Number(item.original_price ?? item.price ?? 0).toFixed(2)}
-    </span>
+  <span class="original-price ${item.festival_active ? '' : 'd-none'}">
+    ₹${Number(item.original_price).toFixed(2)}
+  </span>
 
-    <span class="offer-badge ${
-        item.festival_active ? '' : 'd-none'
-    }">
-        ${item.festival_percentage || 0}% OFF
-    </span>
+  <span class="offer-badge ${item.festival_active ? '' : 'd-none'}">
+    ${item.festival_percentage}% OFF
+  </span>
 </p>
+
 
                     <div class="qty-box">
                         <button onclick="updateQty(${item.id}, 'decrease')">−</button>
