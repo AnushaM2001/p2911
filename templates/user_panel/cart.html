@@ -566,13 +566,14 @@ html, body {
   data-required="{{ coupon.required_amount }}"
   data-discount="{{ coupon.discount }}"
   disabled>
-  Shop above ₹{{ coupon.required_amount }}<span style="color: green;">Save ₹{{ coupon.discount }}</span>
+  Apply Coupon
                       
 </button>
  
                           
                   {% else %}
-                      <span class="text-success">You save ₹{{ coupon.discount }}</span>
+                      <span class="text-success">Shop above ₹{{ coupon.required_amount }}<span style="color: green;">Save ₹{{ coupon.discount }}</span>
+                      </span>
                   {% endif %}
               </div>
           
