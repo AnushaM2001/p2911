@@ -602,7 +602,7 @@ html, body {
 
     {% else %}
         <button class="btn btn-outline-secondary btn-sm" disabled>
-            Not Eligible
+            Not Eligible Sh
         </button>
     {% endif %}
 </div>
@@ -824,7 +824,7 @@ function updateCouponEligibilityUI(eligibleCoupons) {
             // ❌ Not eligible → SHOW MESSAGE
             btn.innerHTML = `
                 
-                <p class="text-success">Apply coupon</p>
+                <p class="text-muted">Apply coupon</p>
             `;
             btn.disabled = true;
             btn.classList.remove('btn-outline-primary', 'apply-coupon-btn');

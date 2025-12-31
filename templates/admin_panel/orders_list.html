@@ -87,9 +87,18 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 });
 </script>
+ <form method="get" action="{% url 'download_invoices_by_date' %}" class="d-flex gap-2 mb-3">
+    <input type="date" name="start_date" class="form-control" required>
+    <input type="date" name="end_date" class="form-control" required>
+
+    <button type="submit" class="btn btn-danger">
+        ⬇ Download All Invoices
+    </button>
+</form>
 
     <!-- Search & Buttons -->
     <div class="d-flex justify-content-between align-items-center mb-3">
+      
 <form method="get" class="d-flex gap-2 align-items-center mb-3">
   <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="🔍 Search..." />
   <input type="date" name="date" value="{{ selected_date }}" class="form-control" />

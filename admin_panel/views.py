@@ -1700,6 +1700,89 @@ from weasyprint import HTML
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 
+import io
+import zipfile
+from django.contrib.sites.shortcuts import get_current_site
+
+
+def download_invoices_by_date(request):
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    if not start_date or not end_date:
+        return HttpResponse("Start date and End date required", status=400)
+
+    start_date = datetime.strptime(start_date, "%Y-%m-%d")
+    end_date = datetime.strptime(end_date, "%Y-%m-%d")
+
+    orders = Order.objects.filter(
+        created_at__date__range=[start_date, end_date],
+        shiprocket_order_id__isnull=False
+    )
+
+    if not orders.exists():
+        return HttpResponse("No invoices found", status=404)
+
+    zip_buffer = io.BytesIO()
+    zip_file = zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED)
+
+    domain = get_current_site(request).domain
+    logo_url = "https://perfumevalleyworld.com/static/images2/hi1.png"
+
+    for order in orders:
+        generate_invoice_number(order)
+
+        invoice_items = []
+        subtotal = total_tax = 0
+
+        for item in order.items.all():
+            tax = calculate_gst(item, order.address)
+
+            invoice_items.append({
+                "product": item.product.name,
+                "sku": item.product.sku,
+                "qty": item.quantity,
+                "unit_price": tax["unit_price"],
+                "taxable_value": tax["taxable_value"],
+                "cgst": tax["cgst"],
+                "sgst": tax["sgst"],
+                "igst": tax["igst"],
+                "cgst_rate": tax["cgst_rate"],
+                "sgst_rate": tax["sgst_rate"],
+                "igst_rate": tax["igst_rate"],
+                "total": item.quantity * item.price,
+            })
+
+            subtotal += tax["base_amount"]
+            total_tax += tax["taxable_value"]
+
+        html = render_to_string("admin_panel/invoice_pdf.html", {
+            "order": order,
+            "items": invoice_items,
+            "subtotal": subtotal,
+            "total_tax": total_tax,
+            "grand_total": order.total_price,
+            "logo_url": logo_url,
+            "company_name": "Perfume Valley",
+            "company_address": "Hyderabad, Telangana, India",
+            "company_gstin": "36ABCDE1234F1Z5",
+        })
+
+        pdf = HTML(string=html, base_url=settings.STATIC_ROOT).write_pdf()
+
+        filename = f"Invoice_{order.invoice_number}.pdf"
+        zip_file.writestr(filename, pdf)
+
+    zip_file.close()
+    zip_buffer.seek(0)
+
+    response = HttpResponse(zip_buffer, content_type="application/zip")
+    response["Content-Disposition"] = (
+        f'attachment; filename="Invoices_{start_date.date()}_to_{end_date.date()}.zip"'
+    )
+    return response
+
+
 def download_invoice(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     generate_invoice_number(order)

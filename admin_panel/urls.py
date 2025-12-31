@@ -11,6 +11,9 @@ urlpatterns = [
     path('', admin_dashboard, name='admin_dashboard'),
 # urls.py
     path("admin/notifications/", all_notifications, name="all_notifications"),
+    # urls.py
+    path("invoices/download/", download_invoices_by_date, name="download_invoices_by_date"),
+
     # Product Management
     path('products/', product_list, name='product_list'),
     path('products/add/', add_product, name='add_product'),
