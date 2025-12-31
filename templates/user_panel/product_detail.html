@@ -7,10 +7,15 @@
 {% block meta %}
 <meta property="og:title" content="{{ product.name }}">
 <meta property="og:description" content="{{ product.description|truncatechars:150 }}">
-<meta property="og:image" content="https://{{ request.get_host }}{{ product.image.url }}">
-<meta property="og:url" content="https://{{ request.get_host }}{{ request.path }}">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
 <meta property="og:type" content="product">
-<meta property="og:site_name" content="Perfume Valley">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ product.name }}">
+<meta name="twitter:description" content="{{ product.description|truncatechars:150 }}">
+<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
+
 {% endblock meta %}
 
 {% block extra_css %}
@@ -1212,27 +1217,27 @@
 </div>
 <script>
 function shareProduct() {
-  const productUrl = window.location.href;
-  const text = "Check this product 👇";
+    const url = window.location.href;
+    const text = "Check this product 👇";
 
-  // 📱 Mobile browsers (native share)
-  if (navigator.share) {
-    navigator.share({
-      title: document.title,
-      text: text,
-      url: productUrl
-    }).catch(err => console.log("Share cancelled"));
-  }
-  // 💻 Desktop fallback (WhatsApp Web)
-  else {
-    const whatsappUrl =
-      "https://api.whatsapp.com/send?text=" +
-      encodeURIComponent(text + "\n" + productUrl);
+    // Mobile Web Share API
+    if (navigator.share) {
+        navigator.share({
+            title: document.title,
+            text: text,
+            url: url
+        }).catch(() => {});
+    } else {
+        // Desktop → WhatsApp Web fallback
+        const whatsappUrl =
+            "https://web.whatsapp.com/send?text=" +
+            encodeURIComponent(text + " " + url);
 
-    window.open(whatsappUrl, "_blank");
-  }
+        window.open(whatsappUrl, "_blank");
+    }
 }
 </script>
+
 
 
 <style>
