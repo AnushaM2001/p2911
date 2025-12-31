@@ -87,14 +87,66 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 });
 </script>
- <form method="get" action="{% url 'download_invoices_by_date' %}" class="d-flex gap-2 mb-3">
-    <input type="date" name="start_date" class="form-control" required>
-    <input type="date" name="end_date" class="form-control" required>
+ <form method="get"
+      action="{% url 'download_invoices_by_date' %}"
+      style="display:flex; align-items:flex-end; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
 
-    <button type="submit" class="btn btn-danger">
-        ⬇ Download All Invoices
+  <!-- From Date -->
+  <div style="display:flex; flex-direction:column;">
+    <label style="font-size:14px; font-weight:600; color:#555; margin-bottom:6px;">
+      From
+    </label>
+    <input type="date"
+           name="start_date"
+           required
+           style="
+             min-width:220px;
+             padding:10px 12px;
+             border:1px solid #ced4da;
+             border-radius:8px;
+             font-size:14px;
+           ">
+  </div>
+
+  <!-- To Date -->
+  <div style="display:flex; flex-direction:column;">
+    <label style="font-size:14px; font-weight:600; color:#555; margin-bottom:6px;">
+      To
+    </label>
+    <input type="date"
+           name="end_date"
+           required
+           style="
+             min-width:220px;
+             padding:10px 12px;
+             border:1px solid #ced4da;
+             border-radius:8px;
+             font-size:14px;
+           ">
+  </div>
+
+  <!-- Download Button -->
+  <div>
+    <button type="submit"
+            style="
+              background-color:#dc3545;
+              color:#fff;
+              border:none;
+              padding:12px 22px;
+              border-radius:10px;
+              font-size:15px;
+              font-weight:600;
+              cursor:pointer;
+              display:flex;
+              align-items:center;
+              gap:8px;
+            ">
+      ⬇ Download All Invoices
     </button>
+  </div>
+
 </form>
+
 
     <!-- Search & Buttons -->
     <div class="d-flex justify-content-between align-items-center mb-3">
