@@ -46,17 +46,12 @@ class OTP(models.Model):
     
 class AddressModel(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    ADDRESS_TYPE = (
-        ('national', 'National'),
-        ('international', 'International'),
-    )
-    address_category = models.CharField(max_length=20, choices=ADDRESS_TYPE,default='national')
     Name=models.CharField(max_length=100)
     MobileNumber=models.CharField(max_length=15)
     Alternate_MobileNumber = models.CharField(max_length=15)
-    Pincode=models.CharField(max_length=15)
+    Pincode=models.CharField(max_length=7)
     City=models.CharField(max_length=50)
-    State=models.CharField(max_length=50,blank=True,null=True)
+    State=models.CharField(max_length=50)
     location=models.CharField(max_length=100,verbose_name='Location/Area/Street/House No')
     # Building=models.CharField(max_length=100,verbose_name='Building Name/Flat No./House No.')
     Landmark=models.CharField(max_length=100,null=True,blank=True)
