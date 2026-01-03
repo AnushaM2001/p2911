@@ -1334,39 +1334,108 @@ document.addEventListener("DOMContentLoaded", function () {
                
 
 <script>
-function toggleSearchSection() {
-    const section = document.getElementById('searchCon');
-    const resultsDiv = document.getElementById('search-results');
-    const searchInput = document.getElementById('searchInput');
+/* =========================
+   GLOBAL SEARCH FUNCTIONS
+   ========================= */
 
-    if (section.classList.contains('active')) {
-        // Close the search overlay
-        section.classList.remove('active');
-        setTimeout(() => { section.style.display = 'none'; }, 400);
-    } else {
-        // Open and reset search
-        section.style.display = 'block';
-        setTimeout(() => { section.classList.add('active'); }, 10);
-
-        // 🧹 Clear previous search input and results
-        searchInput.value = "";
-        resultsDiv.innerHTML = "";
-
-        // Load top 4 trending products
-        loadTopProducts();
-    }
-}
-
-document.addEventListener("DOMContentLoaded", function () {
+// Fetch results (normal or top products)
+function fetchResults(showTop = false) {
     const searchInput = document.getElementById("searchInput");
     const categorySelect = document.getElementById("categorySelect");
     const resultsDiv = document.getElementById("search-results");
 
-    // --- Load categories on startup ---
+    if (!searchInput || !resultsDiv) return;
+
+    const query = searchInput.value.trim();
+    const category = categorySelect ? categorySelect.value : "";
+
+    fetch(`/ajax/search/?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&top=${showTop ? 1 : 0}`)
+        .then(response => response.json())
+        .then(data => renderResults(data.results))
+        .catch(err => console.error("Search error:", err));
+}
+
+// Load top 4 products
+function loadTopProducts() {
+    fetchResults(true);
+}
+
+// Render search results
+function renderResults(products) {
+    const resultsDiv = document.getElementById("search-results");
+    resultsDiv.innerHTML = "";
+
+    if (!products || products.length === 0) {
+        resultsDiv.innerHTML = '<div class="p-3 text-center">No results found</div>';
+        return;
+    }
+
+    const row = document.createElement("div");
+    row.className = "row g-3 search-row-responsive";
+
+    products.slice(0, 4).forEach(item => {
+        const col = document.createElement("div");
+        col.className = "col-6 col-md-4 col-lg-3";
+
+        col.innerHTML = `
+            <a href="${item.url}" class="text-decoration-none text-dark">
+                <div class="card border-0 shadow-sm rounded-3">
+                    <img src="${item.image}" class="card-img-top" alt="${item.name}">
+                    <div class="card-body p-2">
+                        <h6 class="product-title">${item.name}</h6>
+                        <p class="product-desc">${item.description}</p>
+                        <div class="price-section mb-2">
+                            <span class="price">${item.price_display}</span>
+                            <span class="original-price ms-2">${item.original_price || ""}</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        `;
+        row.appendChild(col);
+    });
+
+    resultsDiv.appendChild(row);
+    resultsDiv.style.display = "block";
+}
+
+/* =========================
+   SEARCH TOGGLE FUNCTION
+   ========================= */
+
+function toggleSearchSection() {
+    const section = document.getElementById("searchCon");
+    const resultsDiv = document.getElementById("search-results");
+    const searchInput = document.getElementById("searchInput");
+
+    if (section.classList.contains("active")) {
+        section.classList.remove("active");
+        setTimeout(() => section.style.display = "none", 400);
+    } else {
+        section.style.display = "block";
+        setTimeout(() => section.classList.add("active"), 10);
+
+        searchInput.value = "";
+        resultsDiv.innerHTML = "";
+
+        // ✅ NOW THIS WORKS
+        loadTopProducts();
+    }
+}
+
+/* =========================
+   DOM READY EVENTS ONLY
+   ========================= */
+
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("searchInput");
+    const categorySelect = document.getElementById("categorySelect");
+
+    // Load categories on page load
     fetch(`/ajax/search/`)
         .then(response => response.json())
         .then(data => {
-            if (data.categories && categorySelect.options.length <= 1) {
+            if (data.categories && categorySelect && categorySelect.options.length <= 1) {
                 data.categories.forEach(cat => {
                     const option = document.createElement("option");
                     option.value = cat.id;
@@ -1376,75 +1445,25 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-    // --- Fetch search results ---
-    function fetchResults(showTop = false) {
-        const query = searchInput.value.trim();
-        const category = categorySelect ? categorySelect.value : '';
-
-        fetch(`/ajax/search/?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&top=${showTop ? 1 : 0}`)
-            .then(response => response.json())
-            .then(data => renderResults(data.results));
-    }
-
-    // --- Load top 4 products (on open or empty search) ---
-    function loadTopProducts() {
-        fetchResults(true);
-    }
-
-    // --- Render results ---
-    function renderResults(products) {
-        resultsDiv.innerHTML = "";
-        if (!products || products.length === 0) {
-            resultsDiv.innerHTML = '<div class="p-3 text-center">No results found</div>';
-            return;
-        }
-
-        const row = document.createElement("div");
-        row.className = "row g-3 search-row-responsive";
-
-        products.slice(0, 4).forEach(item => {
-            const col = document.createElement("div");
-            col.className = "col-6 col-md-4 col-lg-3";
-
-            col.innerHTML = `
-                <a href="${item.url}" class="text-decoration-none text-dark">
-                    <div class="card border-0 shadow-sm rounded-3">
-                        <img src="${item.image}" class="card-img-top" alt="${item.name}">
-                        <div class="card-body p-2">
-                            <h6 class="product-title">${item.name}</h6>
-                            <p class="product-desc">${item.description}</p>
-                            <div class="price-section mb-2">
-                                <span class="price">${item.price_display}</span>
-                                <span class="original-price ms-2">${item.original_price || ''}</span>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            `;
-            row.appendChild(col);
-        });
-
-        resultsDiv.appendChild(row);
-        resultsDiv.style.display = "block";
-    }
-
-    // --- Live typing search ---
+    // Live typing search
     searchInput.addEventListener("keyup", function () {
-        if (searchInput.value.trim().length > 0) {
+        if (this.value.trim().length > 0) {
             fetchResults();
         } else {
             loadTopProducts();
         }
     });
 
-    if (categorySelect) categorySelect.addEventListener("change", fetchResults);
+    if (categorySelect) {
+        categorySelect.addEventListener("change", fetchResults);
+    }
 
-    // --- Close when clicking outside ---
+    // Close search when clicking outside
     document.addEventListener("click", function (e) {
         const searchBox = document.getElementById("searchCon");
-        if (!searchBox.contains(e.target) && !e.target.closest(".bi-search")) {
+        if (searchBox && !searchBox.contains(e.target) && !e.target.closest(".bi-search")) {
             searchBox.classList.remove("active");
-            setTimeout(() => { searchBox.style.display = 'none'; }, 300);
+            setTimeout(() => searchBox.style.display = "none", 300);
         }
     });
 });
@@ -1550,3 +1569,4 @@ document.addEventListener("click", function(e) {
 </body>
 </body>
 </html>
+
