@@ -1618,10 +1618,6 @@ def add_to_cart(request, product_id):
             'next': request.POST.get('next', f'/product/{product_id}/')
         })
 
-    # cart logic here
-    return JsonResponse({'status': 'success'})
-
-
 
     try:
         quantity = int(request.POST.get("quantity", 1))
