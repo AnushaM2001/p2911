@@ -205,49 +205,32 @@
     </div>
 
     <!-- JS: Combine OTP + handle resend -->
-    <script>
-        const otpInputs = document.querySelectorAll('.otp-input');
-        const otpField = document.getElementById('otpField');
-        const otpForm = document.getElementById('otpForm');
-        const resendLink = document.getElementById('resendOtp');
-        const resendFlag = document.getElementById('resendFlag');
-    
-        // Move to next input on input, back on backspace
-        otpInputs.forEach((input, index) => {
-            input.addEventListener('input', (e) => {
-                if (input.value.length === 1 && index < otpInputs.length - 1) {
-                    otpInputs[index + 1].focus();
-                }
-            });
-    
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Backspace' && input.value === '' && index > 0) {
-                    otpInputs[index - 1].focus();
-                }
-            });
-        });
-    
-        // On form submit, join the OTP values
-        otpForm.addEventListener('submit', function(e) {
-            let otpValue = '';
-            otpInputs.forEach(input => {
-                otpValue += input.value.trim();
-            });
-            otpField.value = otpValue;
+   <script>
+const otpInputs = document.querySelectorAll('.otp-input');
+const otpField = document.getElementById('otpField');
+const otpForm = document.getElementById('otpForm');
 
-            // Optional: Show a redirecting message
-            const continueButton = document.querySelector('.continue-button');
-            continueButton.textContent = 'Verifying...';
-            continueButton.disabled = true;
-        });
-    
-        // Resend OTP logic
-        resendLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            resendFlag.value = "true"; // Set the flag to true
-            otpForm.submit();
-        });
-    </script>
+otpInputs.forEach((input, index) => {
+    input.addEventListener('input', () => {
+        if (input.value && index < otpInputs.length - 1) {
+            otpInputs[index + 1].focus();
+        }
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && index > 0) {
+            otpInputs[index - 1].focus();
+        }
+    });
+});
+
+otpForm.addEventListener('submit', () => {
+    let otpValue = '';
+    otpInputs.forEach(i => otpValue += i.value.trim());
+    otpField.value = otpValue;
+});
+</script>
+
     
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
