@@ -2891,6 +2891,7 @@ from django.db.models import Q, Min, Max, Avg
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.db.models import Prefetch
+from django.db.models.functions import Replace, Lower
 
 @require_GET
 def search_suggestions(request):
@@ -2898,7 +2899,7 @@ def search_suggestions(request):
     category_id = request.GET.get('category', '').strip()
 
     # Limit results for ultra-fast response time
-    RESULT_LIMIT = 20
+    RESULT_LIMIT = 7
 
     # Preload category list (cached recommended)
     all_categories = list(
@@ -2940,11 +2941,14 @@ def search_suggestions(request):
 
     # Search filter
     if query:
-        products = products.filter(
-            Q(name__icontains=query) |
-            Q(description__icontains=query) |
-            Q(sku__icontains=query)
-        )
+        q = query.strip().lower()
+        products = products.annotate(
+        name_clean=Replace(Lower('name'), ' ', '')
+    ).filter(
+        Q(name__icontains=q) |
+        Q(name_clean__icontains=q.replace(" ", "")) |
+        Q(description__icontains=q)
+    )
 
     # Category filter
     if category_id:
