@@ -4,6 +4,7 @@ import json
 import time
 import traceback
 from io import BytesIO
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
