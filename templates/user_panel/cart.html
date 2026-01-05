@@ -556,7 +556,7 @@ html, body {
                   {% endif %}
               ">
                   <span class="fw-bold">{{ coupon.code }}</span>
-                  
+                  <span class="coupon-msg text-muted ms-2"></span>
                   {% if coupon.id in used_coupons %}
                       <span class="text-danger">Already used ₹{{ coupon.discount }}</span>
                   {% elif coupon not in eligible_coupons %}
@@ -798,34 +798,45 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 function updateCouponEligibilityUI(eligibleCoupons) {
 
-    // 🔒 STOP if any coupon is already applied
-    if (document.querySelector('[data-applied="true"]')) {
-        return;
-    }
+    // 🔒 Do nothing if a coupon is already applied
+    if (document.querySelector('[data-applied="true"]')) return;
 
-    document.querySelectorAll('[data-code]').forEach(btn => {
-        const code = btn.dataset.code;
-        if (!code) return;
+    document.querySelectorAll('.coupon-row').forEach(row => {
 
-        const required = btn.dataset.required || 0;
-        const discount = btn.dataset.discount || 0;
+        const code = row.dataset.code;
+        const required = row.dataset.required || 0;
+        const discount = row.dataset.discount || 0;
+
+        const btn = row.querySelector('.apply-coupon-btn');
+        const msg = row.querySelector('.coupon-msg');
+
+        if (!btn || !msg) return;
 
         if (eligibleCoupons.includes(code)) {
             // ✅ Eligible
-            btn.textContent = 'Apply Coupon';
             btn.disabled = false;
+            btn.textContent = 'Apply Coupon';
             btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
+            btn.classList.add('btn-outline-primary');
+
+            msg.textContent = ''; // clear message
 
         } else {
-            // ❌ Not eligible
-            btn.textContent = `Shop above ₹${required}, Save ₹${discount}`;
+            // ❌ Not eligible → show text NEXT TO CODE
             btn.disabled = true;
-            btn.classList.remove('btn-outline-primary', 'apply-coupon-btn');
+            btn.classList.remove('btn-outline-primary');
             btn.classList.add('btn-outline-secondary');
+
+            msg.innerHTML = `
+                Shop above ₹${required},
+                <span style="color: green; font-weight: bold;">
+                    Save ₹${discount}
+                </span>
+            `;
         }
     });
 }
+
 </script>
 
 
@@ -1168,6 +1179,14 @@ function markCouponApplied(code, discountAmount) {
 
     // ✅ Success message
     const msg = document.getElementById('coupon-success-msg');
+   const appliedRow = document.querySelector(`.coupon-row[data-code="${code}"]`);
+   if (appliedRow) {
+    const msg = appliedRow.querySelector('.coupon-msg');
+    if (msg) {
+        msg.innerHTML = `🎉 You saved <strong>₹${discountAmount}</strong>`;
+    }
+}
+
     if (msg) {
         msg.innerHTML = `🎉 You saved <strong>₹${discountAmount}</strong> with this coupon!`;
         msg.style.display = 'block';
