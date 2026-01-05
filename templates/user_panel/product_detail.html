@@ -1664,7 +1664,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(data => {
             if (data.login_required) {
                 // Redirect to login with next param
-                window.location.href = `/email-login/?next=${encodeURIComponent(window.location.pathname)}`;
+                window.location.href = `/login/?next=${encodeURIComponent(window.location.pathname)}`;
                 return;
             }
 
