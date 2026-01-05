@@ -555,8 +555,7 @@ html, body {
                       inactive
                   {% endif %}
               ">
-                  <span class="fw-bold">{{ coupon.code }}<span class="text-danger">Shop above ₹{{ coupon.required_amount }}<span style="color: green; font-weight: bold;">Save ₹{{ coupon.discount }}</span>
-                      </span></span>
+                  <span class="fw-bold">{{ coupon.code }}</span>
                   
                   {% if coupon.id in used_coupons %}
                       <span class="text-danger">Already used ₹{{ coupon.discount }}</span>
@@ -566,15 +565,15 @@ html, body {
   data-code="{{ coupon.code }}"
   data-required="{{ coupon.required_amount }}"
   data-discount="{{ coupon.discount }}"
-  disabled> <span class="text-danger">Shop above ₹{{ coupon.required_amount }}<span style="color: green; font-weight: bold;">Save ₹{{ coupon.discount }}</span>
-                      </span>Apply Coupon
-   
+  disabled>
+  Apply Coupon
                       
 </button>
  
                           
                   {% else %}
-                     
+                      <span class="text-danger">Shop above ₹{{ coupon.required_amount }}<span style="color: green; font-weight: bold;">Save ₹{{ coupon.discount }}</span>
+                      </span>
                   {% endif %}
               </div>
           
@@ -599,8 +598,7 @@ html, body {
   data-discount="{{ coupon.discount }}">
   Apply Coupon
 </button>
-
-    {% endif %}
+   {% endif %}
 </div>
 
           </div>
