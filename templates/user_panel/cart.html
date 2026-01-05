@@ -546,45 +546,65 @@ html, body {
 
     
           <!-- Coupon 1 -->
-        {% for coupon in all_coupons %}
-<div class="d-flex justify-content-between mb-2 coupon-row" data-code="{{ coupon.code }}" data-required="{{ coupon.required_amount }}" data-discount="{{ coupon.discount }}">
-
-    <div class="coupon-info">
-        <span class="fw-bold">{{ coupon.code }}</span>
-        {% if coupon.id in used_coupons %}
-            <span class="text-danger ms-2">Already used ₹{{ coupon.discount }}</span>
-        {% else %}
-            <span class="text-muted ms-2">
-                Shop above ₹{{ coupon.required_amount }}, 
-                <span style="color: green; font-weight: bold;">Save ₹{{ coupon.discount }}</span>
-            </span>
-        {% endif %}
-    </div>
-
-    <div class="coupon-actions text-end">
-        {% if coupon.code == request.session.applied_coupon %}
-            <div class="d-flex gap-2">
-                <button class="btn btn-success btn-sm" disabled>Applied</button>
-                <button class="btn btn-danger btn-sm remove-coupon-btn">Remove</button>
-            </div>
-
-        {% elif coupon in eligible_coupons and coupon.id not in used_coupons %}
-            <button class="btn btn-outline-primary btn-sm apply-coupon-btn" 
-                data-code="{{ coupon.code }}" 
-                data-required="{{ coupon.required_amount }}" 
-                data-discount="{{ coupon.discount }}">
-                Apply Coupon
+          {% for coupon in all_coupons %}
+          <div class="d-flex justify-content-between mb-2">
+              <div class="coupon
+                  {% if coupon in eligible_coupons and coupon.id not in used_coupons %}
+                      active
+                  {% else %}
+                      inactive
+                  {% endif %}
+              ">
+                  <span class="fw-bold">{{ coupon.code }}</span>
+                  
+                  {% if coupon.id in used_coupons %}
+                      <span class="text-danger">Already used ₹{{ coupon.discount }}</span>
+                  {% elif coupon not in eligible_coupons %}
+                      <button
+  class="btn btn-outline-secondary btn-sm"
+  data-code="{{ coupon.code }}"
+  data-required="{{ coupon.required_amount }}"
+  data-discount="{{ coupon.discount }}"
+  disabled> <span class="text-danger">Shop above ₹{{ coupon.required_amount }}<span style="color: green; font-weight: bold;">Save ₹{{ coupon.discount }}</span>
+                      </span>Apply Coupon
+   
+                      
+</button>
+ 
+                          
+                  {% else %}
+                     
+                  {% endif %}
+              </div>
+          
+             <div class="text-end">
+    {% if coupon.code == request.session.applied_coupon %}
+        <div class="d-flex gap-2">
+            <button class="btn btn-success btn-sm" disabled>
+                Applied
             </button>
 
-        {% else %}
-            <button class="btn btn-outline-secondary btn-sm" disabled>Not Eligible</button>
-        {% endif %}
-    </div>
+            <button
+              class="btn btn-danger btn-sm remove-coupon-btn">
+              Remove
+            </button>
+        </div>
 
+    {% elif coupon in eligible_coupons and coupon.id not in used_coupons %}
+       <button
+  class="btn btn-outline-primary btn-sm apply-coupon-btn"
+  data-code="{{ coupon.code }}"
+  data-required="{{ coupon.required_amount }}"
+  data-discount="{{ coupon.discount }}">
+  Apply Coupon
+</button>
+
+    {% endif %}
 </div>
-<hr>
-{% endfor %}
 
+          </div>
+          <hr>
+          {% endfor %}
           
     
           <!-- Coupon 2 -->
@@ -659,118 +679,15 @@ html, body {
   </div>
 </div>
 
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ---------- COUPON HANDLING ----------
-    document.addEventListener("click", function (e) {
-
-        // APPLY COUPON
-        if (e.target.classList.contains("apply-coupon-btn")) {
-            e.preventDefault();
-            const code = e.target.dataset.code;
-
-            fetch("{% url 'apply_coupon' %}", {
-                method: "POST",
-                headers: {
-                    "X-CSRFToken": "{{ csrf_token }}",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: new URLSearchParams({ code })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === "success") {
-                    updateOrderSummary({
-                        subtotal: data.totals.products_total,
-                        delivery: data.totals.delivery,
-                        platform_fee: data.totals.platform_fee,
-                        gift_wrap: data.totals.gift_wrap,
-                        discount: data.totals.coupon_discount,
-                        premium_discount: data.totals.premium_discount,
-                        total: data.totals.final_total
-                    });
-                    markCouponApplied(code, data.totals.coupon_discount);
-                } else {
-                    alert(data.message);
-                }
-            });
-        }
-
-        // REMOVE COUPON
-        if (e.target.classList.contains("remove-coupon-btn")) {
-            e.preventDefault();
-            fetch("{% url 'remove_coupon' %}", {
-                method: "POST",
-                headers: { "X-CSRFToken": "{{ csrf_token }}" }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === "success") {
-                    updateOrderSummary({
-                        subtotal: data.totals.products_total,
-                        delivery: data.totals.delivery,
-                        platform_fee: data.totals.platform_fee,
-                        gift_wrap: data.totals.gift_wrap,
-                        discount: data.totals.coupon_discount,
-                        premium_discount: data.totals.premium_discount,
-                        total: data.totals.final_total
-                    });
-                    resetCouponUI();
-                }
-            });
-        }
-
-    });
-
-    function markCouponApplied(code, discountAmount) {
-        document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
-            const btnCode = btn.dataset.code;
-            if (btnCode === code) {
-                btn.textContent = 'Remove';
-                btn.classList.replace('btn-outline-primary', 'btn-danger');
-                btn.classList.add('remove-coupon-btn');
-                btn.classList.remove('apply-coupon-btn');
-                btn.dataset.applied = 'true';
-            } else {
-                btn.disabled = true;
-            }
-        });
-
-        const msg = document.getElementById('coupon-success-msg');
-        if (msg) {
-            msg.innerHTML = `🎉 You saved <strong>₹${discountAmount}</strong> with this coupon!`;
-            msg.style.display = 'block';
-        }
-
-        const row = document.getElementById('coupon-discount-row');
-        if (row) row.style.display = 'flex';
-    }
-
-    function resetCouponUI() {
-        document.querySelectorAll('button[data-applied="true"]').forEach(btn => {
-            btn.textContent = 'Apply Coupon';
-            btn.classList.replace('btn-danger', 'btn-outline-primary');
-            btn.classList.remove('remove-coupon-btn');
-            btn.classList.add('apply-coupon-btn');
-            btn.disabled = false;
-            btn.removeAttribute('data-applied');
-        });
-
-        const row = document.getElementById('coupon-discount-row');
-        if (row) row.style.display = 'none';
-
-        const msg = document.getElementById('coupon-success-msg');
-        if (msg) {
-            msg.style.display = 'none';
-            msg.innerHTML = '';
-        }
-    }
-
-    // ---------- QUANTITY & CART ITEM HANDLING ----------
+    // ---------- REMOVE ITEM ----------
     document.querySelectorAll('.remove-form').forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+
             fetch(this.action, {
                 method: 'POST',
                 headers: {
@@ -782,21 +699,33 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
-                    const cartItem = document.querySelector(`.cart-item[data-item-id="${this.dataset.itemId}"]`);
-                    if (cartItem) cartItem.closest('.d-flex.p-3.mb-3').remove();
+
+                    const cartItem = document.querySelector(
+                        `.cart-item[data-item-id="${this.dataset.itemId}"]`
+                    );
+                    if (cartItem) {
+                        const wrapper = cartItem.closest('.d-flex.p-3.mb-3');
+                        if (wrapper) wrapper.remove();
+                    }
+
                     refreshOrderSummary();
                 }
             });
         });
     });
 
+    // ---------- QUANTITY UPDATE ----------
     document.querySelectorAll('.update-quantity-form').forEach(form => {
         const quantityDisplay = form.querySelector('.quantity-display');
         const itemId = form.dataset.itemId;
 
-        form.querySelector('.increase-btn').onclick = () => updateQuantity(form, itemId, 'increase', quantityDisplay);
+        form.querySelector('.increase-btn').onclick = () =>
+            updateQuantity(form, itemId, 'increase', quantityDisplay);
+
         form.querySelector('.decrease-btn').onclick = () => {
-            if (parseInt(quantityDisplay.textContent) > 1) updateQuantity(form, itemId, 'decrease', quantityDisplay);
+            if (parseInt(quantityDisplay.textContent) > 1) {
+                updateQuantity(form, itemId, 'decrease', quantityDisplay);
+            }
         };
     });
 
@@ -821,53 +750,84 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ---------- BACKEND-DRIVEN SUMMARY ----------
     function refreshOrderSummary() {
-        fetch('/sync-redis-cart/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify({})
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                updateOrderSummary(data.order_summary);
-                if (data.quantities) {
-                    Object.entries(data.quantities).forEach(([itemId, qty]) => {
-                        const el = document.querySelector(`.cart-item[data-item-id="${itemId}"] .quantity-display`);
-                        if (el) el.textContent = qty;
-                    });
-                }
-                document.querySelectorAll('.cart-count').forEach(el => el.textContent = data.cart_count);
-                updateCouponEligibilityUI(data.eligible_coupons);
-            }
-        });
-    }
+    fetch('/sync-redis-cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
 
-    function updateCouponEligibilityUI(eligibleCoupons) {
-        document.querySelectorAll('[data-code]').forEach(btn => {
-            const code = btn.dataset.code;
-            if (!code || btn.dataset.applied === "true") return;
+            // Totals
+            updateOrderSummary(data.order_summary);
 
-            if (eligibleCoupons.includes(code)) {
-                btn.textContent = 'Apply Coupon';
-                btn.disabled = false;
-                btn.classList.replace('btn-outline-secondary', 'btn-outline-primary');
-                btn.classList.add('apply-coupon-btn');
-            } else {
-                btn.textContent = 'Not Eligible';
-                btn.disabled = true;
-                btn.classList.replace('btn-outline-primary', 'btn-outline-secondary');
-                btn.classList.remove('apply-coupon-btn');
+            // Quantities
+            if (data.quantities) {
+                Object.entries(data.quantities).forEach(([itemId, qty]) => {
+                    const el = document.querySelector(
+                        `.cart-item[data-item-id="${itemId}"] .quantity-display`
+                    );
+                    if (el) el.textContent = qty;
+                });
             }
-        });
-    }
+
+            // Cart count
+            document.querySelectorAll('.cart-count').forEach(el => {
+                el.textContent = data.cart_count;
+            });
+
+            // 🔥 AUTO ENABLE COUPONS
+            updateCouponEligibilityUI(data.eligible_coupons);
+        }
+    });
+}
+
+
+    // ---------- DISPLAY ONLY ----------
+  
 
 });
 </script>
 
+<script>
+function updateCouponEligibilityUI(eligibleCoupons) {
+
+    document.querySelectorAll('[data-code]').forEach(btn => {
+        const code = btn.dataset.code;
+        if (!code) return;
+
+        // Skip applied coupon
+        if (btn.dataset.applied === "true") return;
+
+        const required = btn.dataset.required;
+        const discount = btn.dataset.discount;
+
+        if (eligibleCoupons.includes(code)) {
+            // ✅ Eligible
+            btn.innerHTML = 'Apply Coupon';
+            btn.disabled = false;
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
+
+        } else {
+            // ❌ Not eligible → SHOW MESSAGE
+            btn.innerHTML = `
+                
+                <p class="text-muted">Apply coupon</p>
+            `;
+            btn.disabled = true;
+            btn.classList.remove('btn-outline-primary', 'apply-coupon-btn');
+            btn.classList.add('btn-outline-secondary');
+        }
+    });
+}
+</script>
 
 <script>
 window.updateOrderSummary = function (prices, meta = {}) {
@@ -1117,7 +1077,132 @@ document.getElementById('premium-offer-form').addEventListener('submit', functio
 
 
   
+<script>
+document.addEventListener("click", function (e) {
 
+    // APPLY COUPON
+    if (e.target.classList.contains("apply-coupon-btn")) {
+    e.preventDefault();
+
+    fetch("{% url 'apply_coupon' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+            code: e.target.dataset.code
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+
+            // ✅ INSTANT UI UPDATE
+            updateOrderSummary({
+                subtotal: data.totals.products_total,
+                delivery: data.totals.delivery,
+                platform_fee: data.totals.platform_fee,
+                gift_wrap: data.totals.gift_wrap,
+                discount: data.totals.coupon_discount,
+                premium_discount: data.totals.premium_discount,
+                total: data.totals.final_total
+            });
+             markCouponApplied(e.target.dataset.code, data.totals.coupon_discount);
+           
+
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+
+    // REMOVE COUPON
+    if (e.target.classList.contains("remove-coupon-btn")) {
+    e.preventDefault();
+
+    fetch("{% url 'remove_coupon' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}"
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+
+            // ✅ INSTANT UI UPDATE
+            updateOrderSummary({
+                subtotal: data.totals.products_total,
+                delivery: data.totals.delivery,
+                platform_fee: data.totals.platform_fee,
+                gift_wrap: data.totals.gift_wrap,
+                discount: data.totals.coupon_discount,
+                premium_discount: data.totals.premium_discount,
+                total: data.totals.final_total
+            });
+            resetCouponUI();
+
+        };
+    });
+  };
+})
+
+function markCouponApplied(code, discountAmount) {
+
+    document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
+        const btnCode = btn.dataset.code;
+
+        if (btnCode === code) {
+            btn.textContent = 'Remove';
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-danger', 'remove-coupon-btn');
+            btn.classList.remove('apply-coupon-btn');
+            btn.dataset.applied = 'true';
+        } else {
+            btn.disabled = true;
+        }
+    });
+
+    // ✅ Success message
+    const msg = document.getElementById('coupon-success-msg');
+    if (msg) {
+        msg.innerHTML = `🎉 You saved <strong>₹${discountAmount}</strong> with this coupon!`;
+        msg.style.display = 'block';
+    }
+
+    const row = document.getElementById('coupon-discount-row');
+    if (row) row.style.display = 'flex';
+}
+function resetCouponUI() {
+    document.querySelectorAll('button[data-applied="true"]').forEach(btn => {
+        btn.textContent = 'Apply Coupon';
+        btn.classList.remove('btn-danger', 'remove-coupon-btn');
+        btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
+        btn.disabled = false;
+        btn.removeAttribute('data-applied');
+    });
+
+    document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
+        btn.disabled = false;
+    });
+
+    // Hide discount row
+    const row = document.getElementById('coupon-discount-row');
+    if (row) row.style.display = 'none';
+
+    // Hide success message
+    const msg = document.getElementById('coupon-success-msg');
+    if (msg) {
+        msg.style.display = 'none';
+        msg.innerHTML = '';
+    }
+}
+
+
+
+</script>
 
 
 
