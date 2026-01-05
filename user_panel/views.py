@@ -1251,7 +1251,7 @@ def ajax_filter_products(request):
     cache.set(cache_key, response_data, 300)
     
     return JsonResponse(response_data, json_dumps_params={'ensure_ascii': False})
-    
+@login_required(login_url='email_login')   
 def product_detail(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     reviews = Review.objects.filter(product=product).order_by('-created_at')
@@ -1264,11 +1264,8 @@ def product_detail(request, product_id):
     rating_percentage = round((average_rating / 5) * 100, 2)
     from_video = request.GET.get('from_video')
     all_variants = product.variants.all().order_by('bottle_type')
-    in_cart=False
-    cart_item=None
-    if request.user.is_authenticated:
-         in_cart = Cart.objects.filter(user=request.user, product=product).exists()
-         cart_item = Cart.objects.filter(user=request.user, product=product).first()
+    in_cart = Cart.objects.filter(user=request.user, product=product).exists()
+    cart_item = Cart.objects.filter(user=request.user, product=product).first()
 
     is_giftset = product.category.name.lower().replace(' ', '').replace('-', '') == 'giftsets'
     flavours = Flavour.objects.all()
