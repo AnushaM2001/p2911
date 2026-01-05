@@ -3743,7 +3743,7 @@ def write_review(request, product_id):
         messages.error(request, "You've already reviewed this product.")
         return redirect('product_detail', product_id=product.id)
 
-    # ✅ Handle form submission
+    # ✅ Handle for submission
     if request.method == 'POST':
         form = ReviewForm(request.POST)
         if form.is_valid():
