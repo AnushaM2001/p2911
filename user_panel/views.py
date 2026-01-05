@@ -1587,10 +1587,19 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 
-@login_required(login_url='email_login')
 @require_POST
 def add_to_cart(request, product_id):
+    
     product = get_object_or_404(Product, id=product_id)
+    if not request.user.is_authenticated:
+        next_url = request.META.get('HTTP_REFERER', '/')
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                "status": "login_required",
+                "next": next_url
+            })
+        return redirect(f"/login/?next={next_url}")
+
 
     try:
         quantity = int(request.POST.get("quantity", 1))
