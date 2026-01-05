@@ -1620,13 +1620,10 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 
-# @login_required(login_url='email_login')
+@login_required(login_url='email_login')
 @require_POST
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
-    if not request.user.is_authenticated:
-        # 🔹 Return JSON instead of 302 redirect
-        return JsonResponse({"status": "error", "login_required": True})
 
     try:
         quantity = int(request.POST.get("quantity", 1))
@@ -2891,7 +2888,6 @@ from django.db.models import Q, Min, Max, Avg
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.db.models import Prefetch
-from django.db.models.functions import Replace, Lower
 
 @require_GET
 def search_suggestions(request):
@@ -2899,7 +2895,7 @@ def search_suggestions(request):
     category_id = request.GET.get('category', '').strip()
 
     # Limit results for ultra-fast response time
-    RESULT_LIMIT = 7
+    RESULT_LIMIT = 20
 
     # Preload category list (cached recommended)
     all_categories = list(
@@ -2941,14 +2937,11 @@ def search_suggestions(request):
 
     # Search filter
     if query:
-        q = query.strip().lower()
-        products = products.annotate(
-        name_clean=Replace(Lower('name'), ' ', '')
-    ).filter(
-        Q(name__icontains=q) |
-        Q(name_clean__icontains=q.replace(" ", "")) |
-        Q(description__icontains=q)
-    )
+        products = products.filter(
+            Q(name__icontains=query) |
+            Q(description__icontains=query) |
+            Q(sku__icontains=query)
+        )
 
     # Category filter
     if category_id:

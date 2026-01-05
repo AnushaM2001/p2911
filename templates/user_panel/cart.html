@@ -274,7 +274,7 @@ html, body {
         <p class="mb-0 fw-bold" style="color: #981942;">
           <i class="bi bi-geo-alt-fill me-2"></i>Delivery To
         </p>
-        <a href="{% url 'add_address' %}" class="text-decoration-none" style="color: var(--color-saddlebrown);">Select</a>
+        <a href="{% url 'add_address' %}" class="text-decoration-none" style="color: var(--color-saddlebrown);">Select Address National/international</a>
       </div>
 
        <!-- <div class="mb-2 p-3 custom-box shadow-sm d-flex justify-content-between align-items-center">
@@ -322,7 +322,7 @@ html, body {
           <div class="d-flex align-items-center">
             
             {% if item.gift_set %}
-            {% if item.discounted_price %}
+{% if item.offer_applied and item.offer_applied.premium_festival == "Festival" %}
         <span class="text-success font-weight-bold">₹{{ item.discounted_price|floatformat:2  }}</span>
         <del class="text-muted" style="margin-left:10px;">₹{{ item.gift_set.price }}</del>
         {% if item.offer_applied %}
@@ -335,7 +335,7 @@ html, body {
             {% endif %}
             
           {% elif item.product_variant %}
-          {% if item.discounted_price %}
+{% if item.offer_applied and item.offer_applied.premium_festival == "Festival" %}
         <span class="text-success font-weight-bold">₹{{ item.discounted_price|floatformat:2  }}</span>
         <del class="text-muted" style="margin-left:10px;">₹{{ item.original_price }}</del>
         {% if item.offer_applied %}
@@ -497,40 +497,52 @@ html, body {
         
         <!-- Premium/Festive Offer Input -->
         
-           <div class="input-group mb-3" id="premium-offer-section">
-  <form id="premium-offer-form" method="POST" action="{% if premium_offer_code %}{% url 'remove_premium_offer' %}{% else %}{% url 'apply_premium_coupon' %}{% endif %}" class="d-flex w-100">
+          <div class="input-group mb-3" id="premium-offer-section">
+  <form id="premium-offer-form" class="d-flex w-100">
     {% csrf_token %}
-    <input type="text" id="premium-offer-code" name="code" class="form-control" placeholder="Enter code"
-      value="{{ premium_offer_code|default:'' }}" {% if premium_offer_code %}readonly{% endif %} required>
-    <button type="submit" id="premium-offer-btn" class="btn btn-outline-transparent bg-white"
-      style="color: var(--color-saddlebrown);">
+    <input
+      type="text"
+      id="premium-offer-code"
+      name="code"
+      class="form-control"
+      placeholder="Enter code"
+      value="{{ premium_offer_code|default:'' }}"
+      {% if premium_offer_code %}readonly{% endif %}
+      required
+    >
+    <button
+      type="submit"
+      id="premium-offer-btn"
+      class="btn btn-outline-transparent bg-white"
+      style="color: var(--color-saddlebrown);"
+      data-action="{% if premium_offer_code %}remove{% else %}apply{% endif %}">
       {% if premium_offer_code %}Remove{% else %}Apply{% endif %}
     </button>
   </form>
 </div>
+
+
 <div id="premium-offer-message" style="margin-top:10px;"></div>
 
     
         <div class="p-2" style="background-color: #fff; border-radius: 5px;">
           <p class="mb-1 fw-bold">Applicable</p>
-          {% if applicable_offers %}
-          {% for offer in applicable_offers %}
-
-          <div class="d-flex justify-content-between mb-3 align-items-center">
-            <div class="festival-offers">
-                <span class="fw-bold text-dark">
-                    {% if offer.code %}
-                        <span class="badge bg-success text-white">Get {{ offer.percentage }}% OFF</span> 
-                        with code <span class="text-primary">{{ offer.code }}</span>
-                    {% else %}
-                        <span class="badge bg-danger text-white">Get {{ offer.percentage }}% OFF</span>
-                    {% endif %}
-                </span>
-            </div>
-        </div>
-        
-{% endfor %}
+      {% if welcome_offer %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <span class="fw-bold">🎉 Welcome Offer</span><br>
+    <small class="text-muted">
+      Use code
+      <span class="text-primary">{{ welcome_offer.code }} Get {{ welcome_offer.percentage }}% off</span>
+      on your first order
+    </small>
+  </div>
+</div>
 {% endif %}
+
+
+
+
 
     
           <!-- Coupon 1 -->
@@ -548,38 +560,53 @@ html, body {
                   {% if coupon.id in used_coupons %}
                       <span class="text-danger">Already used ₹{{ coupon.discount }}</span>
                   {% elif coupon not in eligible_coupons %}
-                      <span class="text-warning">Shop Above ₹{{ coupon.required_amount }} 
-                          <b style="color: green;">Save ₹{{ coupon.discount }}</b>
-                      </span>
+                      <button
+  class="btn btn-outline-secondary btn-sm"
+  data-code="{{ coupon.code }}"
+  data-required="{{ coupon.required_amount }}"
+  data-discount="{{ coupon.discount }}"
+  disabled>
+  Apply Coupon
+                      
+</button>
+ 
+                          
                   {% else %}
-                      <span class="text-success">You save ₹{{ coupon.discount }}</span>
+                      <span class="text-danger">Shop above ₹{{ coupon.required_amount }}<span style="color: green; font-weight: bold;">Save ₹{{ coupon.discount }}</span>
+                      </span>
                   {% endif %}
               </div>
           
-              <div class="text-end">
-                  {% if coupon.code == request.session.applied_coupon %}
-                      <!-- If this coupon already applied -->
-                      <div class="d-flex gap-2">
-                          <button class="btn btn-success btn-sm" disabled>Applied</button>
-                          <form method="POST" action="{% url 'remove_coupon' %}">
-                              {% csrf_token %}
-                              <input type="hidden" name="item_id" value="{{ item.id }}">
-                              <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-                          </form>
-                      </div>
-                  {% elif coupon in eligible_coupons and coupon.id not in used_coupons %}
-                      <!-- If eligible and not used, show apply button -->
-                      <form id="applyCouponForm{{ coupon.id }}" method="POST" action="{% url 'apply_coupon' %}">
-                          {% csrf_token %}
-                          <input type="hidden" name="code" value="{{ coupon.code }}">
-                          <input type="hidden" name="item_id" value="{{ item.id }}">
-                          <button type="submit" class="btn btn-outline-primary btn-sm">Apply Coupon</button>
-                      </form>
-                  {% else %}
-                      <!-- Otherwise, disable -->
-                      <button class="btn btn-outline-secondary btn-sm" disabled>Not Eligible</button>
-                  {% endif %}
-              </div>
+             <div class="text-end">
+    {% if coupon.code == request.session.applied_coupon %}
+        <div class="d-flex gap-2">
+            <button class="btn btn-success btn-sm" disabled>
+                Applied
+            </button>
+
+            <button
+              class="btn btn-danger btn-sm remove-coupon-btn">
+              Remove
+            </button>
+        </div>
+
+    {% elif coupon in eligible_coupons and coupon.id not in used_coupons %}
+       <button
+  class="btn btn-outline-primary btn-sm apply-coupon-btn"
+  data-code="{{ coupon.code }}"
+  data-required="{{ coupon.required_amount }}"
+  data-discount="{{ coupon.discount }}">
+  Apply Coupon
+</button>
+
+
+    {% else %}
+        <button class="btn btn-outline-secondary btn-sm" disabled>
+            Not Eligible Sh
+        </button>
+    {% endif %}
+</div>
+
           </div>
           <hr>
           {% endfor %}
@@ -590,7 +617,11 @@ html, body {
         </div>
       </div>
     
-    
+    <div id="coupon-success-msg"
+     class="alert alert-success mt-2"
+     style="display:none;">
+</div>
+
 
     <!-- Order Summary -->
     
@@ -610,12 +641,14 @@ html, body {
         <span>Platform Fee</span>
         <span data-price="platform_fee">₹{{ platform_fee|floatformat:2 }}</span> 
     </div>
-    {% if applied_coupon %}
-    <div class="d-flex justify-content-between mb-2">
-        <span>Discount</span>  
-        <span data-price="discount" style="color: green;">-₹{{ discount|floatformat:2 }}</span>    
-    </div>
-    {% endif %}
+   
+<div id="coupon-discount-row"
+     class="d-flex justify-content-between mb-2"
+     style="display:none;">
+    <span>Discount</span>
+    <span data-price="discount" class="text-success">-₹0.00</span>
+</div>
+
     
     {% if gift_wrap_display %}
     <div class="d-flex justify-content-between mb-2">
@@ -623,13 +656,15 @@ html, body {
         <span data-price="gift_wrap" style="color: green;">+₹{{ gift_wrap_display|floatformat:2 }}</span>    
     </div>
     {% endif %}
-    
-    {% if premium_discount %}
-    <div class="d-flex justify-content-between mb-2">
-        <span>Premium Discount</span>
-        <span data-price="premium_discount" style="color: green;">-₹{{ premium_discount|floatformat:2 }}</span>
-    </div>
-    {% endif %}
+
+       
+   <div id="premium-discount-row"
+     class="d-flex justify-content-between mb-2"
+     style="display:none;">
+    <span id="premium-label">Premium Discount</span>
+    <span data-price="premium_discount" class="text-success">-₹0.00</span>
+</div>
+
     
     <hr>
     
@@ -722,44 +757,125 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- BACKEND-DRIVEN SUMMARY ----------
     function refreshOrderSummary() {
-        fetch('/sync-redis-cart/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify({})
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                updateOrderSummary(data.order_summary);
+    fetch('/sync-redis-cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
 
-                document.querySelectorAll('.cart-count').forEach(el => {
-                    el.textContent = data.cart_count;
+            // Totals
+            updateOrderSummary(data.order_summary);
+
+            // Quantities
+            if (data.quantities) {
+                Object.entries(data.quantities).forEach(([itemId, qty]) => {
+                    const el = document.querySelector(
+                        `.cart-item[data-item-id="${itemId}"] .quantity-display`
+                    );
+                    if (el) el.textContent = qty;
                 });
             }
-        });
-    }
+
+            // Cart count
+            document.querySelectorAll('.cart-count').forEach(el => {
+                el.textContent = data.cart_count;
+            });
+
+            // 🔥 AUTO ENABLE COUPONS
+            updateCouponEligibilityUI(data.eligible_coupons);
+        }
+    });
+}
+
 
     // ---------- DISPLAY ONLY ----------
-    window.updateOrderSummary = function (prices) {
-        const set = (key, val) => {
-            const el = document.querySelector(`[data-price="${key}"]`);
-            if (el) el.textContent = '₹' + parseFloat(val).toFixed(2);
-        };
-
-        set('subtotal', prices.subtotal);
-        set('delivery', prices.delivery);
-        set('platform_fee', prices.platform_fee);
-        set('gift_wrap', prices.gift_wrap);
-        set('discount', -prices.discount);
-        set('premium_discount', -prices.premium_discount);
-        set('total', prices.total);
-    };
+  
 
 });
 </script>
+
+<script>
+function updateCouponEligibilityUI(eligibleCoupons) {
+
+    document.querySelectorAll('[data-code]').forEach(btn => {
+        const code = btn.dataset.code;
+        if (!code) return;
+
+        // Skip applied coupon
+        if (btn.dataset.applied === "true") return;
+
+        const required = btn.dataset.required;
+        const discount = btn.dataset.discount;
+
+        if (eligibleCoupons.includes(code)) {
+            // ✅ Eligible
+            btn.innerHTML = 'Apply Coupon';
+            btn.disabled = false;
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
+
+        } else {
+            // ❌ Not eligible → SHOW MESSAGE
+            btn.innerHTML = `
+                
+                <p class="text-muted">Apply coupon</p>
+            `;
+            btn.disabled = true;
+            btn.classList.remove('btn-outline-primary', 'apply-coupon-btn');
+            btn.classList.add('btn-outline-secondary');
+        }
+    });
+}
+</script>
+
+<script>
+window.updateOrderSummary = function (prices, meta = {}) {
+
+    const set = (key, val, negative=false) => {
+        const el = document.querySelector(`[data-price="${key}"]`);
+        if (!el) return;
+
+        const num = parseFloat(val) || 0;
+        el.textContent = (negative ? '-₹' : '₹') + num.toFixed(2);
+    };
+
+    // ---- SET VALUES ----
+    set('subtotal', prices.subtotal);
+    set('delivery', prices.delivery);
+    set('platform_fee', prices.platform_fee);
+    set('gift_wrap', prices.gift_wrap || 0);
+    set('discount', prices.discount, true);
+    set('premium_discount', prices.premium_discount, true);
+    set('total', prices.total || prices.final_total);
+
+    // ---- COUPON ROW VISIBILITY ----
+    const couponRow = document.getElementById('coupon-discount-row');
+    const couponAmount = Number(prices.discount || 0);
+
+    couponRow.style.display = couponAmount > 0 ? 'flex' : 'none';
+
+    // -------- PREMIUM / WELCOME ROW --------
+    const premiumRow = document.getElementById('premium-discount-row');
+    const premiumLabel = document.getElementById('premium-label');
+    const premiumAmount = Number(prices.premium_discount || 0);
+
+    if (premiumAmount > 0) {
+        premiumRow.style.display = 'flex';
+        premiumLabel.textContent =
+            meta.welcome ? 'Welcome Discount' : 'Premium Discount';
+    } else {
+        premiumRow.style.display = 'none';
+    }
+};
+
+</script>
+
 
 
 
@@ -907,123 +1023,226 @@ function initiatePayment() {
   }, 6000); // 1 minute
 </script>
 
-
-
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('premium-offer-form');
-    const input = document.getElementById('premium-offer-code');
-    const btn = document.getElementById('premium-offer-btn');
-    const messageDiv = document.getElementById('premium-offer-message');
-
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-
-      const isRemoving = btn.textContent.trim().toLowerCase() === 'remove';
-      const url = isRemoving ? "{% url 'remove_premium_offer' %}" : "{% url 'apply_premium_coupon' %}";
-      const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
-      const codeValue = input.value;
-
-      fetch(url, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': csrfToken,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: new URLSearchParams(isRemoving ? {} : { code: codeValue })
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            if (isRemoving) {
-              input.readOnly = false;
-              input.value = '';
-              btn.textContent = 'Apply';
-              messageDiv.innerHTML = `<div class="alert alert-info">${data.message}</div>`;
-            } else {
-              input.readOnly = true;
-              btn.textContent = 'Remove';
-              messageDiv.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
-            }
-          } else {
-            messageDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
-          }
-        })
-        .catch(err => {
-          messageDiv.innerHTML = `<div class="alert alert-danger">Something went wrong. Please try again.</div>`;
-          console.error(err);
-        });
-    });
-  });
-</script>
-
-  <script>
-  document.getElementById('premium-offer-form').addEventListener('submit', function (e) {
+document.getElementById('premium-offer-form').addEventListener('submit', function (e) {
     e.preventDefault();
 
-    const form = e.target;
-    const formData = new FormData(form);
-    const url = form.action;
+    const btn = document.getElementById('premium-offer-btn');
+    const input = document.getElementById('premium-offer-code');
+    const message = document.getElementById('premium-offer-message');
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    const action = btn.dataset.action;
+    const url = action === 'apply'
+        ? "{% url 'apply_premium_coupon' %}"
+        : "{% url 'remove_premium_offer' %}";
+
+    const body = action === 'apply'
+        ? new URLSearchParams({ code: input.value })
+        : new URLSearchParams();
 
     fetch(url, {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-      },
-      body: formData
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrf,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: body
     })
-    .then(response => response.json())
+    .then(res => res.json())
     .then(data => {
-      alert(data.message);
+        if (data.status === 'success') {
 
-      if (data.status === 'success') {
-        // Reload cart section to reflect updated amount or update values manually
-        location.reload(); // Simple solution
-        // OR update total price dynamically here (preferred for a smoother UX)
-        document.getElementById('total-price').innerText = data.total_price;
-        document.getElementById('premium-discount').innerText = data.premium_discount;
-      }
+            // 🔁 Update totals instantly
+            updateOrderSummary(data.totals);
+
+            if (action === 'apply') {
+                input.readOnly = true;
+                btn.textContent = 'Remove';
+                btn.dataset.action = 'remove';
+            } else {
+                input.readOnly = false;
+                input.value = '';
+                btn.textContent = 'Apply';
+                btn.dataset.action = 'apply';
+            }
+
+            message.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+        } else {
+            message.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+        }
     })
-    .catch(error => {
-      console.error('Error:', error);
+    .catch(() => {
+        message.innerHTML = `<div class="alert alert-danger">Something went wrong</div>`;
     });
-  });
+});
 </script>
+
+
+
+  
+<script>
+document.addEventListener("click", function (e) {
+
+    // APPLY COUPON
+    if (e.target.classList.contains("apply-coupon-btn")) {
+    e.preventDefault();
+
+    fetch("{% url 'apply_coupon' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+            code: e.target.dataset.code
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+
+            // ✅ INSTANT UI UPDATE
+            updateOrderSummary({
+                subtotal: data.totals.products_total,
+                delivery: data.totals.delivery,
+                platform_fee: data.totals.platform_fee,
+                gift_wrap: data.totals.gift_wrap,
+                discount: data.totals.coupon_discount,
+                premium_discount: data.totals.premium_discount,
+                total: data.totals.final_total
+            });
+             markCouponApplied(e.target.dataset.code, data.totals.coupon_discount);
+           
+
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+
+    // REMOVE COUPON
+    if (e.target.classList.contains("remove-coupon-btn")) {
+    e.preventDefault();
+
+    fetch("{% url 'remove_coupon' %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}"
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "success") {
+
+            // ✅ INSTANT UI UPDATE
+            updateOrderSummary({
+                subtotal: data.totals.products_total,
+                delivery: data.totals.delivery,
+                platform_fee: data.totals.platform_fee,
+                gift_wrap: data.totals.gift_wrap,
+                discount: data.totals.coupon_discount,
+                premium_discount: data.totals.premium_discount,
+                total: data.totals.final_total
+            });
+            resetCouponUI();
+
+        };
+    });
+  };
+})
+
+function markCouponApplied(code, discountAmount) {
+
+    document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
+        const btnCode = btn.dataset.code;
+
+        if (btnCode === code) {
+            btn.textContent = 'Remove';
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-danger', 'remove-coupon-btn');
+            btn.classList.remove('apply-coupon-btn');
+            btn.dataset.applied = 'true';
+        } else {
+            btn.disabled = true;
+        }
+    });
+
+    // ✅ Success message
+    const msg = document.getElementById('coupon-success-msg');
+    if (msg) {
+        msg.innerHTML = `🎉 You saved <strong>₹${discountAmount}</strong> with this coupon!`;
+        msg.style.display = 'block';
+    }
+
+    const row = document.getElementById('coupon-discount-row');
+    if (row) row.style.display = 'flex';
+}
+function resetCouponUI() {
+    document.querySelectorAll('button[data-applied="true"]').forEach(btn => {
+        btn.textContent = 'Apply Coupon';
+        btn.classList.remove('btn-danger', 'remove-coupon-btn');
+        btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
+        btn.disabled = false;
+        btn.removeAttribute('data-applied');
+    });
+
+    document.querySelectorAll('.apply-coupon-btn').forEach(btn => {
+        btn.disabled = false;
+    });
+
+    // Hide discount row
+    const row = document.getElementById('coupon-discount-row');
+    if (row) row.style.display = 'none';
+
+    // Hide success message
+    const msg = document.getElementById('coupon-success-msg');
+    if (msg) {
+        msg.style.display = 'none';
+        msg.innerHTML = '';
+    }
+}
+
+
+
+</script>
+
+
+
 
 <script>
 // Connect to WebSocket for real-time updates
+const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+
 const cartSocket = new WebSocket(
-    'ws://' + window.location.host + 
+    protocol +
+    window.location.host +
     '/ws/cart/{{ request.user.id }}/'
 );
 
-cartSocket.onmessage = function(e) {
+cartSocket.onmessage = function (e) {
     const data = JSON.parse(e.data);
     console.log('WebSocket message received:', data);
-    
-    // Update cart count in header
-    const cartCountElements = document.querySelectorAll('.cart-count');
-    cartCountElements.forEach(el => {
+
+    document.querySelectorAll('.cart-count').forEach(el => {
         el.textContent = data.cart_count || '0';
     });
-    
+
     if (data.action === 'remove') {
-        // If item was removed, find and remove it from DOM
         const itemElement = document.querySelector(`[data-item-id="${data.item_id}"]`);
         if (itemElement) {
             itemElement.closest('.d-flex.p-3.mb-3').remove();
         }
-        
-        // Show notification
+
         showToast('Item removed from cart');
-        
-        // If cart is empty, reload the page
+
         if (data.is_empty) {
             setTimeout(() => location.reload(), 1000);
         }
+
     } else if (data.action === 'update') {
-        // Update quantity display if needed
         const itemElement = document.querySelector(`[data-item-id="${data.item_key}"]`);
         if (itemElement) {
             const quantityElement = itemElement.querySelector('.quantity-value');
@@ -1034,9 +1253,10 @@ cartSocket.onmessage = function(e) {
     }
 };
 
-cartSocket.onclose = function(e) {
+cartSocket.onclose = function (e) {
     console.error('Cart socket closed unexpectedly:', e);
 };
+
 
 // Helper function to show toast messages
 function showToast(message) {
@@ -1050,6 +1270,7 @@ function showToast(message) {
     }
 }
 </script>
+
 
 
 
