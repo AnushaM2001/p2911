@@ -46,6 +46,7 @@ from django.utils.timezone import now
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.apps import apps
 from django.db.models.functions import Cast, Lower, Greatest
+from django.utils.http import url_has_allowed_host_and_scheme
 
 # Redis client
 r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB)
@@ -70,49 +71,68 @@ def send_otp(email, otp_code):
         print("✅ OTP sent to:", email)
     except Exception as e:
         print("❌ Email sending failed:", e)
-    # send_mail(subject, message, from_email, [email])
 
 
 @csrf_exempt
 def send_otp_view(request):
+    next_url = request.GET.get('next')  # capture next page
+
     if request.method == 'POST':
         email = request.POST.get('email')
+
         if email:
             otp_code = generate_otp()
+
             OTP.objects.create(
                 email=email,
                 otp=otp_code,
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
-            send_otp(email, otp_code)
-            print(otp_code)
-            request.session['email'] = email
-            return redirect('verify_email_otp')
-    return render(request, 'user_panel/login.html')
 
+            send_otp(email, otp_code)
+
+            # store email + next in session
+            request.session['email'] = email
+            if next_url:
+                request.session['next'] = next_url
+
+            return redirect('verify_email_otp')
+
+    return render(request, 'user_panel/login.html', {
+        'next': next_url
+    })
 
 
 @csrf_exempt
 def verify_otp_view(request):
     email = request.session.get('email')
+    next_url = request.session.get('next')
+
+    if not email:
+        return redirect('login')
 
     if request.method == 'POST':
+
+        # 🔁 RESEND OTP
         if 'resend_otp' in request.POST:
             otp_code = generate_otp()
+
             OTP.objects.create(
                 email=email,
                 otp=otp_code,
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
+
             send_otp(email, otp_code)
-            print("resend:", otp_code)
+
             return render(request, 'user_panel/verify_otp.html', {
                 'email': email,
                 'message': 'OTP resent successfully.'
             })
 
-        # OTP submission
+        # ✅ VERIFY OTP
         otp = request.POST.get('otp')
+
         if otp:
             try:
                 otp_entry = OTP.objects.filter(
@@ -121,27 +141,42 @@ def verify_otp_view(request):
                     expires_at__gte=timezone.now()
                 ).latest('created_at')
 
-                # ✅ Get or create user
-                user, created = User.objects.get_or_create(username=email, defaults={'email': email})
+                # get or create user
+                user, created = User.objects.get_or_create(
+                    username=email,
+                    defaults={'email': email}
+                )
+
                 if not user.is_active:
-                        return render(request, 'user_panel/verify_otp.html', {
-                                'email': email,
-                                'error': 'Your account is blocked. Please contact support.'
-                            })
+                    return render(request, 'user_panel/verify_otp.html', {
+                        'email': email,
+                        'error': 'Your account is blocked. Please contact support.'
+                    })
 
-                # ✅ Log the user in
+                # LOGIN
                 login(request, user)
-
                 request.session['emailSucessLogin'] = True
-                return redirect('home')
+
+                # 🔁 redirect to next (SAFE)
+                if next_url and url_has_allowed_host_and_scheme(
+                    next_url,
+                    allowed_hosts={request.get_host()}
+                ):
+                    request.session.pop('next', None)
+                    return redirect(next_url)
+
+                return redirect('home')  # fallback
 
             except OTP.DoesNotExist:
                 return render(request, 'user_panel/verify_otp.html', {
-                    'error': 'Invalid or expired OTP',
-                    'email': email
+                    'email': email,
+                    'error': 'Invalid or expired OTP'
                 })
 
-    return render(request, 'user_panel/verify_otp.html', {'email': email})
+    return render(request, 'user_panel/verify_otp.html', {
+        'email': email
+    })
+
 
 def blocked_user_view(request):
     return render(request, 'user_panel/blocked_user.html')
@@ -1247,7 +1282,6 @@ def ajax_filter_products(request):
     
     return JsonResponse(response_data, json_dumps_params={'ensure_ascii': False})
     
-@login_required(login_url='email_login')    
 def product_detail(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     reviews = Review.objects.filter(product=product).order_by('-created_at')
@@ -1260,8 +1294,11 @@ def product_detail(request, product_id):
     rating_percentage = round((average_rating / 5) * 100, 2)
     from_video = request.GET.get('from_video')
     all_variants = product.variants.all().order_by('bottle_type')
-    in_cart = Cart.objects.filter(user=request.user, product=product).exists()
-    cart_item = Cart.objects.filter(user=request.user, product=product).first()
+    in_cart=False
+    cart_item=None
+    if request.user.is_authenticated:
+        in_cart = Cart.objects.filter(user=request.user, product=product).exists()
+        cart_item = Cart.objects.filter(user=request.user, product=product).first()
 
     is_giftset = product.category.name.lower().replace(' ', '').replace('-', '') == 'giftsets'
     flavours = Flavour.objects.all()
