@@ -77,14 +77,13 @@ def send_otp(email, otp_code):
 
 @csrf_exempt
 def send_otp_view(request):
-    next_url = request.GET.get('next')  # capture next page
+    next_url = request.GET.get('next')
 
     if request.method == 'POST':
         email = request.POST.get('email')
 
         if email:
             otp_code = generate_otp()
-
             OTP.objects.create(
                 email=email,
                 otp=otp_code,
@@ -93,16 +92,14 @@ def send_otp_view(request):
 
             send_otp(email, otp_code)
 
-            # store email + next in session
             request.session['email'] = email
             if next_url:
-                request.session['next'] = next_url
+                request.session['next'] = next_url  # ✅ VERY IMPORTANT
 
             return redirect('verify_email_otp')
 
-    return render(request, 'user_panel/login.html', {
-        'next': next_url
-    })
+    return render(request, 'user_panel/login.html', {'next': next_url})
+
 
 
 @csrf_exempt
