@@ -62,9 +62,6 @@ def generate_otp():
     return ''.join(random.choices(string.digits, k=4))
 
 
-# make sure you have a function to generate OTP
-
-@csrf_exempt
 def send_otp(email, otp_code):
     subject = 'Your OTP Code'
     message = f'Your OTP code is: {otp_code}'
@@ -74,91 +71,76 @@ def send_otp(email, otp_code):
         print("✅ OTP sent to:", email)
     except Exception as e:
         print("❌ Email sending failed:", e)
+    # send_mail(subject, message, from_email, [email])
 
 
-
-# ---------------- LOGIN (SEND OTP) ----------------
 @csrf_exempt
 def send_otp_view(request):
-    next_url = request.GET.get('next', '/')
-
     if request.method == 'POST':
         email = request.POST.get('email')
-
         if email:
-            otp = generate_otp()
+            otp_code = generate_otp()
             OTP.objects.create(
                 email=email,
-                otp=otp,
+                otp=otp_code,
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
-
-            send_otp(email, otp)
-
+            send_otp(email, otp_code)
+            print(otp_code)
             request.session['email'] = email
-            request.session['next'] = next_url   # ✅ VERY IMPORTANT
-
             return redirect('verify_email_otp')
+    return render(request, 'user_panel/login.html')
 
-    return render(request, 'user_panel/login.html', {'next': next_url})
 
 
-# ---------------- VERIFY OTP ----------------
 @csrf_exempt
 def verify_otp_view(request):
     email = request.session.get('email')
-    next_url = request.session.get('next', '/')
-
-    if not email:
-        return redirect('email_login')
 
     if request.method == 'POST':
-
-        # 🔁 RESEND OTP
         if 'resend_otp' in request.POST:
-            otp = generate_otp()
+            otp_code = generate_otp()
             OTP.objects.create(
                 email=email,
-                otp=otp,
+                otp=otp_code,
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
-            send_otp(email, otp)
-
+            send_otp(email, otp_code)
+            print("resend:", otp_code)
             return render(request, 'user_panel/verify_otp.html', {
                 'email': email,
-                'message': 'OTP resent successfully'
+                'message': 'OTP resent successfully.'
             })
 
-        # ✅ VERIFY OTP
+        # OTP submission
         otp = request.POST.get('otp')
+        if otp:
+            try:
+                otp_entry = OTP.objects.filter(
+                    email=email,
+                    otp=otp,
+                    expires_at__gte=timezone.now()
+                ).latest('created_at')
 
-        try:
-            OTP.objects.filter(
-                email=email,
-                otp=otp,
-                expires_at__gte=timezone.now()
-            ).latest('created_at')
+                # ✅ Get or create user
+                user, created = User.objects.get_or_create(username=email, defaults={'email': email})
+                if not user.is_active:
+                        return render(request, 'user_panel/verify_otp.html', {
+                                'email': email,
+                                'error': 'Your account is blocked. Please contact support.'
+                            })
 
-            user, _ = User.objects.get_or_create(
-                username=email,
-                defaults={'email': email}
-            )
+                # ✅ Log the user in
+                login(request, user)
 
-            login(request, user)
+                request.session['emailSucessLogin'] = True
+                return redirect('home')
 
-            if url_has_allowed_host_and_scheme(
-                next_url,
-                allowed_hosts={request.get_host()}
-            ):
-                return redirect(next_url)
-
-            return redirect('/')
-
-        except OTP.DoesNotExist:
-            return render(request, 'user_panel/verify_otp.html', {
-                'email': email,
-                'error': 'Invalid or expired OTP'
-            })
+            except OTP.DoesNotExist:
+                return render(request, 'user_panel/verify_otp.html', {
+                    'error': 'Invalid or expired OTP',
+                    'email': email
+                })
 
     return render(request, 'user_panel/verify_otp.html', {'email': email})
 
