@@ -1666,16 +1666,17 @@ document.addEventListener("DOMContentLoaded", function () {
             body: formData
         })
         .then(response => {
+            if (response.status === 302 || response.type === 'opaqueredirect') {
+                // redirect to login with next
+                window.location.href = `/email-login/?next=${encodeURIComponent(window.location.pathname)}`;
+                throw new Error("Redirecting to login...");
+            }
             if (!response.ok) throw new Error("Server error");
             return response.json();
         })
         .then(data => {
             console.log("Add to Cart Response:", data);
-            if (data.status === 'login_required') {
-                window.location.href = `/email-login/?next=${encodeURIComponent(data.next || window.location.href)}`;
-                return;
-            }
-
+           
             const messageSpan = notification?.querySelector('.notification-message');
             const productInfo = notification?.querySelector('.product-info');
             const progressBar = notification?.querySelector('.progress-bar');
