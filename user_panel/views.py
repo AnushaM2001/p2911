@@ -1249,7 +1249,6 @@ def ajax_filter_products(request):
     
     return JsonResponse(response_data, json_dumps_params={'ensure_ascii': False})
     
-@login_required(login_url='email_login')    
 def product_detail(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     reviews = Review.objects.filter(product=product).order_by('-created_at')
