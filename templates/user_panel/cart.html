@@ -798,29 +798,28 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 function updateCouponEligibilityUI(eligibleCoupons) {
 
+    // 🔒 STOP if any coupon is already applied
+    if (document.querySelector('[data-applied="true"]')) {
+        return;
+    }
+
     document.querySelectorAll('[data-code]').forEach(btn => {
         const code = btn.dataset.code;
         if (!code) return;
 
-        // Skip applied coupon
-        if (btn.dataset.applied === "true") return;
-
-        const required = btn.dataset.required;
-        const discount = btn.dataset.discount;
+        const required = btn.dataset.required || 0;
+        const discount = btn.dataset.discount || 0;
 
         if (eligibleCoupons.includes(code)) {
             // ✅ Eligible
-            btn.innerHTML = 'Apply Coupon';
+            btn.textContent = 'Apply Coupon';
             btn.disabled = false;
             btn.classList.remove('btn-outline-secondary');
             btn.classList.add('btn-outline-primary', 'apply-coupon-btn');
 
         } else {
-            // ❌ Not eligible → SHOW MESSAGE
-            btn.innerHTML = `
-                
-                <p class="text-muted">Apply coupon</p>
-            `;
+            // ❌ Not eligible
+            btn.textContent = `Shop above ₹${required}, Save ₹${discount}`;
             btn.disabled = true;
             btn.classList.remove('btn-outline-primary', 'apply-coupon-btn');
             btn.classList.add('btn-outline-secondary');
@@ -828,6 +827,8 @@ function updateCouponEligibilityUI(eligibleCoupons) {
     });
 }
 </script>
+
+
 
 <script>
 window.updateOrderSummary = function (prices, meta = {}) {
