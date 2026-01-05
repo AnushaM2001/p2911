@@ -76,36 +76,34 @@ def send_otp(email, otp_code):
         print("❌ Email sending failed:", e)
 
 
+
+# ---------------- LOGIN (SEND OTP) ----------------
 @csrf_exempt
 def send_otp_view(request):
-    if request.method == 'GET':
-        # ✅ Store next ONLY ONCE
-        if 'next' not in request.session:
-            request.session['next'] = request.GET.get('next', '/')
+    next_url = request.GET.get('next', '/')
 
     if request.method == 'POST':
         email = request.POST.get('email')
 
         if email:
-            otp_code = generate_otp()
+            otp = generate_otp()
             OTP.objects.create(
                 email=email,
-                otp=otp_code,
+                otp=otp,
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
 
-            send_otp(email, otp_code)
+            send_otp(email, otp)
 
             request.session['email'] = email
+            request.session['next'] = next_url   # ✅ VERY IMPORTANT
 
             return redirect('verify_email_otp')
 
-    return render(request, 'user_panel/login.html')
+    return render(request, 'user_panel/login.html', {'next': next_url})
 
 
-
-from django.utils.http import url_has_allowed_host_and_scheme
-
+# ---------------- VERIFY OTP ----------------
 @csrf_exempt
 def verify_otp_view(request):
     email = request.session.get('email')
@@ -118,17 +116,17 @@ def verify_otp_view(request):
 
         # 🔁 RESEND OTP
         if 'resend_otp' in request.POST:
-            otp_code = generate_otp()
+            otp = generate_otp()
             OTP.objects.create(
                 email=email,
-                otp=otp_code,
+                otp=otp,
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
-            send_otp(email, otp_code)
+            send_otp(email, otp)
 
             return render(request, 'user_panel/verify_otp.html', {
                 'email': email,
-                'message': 'OTP resent successfully.'
+                'message': 'OTP resent successfully'
             })
 
         # ✅ VERIFY OTP
@@ -148,20 +146,13 @@ def verify_otp_view(request):
 
             login(request, user)
 
-            # ✅ SAFE REDIRECT
             if url_has_allowed_host_and_scheme(
                 next_url,
                 allowed_hosts={request.get_host()}
             ):
-                response = redirect(next_url)
-            else:
-                response = redirect('/')
+                return redirect(next_url)
 
-            # ✅ CLEANUP SESSION (VERY IMPORTANT)
-            request.session.pop('next', None)
-            request.session.pop('email', None)
-
-            return response
+            return redirect('/')
 
         except OTP.DoesNotExist:
             return render(request, 'user_panel/verify_otp.html', {
@@ -170,6 +161,9 @@ def verify_otp_view(request):
             })
 
     return render(request, 'user_panel/verify_otp.html', {'email': email})
+
+
+# ---------------- ADD TO CART ----------------
 
 
 def blocked_user_view(request):
@@ -1620,9 +1614,12 @@ def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     if not request.user.is_authenticated:
         return JsonResponse({
-        "status": "login_required",
-        "next": request.META.get('HTTP_REFERER', '/')
-    })
+            'status': 'login_required',
+            'next': request.POST.get('next', f'/product/{product_id}/')
+        })
+
+    # cart logic here
+    return JsonResponse({'status': 'success'})
 
 
 
