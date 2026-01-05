@@ -160,7 +160,8 @@
                 <div class="otp-container">    
                   <button class="close-btn-circle" aria-label="Close">&times;</button>
                   <p class="verification-message">Please enter your Email to continue</p>
-                    <form action="{% url 'email_login' %}" method="POST">
+                    <form action="{% url 'email_login' %}?next={{ request.path }}" method="POST">
+
                         {% csrf_token %}
                         <div class="input-group">
                             <input type="text" id="name" name="email" placeholder="Enter your email" required class="mt-4">
@@ -183,7 +184,7 @@
        const closeBtn = document.querySelector('.close-btn-circle');
 if (closeBtn) {
     closeBtn.addEventListener('click', () => {
-        document.querySelector('.otp-container').style.display = 'none';
+        document.querySelector('.container').style.display = 'none';
     });
 }
 
