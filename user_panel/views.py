@@ -108,23 +108,21 @@ def send_otp_view(request):
 @csrf_exempt
 def verify_otp_view(request):
     email = request.session.get('email')
-    next_url = request.session.get('next')
+    next_url = request.session.get('next', '/')
 
     if not email:
-        return redirect('login')
+        return redirect('email_login')
 
     if request.method == 'POST':
 
         # 🔁 RESEND OTP
         if 'resend_otp' in request.POST:
             otp_code = generate_otp()
-
             OTP.objects.create(
                 email=email,
                 otp=otp_code,
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
-
             send_otp(email, otp_code)
 
             return render(request, 'user_panel/verify_otp.html', {
@@ -137,37 +135,26 @@ def verify_otp_view(request):
 
         if otp:
             try:
-                otp_entry = OTP.objects.filter(
+                OTP.objects.filter(
                     email=email,
                     otp=otp,
                     expires_at__gte=timezone.now()
                 ).latest('created_at')
 
-                # get or create user
-                user, created = User.objects.get_or_create(
+                user, _ = User.objects.get_or_create(
                     username=email,
                     defaults={'email': email}
                 )
 
-                if not user.is_active:
-                    return render(request, 'user_panel/verify_otp.html', {
-                        'email': email,
-                        'error': 'Your account is blocked. Please contact support.'
-                    })
-
-                # LOGIN
                 login(request, user)
-                request.session['emailSucessLogin'] = True
 
-                # 🔁 redirect to next (SAFE)
-                if next_url and url_has_allowed_host_and_scheme(
+                if url_has_allowed_host_and_scheme(
                     next_url,
                     allowed_hosts={request.get_host()}
                 ):
-                    request.session.pop('next', None)
                     return redirect(next_url)
 
-                return redirect('next_url')  # fallback
+                return redirect('/')
 
             except OTP.DoesNotExist:
                 return render(request, 'user_panel/verify_otp.html', {
@@ -175,9 +162,8 @@ def verify_otp_view(request):
                     'error': 'Invalid or expired OTP'
                 })
 
-    return render(request, 'user_panel/verify_otp.html', {
-        'email': email
-    })
+    return render(request, 'user_panel/verify_otp.html', {'email': email})
+
 
 def blocked_user_view(request):
     return render(request, 'user_panel/blocked_user.html')
