@@ -1663,21 +1663,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRFToken': csrftoken
             },
-            body: formData,
-            redirect: "manual"
+            body: formData
         })
         .then(response => {
-           if (response.type === "opaqueredirect") {
-                // User is not logged in -> redirect to login page
-                window.location.href = "/login/?next=" + window.location.pathname;
-                return;
-            }
-
             if (!response.ok) throw new Error("Server error");
             return response.json();
         })
         .then(data => {
             console.log("Add to Cart Response:", data);
+            if (data.status === 'login_required') {
+                window.location.href = `/email-login/?next=${encodeURIComponent(data.next || window.location.href)}`;
+                return;
+            }
 
             const messageSpan = notification?.querySelector('.notification-message');
             const productInfo = notification?.querySelector('.product-info');
