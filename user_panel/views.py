@@ -72,11 +72,12 @@ def send_otp(email, otp_code):
         print("❌ Email sending failed:", e)
     # send_mail(subject, message, from_email, [email])
 
-
 @csrf_exempt
 def send_otp_view(request):
     if request.method == 'POST':
         email = request.POST.get('email')
+        next_path = request.GET.get('next', '/')
+        request.session['next'] = next_path  # Save the page to redirect after OTP
         if email:
             otp_code = generate_otp()
             OTP.objects.create(
@@ -85,18 +86,20 @@ def send_otp_view(request):
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
             send_otp(email, otp_code)
-            print(otp_code)
             request.session['email'] = email
             return redirect('verify_email_otp')
     return render(request, 'user_panel/login.html')
 
 
-
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.conf import settings
 @csrf_exempt
 def verify_otp_view(request):
     email = request.session.get('email')
+    next_path = request.session.get('next', '/')
 
     if request.method == 'POST':
+        # Resend OTP
         if 'resend_otp' in request.POST:
             otp_code = generate_otp()
             OTP.objects.create(
@@ -105,7 +108,6 @@ def verify_otp_view(request):
                 expires_at=timezone.now() + timezone.timedelta(minutes=5)
             )
             send_otp(email, otp_code)
-            print("resend:", otp_code)
             return render(request, 'user_panel/verify_otp.html', {
                 'email': email,
                 'message': 'OTP resent successfully.'
@@ -121,19 +123,19 @@ def verify_otp_view(request):
                     expires_at__gte=timezone.now()
                 ).latest('created_at')
 
-                # ✅ Get or create user
+                # Get or create user
                 user, created = User.objects.get_or_create(username=email, defaults={'email': email})
                 if not user.is_active:
-                        return render(request, 'user_panel/verify_otp.html', {
-                                'email': email,
-                                'error': 'Your account is blocked. Please contact support.'
-                            })
+                    return render(request, 'user_panel/verify_otp.html', {
+                        'email': email,
+                        'error': 'Your account is blocked. Please contact support.'
+                    })
 
-                # ✅ Log the user in
+                # Log the user in
                 login(request, user)
 
-                request.session['emailSucessLogin'] = True
-                return redirect('home')
+                # Redirect to original page
+                return redirect(next_path)
 
             except OTP.DoesNotExist:
                 return render(request, 'user_panel/verify_otp.html', {
@@ -1260,8 +1262,11 @@ def product_detail(request, product_id):
     rating_percentage = round((average_rating / 5) * 100, 2)
     from_video = request.GET.get('from_video')
     all_variants = product.variants.all().order_by('bottle_type')
-    in_cart = Cart.objects.filter(user=request.user, product=product).exists()
-    cart_item = Cart.objects.filter(user=request.user, product=product).first()
+    in_cart=False
+    cart_item=None
+    if request.user.is_authenticated:
+         in_cart = Cart.objects.filter(user=request.user, product=product).exists()
+         cart_item = Cart.objects.filter(user=request.user, product=product).first()
 
     is_giftset = product.category.name.lower().replace(' ', '').replace('-', '') == 'giftsets'
     flavours = Flavour.objects.all()
@@ -2900,11 +2905,14 @@ def search_suggestions(request):
 
     # Search filter
     if query:
-        products = products.filter(
-            Q(name__icontains=query) |
-            Q(description__icontains=query) |
-            Q(sku__icontains=query)
-        )
+        q = query.strip().lower()
+        products = products.annotate(
+        name_clean=Replace(Lower('name'), ' ', '')
+    ).filter(
+        Q(name__icontains=q) |
+        Q(name_clean__icontains=q.replace(" ", "")) |
+        Q(description__icontains=q)
+    )
 
     # Category filter
     if category_id:
