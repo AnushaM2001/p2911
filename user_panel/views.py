@@ -78,7 +78,10 @@ def send_otp(email, otp_code):
 
 @csrf_exempt
 def send_otp_view(request):
-    next_url = request.GET.get('next')
+    if request.method == 'GET':
+        # ✅ Store next ONLY ONCE
+        if 'next' not in request.session:
+            request.session['next'] = request.GET.get('next', '/')
 
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -94,14 +97,14 @@ def send_otp_view(request):
             send_otp(email, otp_code)
 
             request.session['email'] = email
-            if next_url:
-                request.session['next'] = next_url  # ✅ VERY IMPORTANT
 
             return redirect('verify_email_otp')
 
-    return render(request, 'user_panel/login.html', {'next': next_url})
+    return render(request, 'user_panel/login.html')
 
 
+
+from django.utils.http import url_has_allowed_host_and_scheme
 
 @csrf_exempt
 def verify_otp_view(request):
@@ -131,34 +134,40 @@ def verify_otp_view(request):
         # ✅ VERIFY OTP
         otp = request.POST.get('otp')
 
-        if otp:
-            try:
-                OTP.objects.filter(
-                    email=email,
-                    otp=otp,
-                    expires_at__gte=timezone.now()
-                ).latest('created_at')
+        try:
+            OTP.objects.filter(
+                email=email,
+                otp=otp,
+                expires_at__gte=timezone.now()
+            ).latest('created_at')
 
-                user, _ = User.objects.get_or_create(
-                    username=email,
-                    defaults={'email': email}
-                )
+            user, _ = User.objects.get_or_create(
+                username=email,
+                defaults={'email': email}
+            )
 
-                login(request, user)
+            login(request, user)
 
-                if url_has_allowed_host_and_scheme(
-                    next_url,
-                    allowed_hosts={request.get_host()}
-                ):
-                    return redirect(next_url)
+            # ✅ SAFE REDIRECT
+            if url_has_allowed_host_and_scheme(
+                next_url,
+                allowed_hosts={request.get_host()}
+            ):
+                response = redirect(next_url)
+            else:
+                response = redirect('/')
 
-                return redirect('/')
+            # ✅ CLEANUP SESSION (VERY IMPORTANT)
+            request.session.pop('next', None)
+            request.session.pop('email', None)
 
-            except OTP.DoesNotExist:
-                return render(request, 'user_panel/verify_otp.html', {
-                    'email': email,
-                    'error': 'Invalid or expired OTP'
-                })
+            return response
+
+        except OTP.DoesNotExist:
+            return render(request, 'user_panel/verify_otp.html', {
+                'email': email,
+                'error': 'Invalid or expired OTP'
+            })
 
     return render(request, 'user_panel/verify_otp.html', {'email': email})
 
@@ -1610,13 +1619,11 @@ def add_to_cart(request, product_id):
     
     product = get_object_or_404(Product, id=product_id)
     if not request.user.is_authenticated:
-        next_url = request.META.get('HTTP_REFERER', '/')
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({
-                "status": "login_required",
-                "next": next_url
-            })
-        return redirect(f"/login/?next={next_url}")
+        return JsonResponse({
+        "status": "login_required",
+        "next": request.META.get('HTTP_REFERER', '/')
+    })
+
 
 
     try:
