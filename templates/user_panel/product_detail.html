@@ -1660,13 +1660,11 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             body: formData
         })
-        .then(response => response.json())  // always parse JSON
-        .then(data => {
-            if (data.login_required) {
-                // Redirect to login with next param
-                window.location.href = `/login/?next=${encodeURIComponent(window.location.pathname)}`;
-                return;
-            }
+        .then(response => { if (!response.ok) throw new Error("Server error"); 
+        return response.json();
+     }) 
+        .then(data => { 
+            console.log("Add to Cart Response:", data);
 
             if (data.status === 'success') {
                 // Update cart count
