@@ -1663,9 +1663,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRFToken': csrftoken
             },
-            body: formData
+            body: formData,
+            redirect: "manual"
         })
         .then(response => {
+           if (response.type === "opaqueredirect") {
+                // User is not logged in -> redirect to login page
+                window.location.href = "/login/?next=" + window.location.pathname;
+                return;
+            }
+
             if (!response.ok) throw new Error("Server error");
             return response.json();
         })
