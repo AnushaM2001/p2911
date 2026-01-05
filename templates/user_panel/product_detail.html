@@ -1619,7 +1619,6 @@ function recalcCartSummaryFromDOM() {
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.getElementById('add-to-cart-form');
     const addToCartBtn = document.getElementById('addToCartBtn');
-    const quantityInput = document.getElementById("quantity");
     const notification = document.getElementById('cart-notification');
 
     if (!form) {
@@ -1636,24 +1635,20 @@ document.addEventListener("DOMContentLoaded", function () {
             addToCartBtn.style.pointerEvents = "none";
         }
 
+        // Set selected flavours
         const selectedFlavours = Array.from(document.querySelectorAll('.gift-option.active'))
             .map(opt => opt.getAttribute('data-flavour-id'));
         document.getElementById('selected-flavours').value = selectedFlavours.join(',');
 
+        // Set selected price
         const variantPriceEl = document.getElementById("variant-price") || document.getElementById("gift-variant-price");
         if (variantPriceEl) {
-            const numeric = (variantPriceEl.innerText || "").toString().replace(/[^\d.]/g, "");
+            const numeric = (variantPriceEl.innerText || "").replace(/[^\d.]/g, "");
             document.getElementById("selected-price").value = numeric;
-            console.log("DEBUG set selected-price:", numeric);
         }
 
         const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         const formData = new FormData(form);
-
-        console.log("Submitting Add to Cart Form:");
-        for (let [key, value] of formData.entries()) {
-            console.log(key, value);
-        }
 
         const addToCartUrl = "{% url 'add_to_cart' product.id %}";
 
@@ -1665,52 +1660,47 @@ document.addEventListener("DOMContentLoaded", function () {
             },
             body: formData
         })
-        .then(response => {
-            if (response.status === 302 || response.type === 'opaqueredirect') {
-                // redirect to login with next
-                window.location.href = `/email-login/?next=${encodeURIComponent(window.location.pathname)}`;
-                throw new Error("Redirecting to login...");
-            }
-            if (!response.ok) throw new Error("Server error");
-            return response.json();
-        })
+        .then(response => response.json())  // always parse JSON
         .then(data => {
-            console.log("Add to Cart Response:", data);
-           
-            const messageSpan = notification?.querySelector('.notification-message');
-            const productInfo = notification?.querySelector('.product-info');
-            const progressBar = notification?.querySelector('.progress-bar');
-            const cartCount = document.getElementById('cart-count');
+            if (data.login_required) {
+                // Redirect to login with next param
+                window.location.href = `/email-login/?next=${encodeURIComponent(window.location.pathname)}`;
+                return;
+            }
 
             if (data.status === 'success') {
+                // Update cart count
+                const cartCount = document.getElementById('cart-count');
                 if (cartCount) cartCount.textContent = data.cart_count;
 
+                // Update sidebar
                 if (data.cart_items && data.order_summary) {
                     updateCartSidebar(data.cart_items, data.order_summary);
                 }
 
+                // Open cart sidebar
                 if (typeof openCartSidebar === "function") {
                     openCartSidebar();
                 } else {
                     document.getElementById("cartSidebar").classList.add("open");
                 }
 
+                // Show notification
+                const messageSpan = notification?.querySelector('.notification-message');
+                const productInfo = notification?.querySelector('.product-info');
+                const progressBar = notification?.querySelector('.progress-bar');
+
                 if (messageSpan) messageSpan.textContent = data.message || 'Added to Cart';
                 if (productInfo && data.cart_items?.length > 0) {
                     const firstItem = data.cart_items[0];
                     productInfo.innerHTML = `
-                        <img src="${firstItem.image || ''}" alt="${firstItem.name}" 
-                        style="width:50px;height:50px;object-fit:cover;margin-right:10px;">
+                        <img src="${firstItem.image || ''}" alt="${firstItem.name}" style="width:50px;height:50px;object-fit:cover;margin-right:10px;">
                         <div style="text-align:left;">
                             <div class="product-name">${firstItem.name}</div>
-<div class="product-price">
-  ₹${Number(firstItem.final_price || 0).toFixed(2)}
-</div>
-
+                            <div class="product-price">₹${Number(firstItem.final_price || 0).toFixed(2)}</div>
                         </div>
                     `;
-                }    
-
+                }
 
                 if (progressBar) {
                     progressBar.style.transition = 'none';
@@ -1733,12 +1723,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 let modal = new bootstrap.Modal(document.getElementById("reviewModal"));
                 modal.show();
             } else {
-                alert(data.message || "Failed to add item to cart.");
+                console.warn(data.message || "Failed to add item to cart.");
             }
         })
         .catch(error => {
             console.error("Add to Cart Error:", error);
-            alert("Failed to add item to cart.");
         })
         .finally(() => {
             if (addToCartBtn) {
@@ -1755,8 +1744,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("closeCart")?.addEventListener("click", () => {
         document.getElementById("cartSidebar").classList.remove("open");
     });
-
 });
+
 
 /* ---------- Update sidebar markup (delivery charge = 100 only if items exist) ---------- */
 function updateCartSidebar(items, summary) {
