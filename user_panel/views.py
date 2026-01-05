@@ -1612,11 +1612,7 @@ from django.views.decorators.http import require_POST
 def add_to_cart(request, product_id):
     
     product = get_object_or_404(Product, id=product_id)
-    if not request.user.is_authenticated:
-        return JsonResponse({
-            'status': 'login_required',
-            'next': request.POST.get('next', f'/product/{product_id}/')
-        })
+   
 
 
     try:
