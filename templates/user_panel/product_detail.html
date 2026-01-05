@@ -1664,11 +1664,12 @@ document.addEventListener("DOMContentLoaded", function () {
         return response.json();
      }) 
         .then(data => { 
-            if (data.status === "login_required") {
-                window.location.href =
-                    `/login/?next=${encodeURIComponent(data.next)}`;
-                return;
-            }
+           if (data.status === "login_required") {
+    window.location.href =
+        `/login/?next=${encodeURIComponent(data.next)}`;
+    return;
+}
+
 
             console.log("Add to Cart Response:", data);
 
