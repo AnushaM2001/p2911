@@ -669,15 +669,22 @@ def ajax_filter_products(request):
         page = 1
     
     # Get filter lists
-    category_ids = []
-    for cat_id in request.GET.getlist('category[]', []):
-        if cat_id.isdigit():
-            category_ids.append(int(cat_id))
-    
-    subcategory_ids = []
-    for subcat_id in request.GET.getlist('subcategory[]', []):
-        if subcat_id.isdigit():
-            subcategory_ids.append(int(subcat_id))
+   # 1️⃣ Get slugs from frontend (AJAX request)
+    category_slugs = request.GET.getlist('category_slug[]', [])
+    subcategory_slugs = request.GET.getlist('subcategory_slug[]', [])
+
+# 2️⃣ Convert slugs to IDs for querying the DB
+    category_ids = list(
+    Category.objects.filter(slug__in=category_slugs)
+    .values_list('id', flat=True)
+)
+    subcategory_ids = list(
+    Subcategory.objects.filter(slug__in=subcategory_slugs)
+    .values_list('id', flat=True)
+)
+
+# 3️⃣ Keep sizes filter as before
+
     
     sizes = request.GET.getlist('size[]', [])
     
