@@ -690,7 +690,13 @@ html, body {
                                         {% for cat in navbar_categories %}
                                         <li>
                                             <label class="dropdown-item d-flex align-items-center">
-                                                <input class="form-check-input me-2 categoryFilter" type="checkbox" value="{{ cat.id }}" {% if cat.id == category.id %}selected{% endif %} id="cat{{ cat.id }}" data-name="{{ cat.name }}">
+<input class="form-check-input me-2 categoryFilter"
+       type="checkbox"
+       value="{{ cat.slug }}"
+       {% if category and cat.id == category.id %}checked{% endif %}
+       id="cat{{ cat.id }}"
+       data-slug="{{ cat.slug }}"
+       data-name="{{ cat.name }}">
                                                 {{ cat.name }}
                                             </label>
                                         </li>
@@ -710,7 +716,13 @@ html, body {
                                         {% for sub in subcategories %}
                                         <li>
                                             <label class="dropdown-item d-flex align-items-center">
-                                                <input class="form-check-input me-2 subcategoryFilter" type="checkbox" value="{{ sub.id }}" {% if sub.id == subcategory.id %}selected{% endif %}id="sub{{ sub.id }}" data-name="{{ sub.name }}">
+<input class="form-check-input me-2 subcategoryFilter"
+       type="checkbox"
+       value="{{ sub.slug }}"
+       data-slug="{{ sub.slug }}"
+       {% if subcategory and sub.id == subcategory.id %}checked{% endif %}
+       id="sub{{ sub.id }}"
+       data-name="{{ sub.name }}">
                                                 {{ sub.name }}
                                             </label>
                                         </li>
