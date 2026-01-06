@@ -152,117 +152,6 @@ def blocked_user_view(request):
     return render(request, 'user_panel/blocked_user.html')
 
 
- # 15 minutes
-# def home1(request):
-#     products = Product.objects.all().annotate(
-#     average_rating=Avg('reviews__rating'),  # average out of 5
-#     review_count=Count('reviews')           # total number of reviews
-# )
-#     current_time = timezone.now()
-#     wishlist_product_ids = []
-    
-#     # Fetch festival offer
-#     festival_offer = PremiumFestiveOffer.objects.filter(
-#         premium_festival='Festival',
-#         start_date__lte=current_time,
-#         end_date__gt=current_time
-#     ).order_by('-created_at').first()
-
-#     offer_percentage = None
-#     startdatetime = None
-#     enddatetime = None
-#     offername = None
-#     if festival_offer:
-#         offer_percentage = festival_offer.percentage
-#         startdatetime = festival_offer.start_date
-#         enddatetime = festival_offer.end_date
-#         offername = festival_offer.offer_name
-#     else:
-#         print("No Festival offer found")
-#     print("festival offers",festival_offer)
-
-#     # Fetch banners, categories, and subcategories
-#     banners = Banner.objects.all().order_by('created_at')
-#     first_banner_no_section = None
-#     other_banners = []
-#     for banner in banners:
-#         if not banner.section and not first_banner_no_section:
-#             first_banner_no_section = banner
-#         else:
-#             other_banners.append(banner)
-#     categories = Category.objects.all().order_by('-created_at')[:4]
-#     subcategories = Subcategory.objects.annotate(
-#         name_lower=Lower('name')
-#     ).filter(
-#         name_lower__in=['french perfumes', 'arabic perfumes', 'french attars', 'arabic attars']
-#     ).order_by('-created_at')[:4]
-
-#     # Fetch products with min and max prices
-#     ScrollBar = Product.objects.filter(~Q(scroll_bar=""), ~Q(scroll_bar=None)).order_by('-created_at').first()
-
-#     best_selling = Product.objects.filter(is_best_seller=True).annotate(
-#     min_price=Min('variants__price'),
-#     max_price=Max('variants__price'),
-#     s_price=Min(Cast('variants__original_price', IntegerField())),
-#     e_price=Max(Cast('variants__original_price', IntegerField()))-Value(100),
-#     average_rating=Avg('reviews__rating'),      # 👈 avg rating
-#     review_count=Count('reviews')               # 👈 number of reviews
-#       ).order_by('-created_at')[:12]
-    
-#     new_arrival = Product.objects.filter(is_new_arrival=True).annotate(
-#         min_price=Min('variants__price'),
-#         max_price=Max('variants__price'),
-#         s_price=Min(Cast('variants__original_price', IntegerField())),
-#         e_price=Max(Cast('variants__original_price', IntegerField()))-Value(100),
-#         average_rating=Avg('reviews__rating'),      # 👈 avg rating
-#     review_count=Count('reviews') 
-#     ).order_by('-created_at')[:12]
-#     trending = Product.objects.filter(is_trending=True).annotate(
-#         min_price=Min('variants__price'),
-#         max_price=Max('variants__price'),
-#         s_price=Min(Cast('variants__original_price', IntegerField())),
-#         e_price=Max(Cast('variants__original_price', IntegerField()))-Value(100),
-#         average_rating=Avg('reviews__rating'),      # 👈 avg rating
-#     review_count=Count('reviews') 
-#     ).order_by('-created_at')[:12]
-
-#     occasions = Subcategory.objects.annotate(
-#         name_lower=Lower('name')
-#     ).filter(
-#         name_lower__in=['sports', 'office', 'party', 'travel']
-#     ).order_by('-created_at')[:4]
-
-#     if request.user.is_authenticated:
-#         wishlist_product_ids = list(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True))
-
-#     # Fetch multiple videos to display
-#     videos = ProductVideo.objects.all().order_by('-created_at')[:10]  # Fetch the latest 10 videos
-#     out_reviews=Client_review.objects.all()
-#     # Render the template with context
-#     return render(request, 'user_panel/home1.html', {
-#         'offername': offername,
-#         'categories': categories,
-#         'banners': banners,
-#         'subcategories': subcategories,
-#         'best_selling': best_selling,
-#         'new_arrival': new_arrival,
-#         'trending': trending,
-#         'ScrollBar': ScrollBar,
-#         'offer_percentage': offer_percentage,
-#         'startdatetime': startdatetime,
-#         'enddatetime': enddatetime,
-#         'occasions': occasions,
-#         'videos': videos,  # Pass multiple videos to the template
-#         'first_banner_no_section': first_banner_no_section,
-#         'wishlist_product_ids': wishlist_product_ids,
-#     'other_banners': other_banners,
-#     'festival_offer':festival_offer,
-#     'out_reviews':out_reviews
-#     })
-
-
-
-
 def home1(request):
     current_time = timezone.now()
 
@@ -569,10 +458,11 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
         if subcategory:
           canonical_url = subcategory.get_absolute_url()
         elif category:
-          canonical_url = category.get_absolute_url()
+           canonical_url = category.get_absolute_url()
 
-        if canonical_url and request.path != canonical_url:
-          return redirect(canonical_url, permanent=True)
+        if canonical_url and request.path != canonical_url and not request.GET:
+           return redirect(canonical_url, permanent=True)
+
 
 
     # ================== CREATE CACHE KEY ==================
