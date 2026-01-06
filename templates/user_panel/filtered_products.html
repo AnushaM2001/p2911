@@ -1,15 +1,19 @@
  {% extends 'layouts/main.html' %}
 {% load static %}
-{% block meta %}
-{% if subcategory %}
-    <link rel="canonical" href="{{ subcategory.get_absolute_url }}" />
-{% elif category %}
-    <link rel="canonical" href="{{ category.get_absolute_url }}" />
-{% else %}
-    <link rel="canonical" href="{{ request.build_absolute_uri }}" />
-{% endif %}
-{% endblock meta %}
+{% block title %}
+    {% if category %}
+        {{ category.name }}
+    {% elif subcategory %}
+        {{ subcategory.name }}
+    {% else %}
+        Products
+    {% endif %}
+{% endblock title %}
 
+{% block meta %}
+<link rel="canonical" href="{{ request.build_absolute_uri }}" />
+
+{% endblock meta %}
 {% block extra_css %}
 <!-- <link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" /> -->
 
@@ -857,8 +861,9 @@ let loadedProductIds = new Set(); // Prevent duplicate products
 function getUrlParams() {
     const params = new URLSearchParams(window.location.search);
     return {
-        categories: params.getAll('category').length ? params.getAll('category') : (params.get('categories') ? params.get('categories').split(',') : []),
-        subcategories: params.getAll('subcategory').length ? params.getAll('subcategory') : (params.get('subcategories') ? params.get('subcategories').split(',') : []),
+        categories: params.getAll('category_slug').length ? params.getAll('category_slug') : (params.get('categories') ? params.get('categories').split(',') : []),
+        subcategories: params.getAll('subcategory_slug').length ? params.getAll('subcategory_slug') : (params.get('subcategories') ? params.get('subcategories').split(',') : []),
+
         sizes: params.getAll('size'),
         min_price: params.get('min_price') || 0,
         max_price: params.get('max_price') || null,
@@ -907,8 +912,9 @@ function getUrlParams() {
    UPDATE URL DYNAMICALLY
 ------------------------------ */
 function updateURL() {
-    const categories = $('.categoryFilter:checked').map(function(){ return $(this).val(); }).get();
-    const subcategories = $('.subcategoryFilter:checked').map(function(){ return $(this).val(); }).get();
+    const categories = $('.categoryFilter:checked').map(function(){ return $(this).data('slug'); }).get();
+    const subcategories = $('.subcategoryFilter:checked').map(function(){ return $(this).data('slug'); }).get();
+
     const sizes = $('.sizeFilter:checked').map(function(){ return $(this).val(); }).get();
     const min_price = $('#priceRangeMin').val();
     const max_price = $('#priceRange').val();
@@ -1043,8 +1049,8 @@ function loadProducts(append = false) {
         url: "{% url 'ajax_filter_products' %}",
         data: {
             page: currentPage,
-            "category[]": categories,
-            "subcategory[]": subcategories,
+            'category_slug[]': categories,       // send slugs
+            'subcategory_slug[]': subcategories, 
             "size[]": sizes,
             min_price: min_price,
             max_price: max_price
