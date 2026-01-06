@@ -1,19 +1,9 @@
  {% extends 'layouts/main.html' %}
 {% load static %}
 {% block title %}
-    {% if category %}
-        {{ category.name }}
-    {% elif subcategory %}
-        {{ subcategory.name }}
-    {% else %}
-        Products
-    {% endif %}
+<h1>Add to cart </h1>
 {% endblock title %}
 
-{% block meta %}
-<link rel="canonical" href="{{ request.build_absolute_uri }}" />
-
-{% endblock meta %}
 {% block extra_css %}
 <!-- <link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" /> -->
 
@@ -690,13 +680,7 @@ html, body {
                                         {% for cat in navbar_categories %}
                                         <li>
                                             <label class="dropdown-item d-flex align-items-center">
-<input class="form-check-input me-2 categoryFilter"
-       type="checkbox"
-       value="{{ cat.slug }}"
-       {% if category and cat.id == category.id %}checked{% endif %}
-       id="cat{{ cat.id }}"
-       data-slug="{{ cat.slug }}"
-       data-name="{{ cat.name }}">
+                                                <input class="form-check-input me-2 categoryFilter" type="checkbox" value="{{ cat.id }}" {% if cat.id == category.id %}selected{% endif %} id="cat{{ cat.id }}" data-name="{{ cat.name }}">
                                                 {{ cat.name }}
                                             </label>
                                         </li>
@@ -716,13 +700,7 @@ html, body {
                                         {% for sub in subcategories %}
                                         <li>
                                             <label class="dropdown-item d-flex align-items-center">
-<input class="form-check-input me-2 subcategoryFilter"
-       type="checkbox"
-       value="{{ sub.slug }}"
-       data-slug="{{ sub.slug }}"
-       {% if subcategory and sub.id == subcategory.id %}checked{% endif %}
-       id="sub{{ sub.id }}"
-       data-name="{{ sub.name }}">
+                                                <input class="form-check-input me-2 subcategoryFilter" type="checkbox" value="{{ sub.id }}" {% if sub.id == subcategory.id %}selected{% endif %}id="sub{{ sub.id }}" data-name="{{ sub.name }}">
                                                 {{ sub.name }}
                                             </label>
                                         </li>
@@ -873,9 +851,8 @@ let loadedProductIds = new Set(); // Prevent duplicate products
 function getUrlParams() {
     const params = new URLSearchParams(window.location.search);
     return {
-        categories: params.getAll('category_slug').length ? params.getAll('category_slug') : (params.get('categories') ? params.get('categories').split(',') : []),
-        subcategories: params.getAll('subcategory_slug').length ? params.getAll('subcategory_slug') : (params.get('subcategories') ? params.get('subcategories').split(',') : []),
-
+        categories: params.getAll('category').length ? params.getAll('category') : (params.get('categories') ? params.get('categories').split(',') : []),
+        subcategories: params.getAll('subcategory').length ? params.getAll('subcategory') : (params.get('subcategories') ? params.get('subcategories').split(',') : []),
         sizes: params.getAll('size'),
         min_price: params.get('min_price') || 0,
         max_price: params.get('max_price') || null,
@@ -924,9 +901,8 @@ function getUrlParams() {
    UPDATE URL DYNAMICALLY
 ------------------------------ */
 function updateURL() {
-    const categories = $('.categoryFilter:checked').map(function(){ return $(this).data('slug'); }).get();
-    const subcategories = $('.subcategoryFilter:checked').map(function(){ return $(this).data('slug'); }).get();
-
+    const categories = $('.categoryFilter:checked').map(function(){ return $(this).val(); }).get();
+    const subcategories = $('.subcategoryFilter:checked').map(function(){ return $(this).val(); }).get();
     const sizes = $('.sizeFilter:checked').map(function(){ return $(this).val(); }).get();
     const min_price = $('#priceRangeMin').val();
     const max_price = $('#priceRange').val();
@@ -1061,8 +1037,8 @@ function loadProducts(append = false) {
         url: "{% url 'ajax_filter_products' %}",
         data: {
             page: currentPage,
-            'category_slug[]': categories,       // send slugs
-            'subcategory_slug[]': subcategories, 
+            "category[]": categories,
+            "subcategory[]": subcategories,
             "size[]": sizes,
             min_price: min_price,
             max_price: max_price
