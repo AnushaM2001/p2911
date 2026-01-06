@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
 from pathlib import Path
+SEO_SUFFIX = "store-for-men-and-women-in-india"
 
 
 SHIPROCKET_EMAIL="maqdummohammed@gmail.com"
