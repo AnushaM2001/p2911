@@ -1,19 +1,15 @@
  {% extends 'layouts/main.html' %}
 {% load static %}
-{% block title %}
-    {% if category %}
-        {{ category.name }}
-    {% elif subcategory %}
-        {{ subcategory.name }}
-    {% else %}
-        Products
-    {% endif %}
-{% endblock title %}
-
 {% block meta %}
-<link rel="canonical" href="{{ request.build_absolute_uri }}" />
-
+{% if subcategory %}
+    <link rel="canonical" href="{{ subcategory.get_absolute_url }}" />
+{% elif category %}
+    <link rel="canonical" href="{{ category.get_absolute_url }}" />
+{% else %}
+    <link rel="canonical" href="{{ request.build_absolute_uri }}" />
+{% endif %}
 {% endblock meta %}
+
 {% block extra_css %}
 <!-- <link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" /> -->
 
