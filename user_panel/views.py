@@ -2848,15 +2848,7 @@ def user_logout(request):
 from django.db.models import Min, Max, Avg, Prefetch, Q
 from django.views.decorators.http import require_GET
 from django.http import JsonResponse
-
-from django.db.models import Min, Max, Avg, Prefetch, Q
-from django.views.decorators.http import require_GET
-from django.http import JsonResponse
-
-from django.db.models import Q, Min, Max, Avg
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
-from django.db.models import Prefetch
+from django.db.models.functions import Lower, Replace
 
 @require_GET
 def search_suggestions(request):
@@ -2908,12 +2900,17 @@ def search_suggestions(request):
     if query:
         q = query.strip().lower()
         products = products.annotate(
-        name_clean=Replace(Lower('name'), ' ', '')
-    ).filter(
-        Q(name__icontains=q) |
-        Q(name_clean__icontains=q.replace(" ", "")) |
-        Q(description__icontains=q)
+           name_clean=Replace(
+        Lower('name'),
+        Value(' '),      # 👈 wrap with Value
+        Value('')
     )
+   ).filter(
+    Q(name__icontains=q) |
+    Q(name_clean__icontains=q.replace(" ", "")) |
+    Q(description__icontains=q)
+)
+
 
     # Category filter
     if category_id:
