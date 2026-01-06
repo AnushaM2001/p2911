@@ -1606,6 +1606,7 @@ def contact_list(request):
 from django.core.paginator import Paginator
 from django.db.models import Q
 from datetime import datetime
+from user_panel.models import InternationalOrder
 
 def International_orders(request):
     inter_orders = InternationalOrder.objects.all()

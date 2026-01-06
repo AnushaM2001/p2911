@@ -765,7 +765,7 @@
       {% for category in navbar_categories %}
         {% if category.subcategories.all %}
           <li class="nav-item dropdown">
-           <a href="{% url 'products_list' %}?category={{ category.id }}"
+           <a href="{% url 'category_products' category.slug %}"
             class="nav-link category-name offcanvas-link d-flex justify-content-between align-items-center dropdown-toggle"
             data-category="{{ category.id }}"
             data-has-dropdown="true">
@@ -776,7 +776,7 @@
             <ul class="dropdown-menu">
               {% for sub in category.subcategories.all %}
                 <li>
-                  <a class="dropdown-item" href="{% url 'products_list' %}?subcategory={{ sub.id }}">
+                  <a class="dropdown-item" href="{{ sub.get_absolute_url }}">
                     {{ sub.name }}
                   </a>
                 </li>
@@ -788,7 +788,7 @@
           </li>
         {% else %}
           <li class="nav-item">
-            <a class="nav-link category-name offcanvas-link" href="{% url 'products_list' %}?category={{ category.id }}">
+            <a class="nav-link category-name offcanvas-link" href="{% url 'category_products' category.slug %}">
               {{ category.name }}
             </a>
             <div class="divider"></div>

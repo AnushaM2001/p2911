@@ -527,152 +527,165 @@ import hashlib
 # ============================================================
 # 1) HTML TEMPLATE VIEW (filtered_products) - FIXED
 # ============================================================
-def filtered_products(request, category_id=None, subcategory_id=None):
-    """HTML template view - FIXED for your model structure"""
+# views.py
+from django.conf import settings
+from django.shortcuts import get_object_or_404, redirect
+
+def strip_seo_suffix(slug):
+    suffix = f"-{settings.SEO_SUFFIX}"
+    return slug.replace(suffix, "") if slug and slug.endswith(suffix) else slug
+
+
+def filtered_products(request, category_slug=None, subcategory_slug=None):
     start_time = time.time()
-    
-    # Create cache key
+
+    # ================= STRIP SEO SUFFIX =================
+    raw_category_slug = category_slug
+    raw_subcategory_slug = subcategory_slug
+
+    category_slug = strip_seo_suffix(category_slug)
+    subcategory_slug = strip_seo_suffix(subcategory_slug)
+
+    # ================= FETCH OBJECTS =================
+    category = None
+    subcategory = None
+
+    if category_slug:
+        if category_slug.isdigit():
+            category = get_object_or_404(Category, id=int(category_slug))
+            return redirect(category.get_absolute_url(), permanent=True)
+        else:
+            category = get_object_or_404(Category, slug=category_slug)
+
+    if subcategory_slug:
+        if subcategory_slug.isdigit():
+            subcategory = get_object_or_404(Subcategory, id=int(subcategory_slug))
+            return redirect(subcategory.get_absolute_url(), permanent=True)
+        else:
+            subcategory = get_object_or_404(Subcategory, slug=subcategory_slug)
+
+    # ================== CANONICAL SEO REDIRECT ==================
+    if category or subcategory:
+        if subcategory:
+          canonical_url = subcategory.get_absolute_url()
+        elif category:
+          canonical_url = category.get_absolute_url()
+
+        if canonical_url and request.path != canonical_url:
+          return redirect(canonical_url, permanent=True)
+
+
+    # ================== CREATE CACHE KEY ==================
     params_dict = {
-        'category_id': category_id,
-        'subcategory_id': subcategory_id,
+        'category_slug': category_slug,
+        'subcategory_slug': subcategory_slug,
         'categories': request.GET.get('categories', ''),
         'subcategories': request.GET.get('subcategories', ''),
         'path': request.path
     }
     cache_key = f"html_filter_{hashlib.md5(json.dumps(params_dict, sort_keys=True).encode()).hexdigest()}"
-    
-    # Check cache
     cached_context = cache.get(cache_key)
     if cached_context:
         cached_context['cache_hit'] = True
         cached_context['execution_time'] = round(time.time() - start_time, 3)
         return render(request, 'user_panel/filtered_products.html', cached_context)
-    
-    # ========== GET CATEGORY/SUBCATEGORY ==========
-    category = None
-    subcategory = None
-    
-    if category_id:
-        category = Category.objects.filter(id=category_id).first()
-    
-    if subcategory_id:
-        subcategory = Subcategory.objects.filter(id=subcategory_id).first()
-    
-    # Parse filter parameters from URL (e.g., /products/?category=23)
+
+    # ================== FILTER PARAMETERS ==================
     category_ids = []
-    if request.GET.get('category'):
-        try:
-            category_ids = [int(request.GET.get('category'))]
-        except:
-            category_ids = []
-    
-    # Also check for comma-separated categories
     if request.GET.get('categories'):
         try:
             category_ids = [int(i) for i in request.GET.get('categories').split(',') if i]
         except:
             category_ids = []
-    
+
     subcategory_ids = []
     if request.GET.get('subcategories'):
         try:
             subcategory_ids = [int(i) for i in request.GET.get('subcategories').split(',') if i]
         except:
             subcategory_ids = []
-    
-    # Check if giftset
+
+    # ================== CHECK IF GIFTSET ==================
     is_giftset = False
     if category:
-        # Check for giftset in category name
         is_giftset = any(word in category.name.lower() for word in ['giftset', 'gift set', 'gift-set', 'gift'])
-    
-    # ========== PROCESS PRODUCTS ==========
+
+    # ================== PROCESS PRODUCTS ==================
     product_list = []
-    
+
     if is_giftset and category:
-        # GIFTSETS - Use Product model with category filter
-        giftsets_products = Product.objects.filter(
-            category=category
-        ).prefetch_related(
-            'giftset_set__flavours'
-        )
-        
-        # Get active offers
+        # GIFTSETS
+        giftsets_products = Product.objects.filter(category=category).prefetch_related('giftset_set__flavours')
+
+        # Active offers
         now = timezone.now()
         active_offers = PremiumFestiveOffer.objects.filter(
             Q(premium_festival__in=['Welcome', 'Premium']) |
             Q(start_date__lte=now, end_date__gte=now)
         )
-        
+
         for product in giftsets_products:
-            # Get gift set for this product
             giftset = product.giftset_set.first()
             if not giftset:
                 continue
-                
-            # Apply offers
+
             discounted_price = None
             offer_code = None
-            
             for offer in active_offers:
                 discounted = offer.apply_offer(giftset)
                 if discounted:
                     discounted_price = discounted
                     offer_code = offer.code
                     break
-            
+
             product_list.append({
                 'id': product.id,
                 'name': product.name,
-                'price': float(giftset.price) if giftset.price else 0,
+                'price': float(giftset.price or 0),
                 'discounted_price': float(discounted_price) if discounted_price else None,
-                'original_price': float(product.original_price) if product.original_price else 0,
+                'original_price': float(product.original_price or 0),
                 'offer_code': offer_code,
                 'flavours': list(giftset.flavours.values_list('name', flat=True)) if hasattr(giftset, 'flavours') else [],
                 'image': product.image1.url if product.image1 else '',
-                'average_rating': 0,  # Calculate if you have reviews
+                'average_rating': 0,
                 'is_giftset': True,
             })
-        
+
         context_products = product_list
-        
+
     else:
         # REGULAR PRODUCTS
         base_qs = Product.objects.all()
-        
-        # Apply filters
+
         if category_ids:
             base_qs = base_qs.filter(category_id__in=category_ids)
-        elif category_id:
-            base_qs = base_qs.filter(category_id=category_id)
-        
+        elif category:
+            base_qs = base_qs.filter(category=category)
+
         if subcategory_ids:
             base_qs = base_qs.filter(subcategory_id__in=subcategory_ids)
-        elif subcategory_id:
-            base_qs = base_qs.filter(subcategory_id=subcategory_id)
-        
-        # Annotate with prices and ratings
+        elif subcategory:
+            base_qs = base_qs.filter(subcategory=subcategory)
+
+        # Annotate prices & ratings
         products_qs = base_qs.annotate(
             min_price=Min('variants__price'),
             average_rating=Avg('reviews__rating'),
             review_count=Count('reviews')
-        ).prefetch_related(
-            Prefetch('variants', queryset=ProductVariant.objects.all())
-        )
-        
-        # Get active offers
+        ).prefetch_related(Prefetch('variants', queryset=ProductVariant.objects.all()))
+
+        # Active offers
         now = timezone.now()
         active_offers = PremiumFestiveOffer.objects.filter(
             Q(premium_festival__in=['Welcome', 'Premium']) |
             Q(start_date__lte=now, end_date__gte=now)
         )
-        
+
         for product in products_qs:
-            # Get cheapest variant for offers
             cheapest_variant = product.variants.order_by('price').first()
             discounted_price = None
             offer_code = None
-            
+
             if cheapest_variant:
                 for offer in active_offers:
                     discounted = offer.apply_offer(cheapest_variant)
@@ -680,54 +693,43 @@ def filtered_products(request, category_id=None, subcategory_id=None):
                         discounted_price = discounted
                         offer_code = offer.code
                         break
-            
+
             product_list.append({
                 'id': product.id,
                 'name': product.name,
-                'price': float(product.min_price) if product.min_price else 0,
+                'price': float(product.min_price or 0),
                 'discounted_price': float(discounted_price) if discounted_price else None,
-                'original_price': float(product.original_price) if product.original_price else 0,
+                'original_price': float(product.original_price or 0),
                 'offer_code': offer_code,
                 'image': product.image1.url if product.image1 else '',
-                'average_rating': float(product.average_rating) if product.average_rating else 0,
+                'average_rating': float(product.average_rating or 0),
                 'review_count': product.review_count or 0,
                 'is_giftset': False,
             })
-        
+
         context_products = product_list
-    
-    # ========== SIDEBAR DATA ==========
+
+    # ================== SIDEBAR DATA ==================
     sidebar_cache_key = 'filter_sidebar_data'
     sidebar_data = cache.get(sidebar_cache_key)
-    
     if not sidebar_data:
-        # Get price range - only from active products if you have is_active field
         try:
-            # Try with is_active filter if Product has it
-            price_range = ProductVariant.objects.filter(
-                product__is_active=True
-            ).aggregate(
-                min_price=Min('price'),
-                max_price=Max('price')
+            price_range = ProductVariant.objects.filter(product__is_active=True).aggregate(
+                min_price=Min('price'), max_price=Max('price')
             )
         except:
-            # Fallback to all products
-            price_range = ProductVariant.objects.all().aggregate(
-                min_price=Min('price'),
-                max_price=Max('price')
-            )
-        
+            price_range = ProductVariant.objects.all().aggregate(min_price=Min('price'), max_price=Max('price'))
+
         sidebar_data = {
-            # No is_active filter for Category/Subcategory
-            'categories': list(Category.objects.all().values('id', 'name')),
-            'subcategories': list(Subcategory.objects.all().values('id', 'name', 'category_id')),
+            'categories': list(Category.objects.all().values('id', 'name', 'slug')),
+            'subcategories': list(Subcategory.objects.all().values('id', 'name', 'slug', 'category_id')),
             'sizes': list(ProductVariant.objects.values_list('size', flat=True).distinct()),
             'min_price': int(price_range['min_price'] or 0),
             'max_price': int(price_range['max_price'] or 1000)
         }
         cache.set(sidebar_cache_key, sidebar_data, 3600)
-    
-    # ========== PREPARE CONTEXT ==========
+
+    # ================== CONTEXT ==================
     context = {
         'category': category,
         'subcategory': subcategory,
@@ -744,14 +746,13 @@ def filtered_products(request, category_id=None, subcategory_id=None):
         'execution_time': round(time.time() - start_time, 3),
         'cache_hit': False,
     }
-    
+
     if is_giftset:
         context['giftsets'] = product_list
-    
-    # Cache the context
+
     cache.set(cache_key, context, 300)
-    
     return render(request, 'user_panel/filtered_products.html', context)
+
 # ============================================================
 # 2) AJAX API VIEW (ajax_filter_products) - FIXED VERSION
 # ============================================================

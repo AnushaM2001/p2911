@@ -17,12 +17,27 @@ SHIPROCKET_EMAIL="maqdummohammed@gmail.com"
 SHIPROCKET_PASSWORD="1XcVWz2K7K!eB14*wJPwH@3VyRwmKcz^"
 
 # Celery Settings
-CELERY_BROKER_URL = 'redis://redis:6379/0'
+# -----------------------------
+# LOCAL DEVELOPMENT: Dummy Cache + In-Memory Celery
+# -----------------------------
+
+# Caching: Use dummy cache to avoid Redis connection errors locally
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+    }
+}
+
+# Celery: Use in-memory broker and backend for local development
+CELERY_BROKER_URL = 'memory://'
+CELERY_RESULT_BACKEND = 'cache+memory://'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 CELERY_IMPORTS = ('admin_panel.tasks', 'user_panel.tasks')
 
-CELERY_RESULT_BACKEND = 'redis://redis:6379/2'
+# Optional: Disable Celery beat scheduler if you don't need periodic tasks
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 
 VAPID_PUBLIC_KEY = "BOq9RSStBKaio0QslQFxOpu3IYUrIiypkGLTOIIWw4-pAiE-BQfLreFmd2EmkBdvAnDrKP8LYSHhJVP7n83MLmo"
@@ -129,16 +144,16 @@ TEMPLATES = [
 WSGI_APPLICATION = 'PerfumeValley.wsgi.application'
 ASGI_APPLICATION = 'PerfumeValley.asgi.application'
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("redis", 6379)],  # Redis container name
-            "capacity": 1500,           # Max messages per channel
-            "expiry": 60,
-        },
-    },
-}
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {
+#             "hosts": [("127.0.0.1", 6379)],  # Redis container name
+#             "capacity": 1500,           # Max messages per channel
+#             "expiry": 60,
+#         },
+#     },
+# }
 
 
 # Database
@@ -277,19 +292,21 @@ EMAIL_USE_SSL = False
 EMAIL_HOST_USER = 'perfumevalleyworld5@gmail.com'
 EMAIL_HOST_PASSWORD = 'lnkxzddnqycdkjxw'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# settings.py OR constants.py
+SEO_SUFFIX = "store-for-men-and-women-in-india"
 
 
 # Redis Settings
-REDIS_HOST = 'redis'
+REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
 REDIS_DB = 0
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379/1",  # or localhost:6379
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
-    }
-}
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://127.0.0.1:6379/1",  # or localhost:6379
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         }
+#     }
+# }

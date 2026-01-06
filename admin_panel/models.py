@@ -8,8 +8,9 @@ from decimal import Decimal
 from django.contrib.auth.hashers import make_password, check_password
 from django.db.models.fields.files import ImageFieldFile
 # from admin_panel.utils import compress_image
-
-
+from django.utils.text import slugify
+from django.urls import reverse
+from django.conf import settings
 
 class AutoCompressImagesMixin(models.Model):
     """
@@ -48,8 +49,28 @@ class Category(AutoCompressImagesMixin,models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     banner = models.ImageField(upload_to='category_banners/', blank=True, null=True)
     gif_file = models.FileField(upload_to='gifs/', blank=True, null=True,)
+    slug = models.SlugField(blank=True, null=True)
     class Meta:
         ordering = ['-created_at']  # Order categories by name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            while Category.objects.filter(slug=slug).exclude(id=self.id).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse(
+            'category_products',
+            kwargs={
+                'category_slug': f"{self.slug}-{settings.SEO_SUFFIX}"
+            }
+        )
 
 
     def __str__(self):
@@ -61,11 +82,32 @@ class Subcategory(AutoCompressImagesMixin,models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     sub_image = models.ImageField(upload_to='subcategory_images/', null=True, blank=True)
     banner = models.ImageField(upload_to='subcategory_banners/', blank=True, null=True)
+    slug = models.SlugField(blank=True, null=True)
+    
 
     class Meta:
         ordering = ['-created_at'] 
 
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            while Subcategory.objects.filter(slug=slug).exclude(id=self.id).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse(
+            'subcategory_products',
+            kwargs={
+                'category_slug': f"{self.category.slug}",
+                'subcategory_slug': f"{self.slug}-{settings.SEO_SUFFIX}",
+            }
+        )
     def __str__(self):
         return self.name
 # Example (models.py)

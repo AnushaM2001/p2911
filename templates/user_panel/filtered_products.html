@@ -1,9 +1,19 @@
  {% extends 'layouts/main.html' %}
 {% load static %}
 {% block title %}
-<h1>Add to cart </h1>
+    {% if category %}
+        {{ category.name }}
+    {% elif subcategory %}
+        {{ subcategory.name }}
+    {% else %}
+        Products
+    {% endif %}
 {% endblock title %}
 
+{% block meta %}
+<link rel="canonical" href="{{ request.build_absolute_uri }}" />
+
+{% endblock meta %}
 {% block extra_css %}
 <!-- <link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" /> -->
 
