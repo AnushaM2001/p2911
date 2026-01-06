@@ -2849,21 +2849,21 @@ from django.db.models import Min, Max, Avg, Prefetch, Q
 from django.views.decorators.http import require_GET
 from django.http import JsonResponse
 from django.db.models.functions import Lower, Replace
-
+from django.db.models import Q, Value, IntegerField, Case, When, Prefetch
+import re
 @require_GET
 def search_suggestions(request):
     query = request.GET.get('q', '').strip()
     category_id = request.GET.get('category', '').strip()
 
-    # Limit results for ultra-fast response time
     RESULT_LIMIT = 20
 
-    # Preload category list (cached recommended)
+    # ---------- Categories ----------
     all_categories = list(
         Category.objects.only('id', 'name').values('id', 'name')
     )
 
-    # Prefetch only minimal required fields
+    # ---------- Base queryset ----------
     products = (
         Product.objects.only(
             'id', 'name', 'image1', 'description', 'category_id'
@@ -2896,65 +2896,74 @@ def search_suggestions(request):
         )
     )
 
-    # Search filter
+    # ---------- SEARCH LOGIC ----------
     if query:
-        q = query.strip().lower()
-        products = products.annotate(
-           name_clean=Replace(
-        Lower('name'),
-        Value(' '),      # 👈 wrap with Value
-        Value('')
-    )
-   ).filter(
-    Q(name__icontains=q) |
-    Q(name_clean__icontains=q.replace(" ", "")) |
-    Q(description__icontains=q)
-)
+        q = re.sub(r'\s+', ' ', query.lower())
+        q_clean = q.replace(" ", "")
 
+        products = (
+            products.annotate(
+                name_clean=Replace(
+                    Lower('name'),
+                    Value(' '),
+                    Value('')
+                ),
+                relevance=Case(
+                    When(name__icontains=q, then=3),
+                    When(name_clean__icontains=q_clean, then=2),
+                    When(description__icontains=q, then=1),
+                    default=0,
+                    output_field=IntegerField(),
+                )
+            )
+            .filter(
+                Q(name__icontains=q) |
+                Q(name_clean__icontains=q_clean) |
+                Q(description__icontains=q)
+            )
+            .order_by('-relevance', 'id')   # 🔥 CRITICAL
+        )
 
-    # Category filter
+    # ---------- CATEGORY FILTER ----------
     if category_id:
         products = products.filter(category_id=category_id)
 
-    # LIMIT for fast search
+    # ---------- LIMIT ----------
     products = products[:RESULT_LIMIT]
 
+    # ---------- RESPONSE BUILD ----------
     results = []
 
     for p in products:
-        cat = p.category.name.lower().replace(" ", "").replace("-", "")
+        cat = (p.category.name or "").lower().replace(" ", "").replace("-", "")
 
-        # ===== PRICE HANDLING =====
-        if cat == "giftsets" and p.gs:
+        # ----- PRICE HANDLING -----
+        if cat == "giftsets" and getattr(p, 'gs', None):
             prices = [g.discounted_price or g.price for g in p.gs if g.price]
             originals = [g.original_price for g in p.gs if g.original_price]
-
         else:
-            prices = [v.price for v in p.vars if v.price]
-            originals = [v.original_price for v in p.vars if v.original_price]
+            prices = [v.price for v in getattr(p, 'vars', []) if v.price]
+            originals = [v.original_price for v in getattr(p, 'vars', []) if v.original_price]
 
-        # Selling price formatting
-        if prices:
-            mn = min(prices)
-            mx = max(prices)
-            price_display = f"₹{mn}" if mn == mx else f"₹{mn} - ₹{mx}"
-        else:
-            price_display = "Price not available"
+        # Skip products without price
+        if not prices:
+            continue
 
-        # Original price formatting
+        mn, mx = min(prices), max(prices)
+        price_display = f"₹{mn}" if mn == mx else f"₹{mn} - ₹{mx}"
+
         if originals:
-            mn = min(originals)
-            mx = max(originals)
-            original_price_display = f"₹{mn}" if mn == mx else f"₹{mn} - ₹{mx}"
+            om, ox = min(originals), max(originals)
+            original_price_display = f"₹{om}" if om == ox else f"₹{om} - ₹{ox}"
         else:
             original_price_display = "N/A"
 
-        # ===== RATINGS =====
-        ratings = [r.rating for r in p.revs if r.rating]
-        avg_rating = round(sum(ratings)/len(ratings), 1) if ratings else 0.0
+        # ----- RATINGS -----
+        ratings = [r.rating for r in getattr(p, 'revs', []) if r.rating]
+        avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
         rating_percentage = round((avg_rating / 5) * 100, 1)
 
-        # ===== FINAL OUTPUT =====
+        # ----- FINAL OUTPUT -----
         results.append({
             "id": p.id,
             "name": p.name,
@@ -2971,7 +2980,6 @@ def search_suggestions(request):
         "results": results,
         "categories": all_categories,
     })
-
 
 from django.db.models import Min, Max, Avg, Prefetch
 
