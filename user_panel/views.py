@@ -128,12 +128,12 @@ def home1(request):
     # 🔹 Common product annotations (REUSED everywhere)
     # --------------------------------------------------
     product_annotations = {
-        "min_price": Min("variants__price"),
-        "max_price": Max("variants__price")-Value(100),
-        "s_price": Min(Cast("variants__original_price", IntegerField())),
-        "e_price": Max(Cast("variants__original_price", IntegerField())),
-        "average_rating": Avg("reviews__rating"),
-        "review_count": Count("reviews", distinct=True),
+"min_price": Min("variants__price", filter=Q(variants__price__isnull=False)),
+    "max_price": Max("variants__price", filter=Q(variants__price__isnull=False)) - Value(100),
+    "s_price": Min(Cast("variants__original_price", IntegerField())),
+    "e_price": Max(Cast("variants__original_price", IntegerField())),
+    "average_rating": Avg("reviews__rating"),
+    "review_count": Count("reviews", distinct=True),
     }
 
     # --------------------------------------------------
@@ -487,7 +487,10 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
         )
 
         for product in products_qs:
-            cheapest_variant = product.variants.order_by('price').first()
+            cheapest_variant = product.variants.filter(
+    price__isnull=False
+).order_by('price').first()
+
             discounted_price = None
             offer_code = None
 
@@ -865,8 +868,10 @@ def ajax_filter_products(request):
         if product_ids:
             # Get variants for these products
             variants_qs = ProductVariant.objects.filter(
-                product_id__in=product_ids
-            )
+    product_id__in=product_ids,
+    price__isnull=False
+)
+
             
             # Apply size filter
             if sizes:
