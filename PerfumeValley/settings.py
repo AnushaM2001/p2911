@@ -13,18 +13,17 @@ import os
 from pathlib import Path
 SEO_SUFFIX = "store-for-men-and-women-in-india"
 
-# rzp_test_S1RkEEAn0VEZxG
-# AN7yh0x7QsmjNItQ8p3rIbZ2
+
 SHIPROCKET_EMAIL="maqdummohammed@gmail.com"
 SHIPROCKET_PASSWORD="1XcVWz2K7K!eB14*wJPwH@3VyRwmKcz^"
 
 # Celery Settings
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_BROKER_URL = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_IMPORTS = ('admin_panel.tasks', 'user_panel.tasks')
 
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/2'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/2'
 
 
 VAPID_PUBLIC_KEY = "BOq9RSStBKaio0QslQFxOpu3IYUrIiypkGLTOIIWw4-pAiE-BQfLreFmd2EmkBdvAnDrKP8LYSHhJVP7n83MLmo"
@@ -128,7 +127,6 @@ TEMPLATES = [
     },
 ]
 
-
 WSGI_APPLICATION = 'PerfumeValley.wsgi.application'
 ASGI_APPLICATION = 'PerfumeValley.asgi.application'
 
@@ -136,7 +134,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],  # Redis container name
+            "hosts": [("redis", 6379)],  # Redis container name
             "capacity": 1500,           # Max messages per channel
             "expiry": 60,
         },
@@ -153,28 +151,13 @@ CHANNEL_LAYERS = {
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',  # Use PostgreSQL backend
-#         'NAME': 'PerfumeValley',  # Replace with your database name
-#         'USER':'admin',  # Replace with your database user
-#         'PASSWORD': 'Perfumevalley12345',  # Replace with your database password
-#         'HOST': 'database-2.cr4y64o0iohu.eu-north-1.rds.amazonaws.com',  # Set to 'localhost' or the IP address of your PostgreSQL server
-#         'PORT': '3306',  # Default PostgreSQL port
-#         'OPTIONS': {
-#              'ssl': {'ssl-ca': ''},  # Disable SSL
-#              'init_command': 'SET sql_mode="STRICT_TRANS_TABLES";',
-#           },
-#     }
-# }
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',  # Use PostgreSQL backend
-        'NAME': 'pv1',  # Replace with your database name
-        'USER': 'root',  # Replace with your database user
-        'PASSWORD': 'Anusha@123',  # Replace with your database password
-        'HOST': 'localhost',  # Set to 'localhost' or the IP address of your PostgreSQL server
+        'NAME': 'PerfumeValley',  # Replace with your database name
+        'USER':'admin',  # Replace with your database user
+        'PASSWORD': 'Perfumevalley12345',  # Replace with your database password
+        'HOST': 'database-2.cr4y64o0iohu.eu-north-1.rds.amazonaws.com',  # Set to 'localhost' or the IP address of your PostgreSQL server
         'PORT': '3306',  # Default PostgreSQL port
         'OPTIONS': {
              'ssl': {'ssl-ca': ''},  # Disable SSL
@@ -182,6 +165,7 @@ DATABASES = {
           },
     }
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -207,7 +191,6 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 524288000
 CSRF_TRUSTED_ORIGINS = [
     "https://perfumevalleyworld.com",
     "https://www.perfumevalleyworld.com",
-    "http://127.0.0.1:8000"
     
 ]
 
@@ -233,8 +216,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # STATIC FILES + COMPRESSOR SETTINGS
 # -----------------------------
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-# STATIC_ROOT = "/home/ec2-user/finalcode/staticfiles/"
+# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = "/home/ec2-user/finalcode/staticfiles/"
 
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
@@ -282,10 +265,9 @@ DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 LOGIN_URL = '/login/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-RAZORPAY_KEY_ID='rzp_test_S1RkEEAn0VEZxG'
-RAZORPAY_SECRET='AN7yh0x7QsmjNItQ8p3rIbZ2'
-# rzp_test_S1RkEEAn0VEZxG
-# AN7yh0x7QsmjNItQ8p3rIbZ2
+RAZORPAY_KEY_ID='rzp_live_Rl8KKKylmcJZ6y'
+RAZORPAY_SECRET='YAoy1Cg8Po2p61HUmRom2x95'
+
 # settings.py
 APPEND_SLASH = False
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -299,14 +281,14 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
 # Redis Settings
-REDIS_HOST = '127.0.0.1'
+REDIS_HOST = 'redis'
 REDIS_PORT = 6379
 REDIS_DB = 0
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",  # or localhost:6379
+        "LOCATION": "redis://redis:6379/1",  # or localhost:6379
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
