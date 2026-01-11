@@ -105,16 +105,24 @@ def festival_offer_context(request):
 
 # user_panel/context_processors.py
 from django.urls import reverse
-from admin_panel.models import Order,OrderItem
+from django.db.models import Prefetch
+from admin_panel.models import Order, OrderItem
+
 def latest_purchases_orders(request):
     purchases = []
 
     try:
-        orders = Order.objects.prefetch_related(
-            Prefetch("items", queryset=OrderItem.objects.select_related("product"))
-        ).select_related("user", "address").order_by("-created_at")[:10]
-
-        # print(f"Fetched {len(orders)} orders")  # ✅ Debugging
+        orders = (
+            Order.objects
+            .select_related("address")  # ✅ ONLY relational fields
+            .prefetch_related(
+                Prefetch(
+                    "items",
+                    queryset=OrderItem.objects.select_related("product")
+                )
+            )
+            .order_by("-created_at")[:10]
+        )
 
         for order in orders:
             item = order.items.first()
@@ -122,34 +130,51 @@ def latest_purchases_orders(request):
                 continue
 
             product = item.product
-            # print(f"Processing product: {product.name}")  # ✅ Debugging
-
-            price_display = f"₹{item.price}" if item.price else "Price not available"
-            original_price_display = f"₹{item.original_price}" if getattr(item, "original_price", None) else ""
 
             purchases.append({
                 "product_name": product.name or "Unknown Product",
-                "product_price": price_display,
-                "product_original_price": original_price_display,
-                "product_image": product.image1.url if getattr(product, "image1", None) else "",
+                "product_price": f"₹{item.price * item.quantity}" if item.price else "Price not available",
+                "product_original_price": (
+                    f"₹{item.original_price}"
+                    if hasattr(item, "original_price") and item.original_price
+                    else ""
+                ),
+                "product_image": (
+                    product.image1.url
+                    if getattr(product, "image1", None)
+                    else ""
+                ),
                 "location": getattr(order.address, "City", "India"),
                 "user_name": getattr(order.address, "Name", "Customer"),
                 "product_url": reverse("product_detail", args=[product.id]),
             })
 
-        # print(f"Final purchases list: {purchases}")  # ✅ Debugging
-
     except Exception as e:
-        print(f"Error fetching latest purchases: {e}")  # ✅ Debugging
+        print(f"Error fetching latest purchases: {e}")
         purchases = []
 
     return {"latest_purchases": purchases}
 
 
-def wishlist_count(request):
-    if request.user.is_authenticated:
-        return {"wishlist_count": Wishlist.objects.filter(user=request.user).count()}
-    return {"wishlist_count": 0}
+
+# user_panel/context_processors.py
+from user_panel.models import Wishlist
+from user_panel.views import get_guest_id
+
+def wishlist_context(request):
+    guest_id = get_guest_id(request)
+
+    wishlist_ids = list(
+        Wishlist.objects.filter(guest_id=guest_id)
+        .values_list("product_id", flat=True)
+    )
+
+    return {
+        "wishlist_product_ids": wishlist_ids,
+        "count": len(wishlist_ids),
+    }
+
+
 
 
 # def add_subscription(request):

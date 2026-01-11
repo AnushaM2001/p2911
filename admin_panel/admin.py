@@ -68,9 +68,9 @@ class ProductAdmin(admin.ModelAdmin):
 # Order Admin
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'total_price', 'status', 'created_at')
+    list_display = ('id', 'guest_id', 'total_price', 'status', 'created_at')
     list_filter = ('status',)
-    search_fields = ('user__username', 'id')
+    search_fields = ('guest_id', 'id')
 
 # Order Items Admin
 @admin.register(OrderItem)
@@ -95,9 +95,9 @@ class PaymentAdmin(admin.ModelAdmin):
 # Review Admin
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ('user', 'product', 'rating', 'created_at')
+    list_display = ('guest_id', 'product', 'rating', 'created_at')
     list_filter = ('rating',)
-    search_fields = ('user__username', 'product__name')
+    search_fields = ('guest_id', 'product__name')
 
 # Coupon Admin
 @admin.register(Coupon)

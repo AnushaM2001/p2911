@@ -654,11 +654,13 @@
             <i class="bi bi-search d-inline-block" onclick="toggleSearchSection()" style="cursor: pointer; font-size: 19px;"></i>
 <a href="{% url 'user_profile' %}?section=wishlist-section" class="position-relative d-inline-block">
     <i class="bi bi-heart d-inline-block me-2" style="cursor: pointer; font-size: 19px; color: #000;"></i>
-    <span id="wishlist-count"
-          class="wishlist-count position-absolute translate-middle badge rounded-pill bg-danger"
-          style="cursor: pointer; font-size: 11px; left:21px;{% if wishlist_count == 0 %}display:none;{% endif %}">
-        {{ wishlist_count }}
-    </span>
+   <span id="wishlist-count"
+      class="wishlist-count position-absolute translate-middle badge rounded-pill bg-danger"
+      style="cursor: pointer; font-size: 11px; left:21px;
+             {% if wishlist_count == 0 %}display:none;{% endif %}">
+    {{ count }}
+</span>
+
 </a>
 
             <a href="{% url 'user_profile' %}?section=orders-section"><img src="{% static 'images2/shipping.svg' %}"  style="height: 24px; color: black;"></a>
@@ -669,9 +671,12 @@
          style="cursor: pointer; width: 24px; height: 24px;" 
          alt="Cart">
 
-    <span id="cart-count" class="cart-count position-absolute translate-middle badge rounded-pill bg-danger">
-        0
-    </span>
+   <span id="cart-count"
+      class="cart-count position-absolute translate-middle badge rounded-pill bg-danger"
+      style="display:none;">
+  0
+</span>
+
 
     <!-- Hidden popup message -->
     <div id="cart-empty-msg" 
@@ -765,7 +770,7 @@
       {% for category in navbar_categories %}
         {% if category.subcategories.all %}
           <li class="nav-item dropdown">
-           <a href="{% url 'category_products' category.slug %}"
+           <a href="{% url 'products_list' %}?category={{ category.id }}"
             class="nav-link category-name offcanvas-link d-flex justify-content-between align-items-center dropdown-toggle"
             data-category="{{ category.id }}"
             data-has-dropdown="true">
@@ -776,7 +781,7 @@
             <ul class="dropdown-menu">
               {% for sub in category.subcategories.all %}
                 <li>
-                  <a class="dropdown-item" href="{{ sub.get_absolute_url }}">
+                  <a class="dropdown-item" href="{% url 'products_list' %}?subcategory={{ sub.id }}">
                     {{ sub.name }}
                   </a>
                 </li>
@@ -788,7 +793,7 @@
           </li>
         {% else %}
           <li class="nav-item">
-            <a class="nav-link category-name offcanvas-link" href="{% url 'category_products' category.slug %}">
+            <a class="nav-link category-name offcanvas-link" href="{% url 'products_list' %}?category={{ category.id }}">
               {{ category.name }}
             </a>
             <div class="divider"></div>
@@ -1471,97 +1476,112 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+/* 🔥 GLOBAL CART COUNT CONTROLLER */
+function setCartCount(count) {
+  document.querySelectorAll("#cart-count").forEach(el => {
+    el.textContent = count;
+    el.style.display = count > 0 ? "inline-block" : "none";
+  });
+}
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
     const cartLink = document.getElementById("cart-link");
     const cartMsg = document.getElementById("cart-empty-msg");
-    const cartCountElem = document.getElementById("cart-count");
 
-    // Fetch count on page load
-    if ("{{ request.user.is_authenticated|yesno:'true,false' }}" === "true") {
-        fetch('/api/cart/count/')
-            .then(response => response.json())
-            .then(data => {
-                cartCountElem.textContent = data.count;
-            });
-    }
+    // ✅ ALWAYS fetch cart count (guest-based)
+    fetch('/api/cart/count/')
+        .then(res => res.json())
+        .then(data => {
+            setCartCount(data.count);
+        })
+        .catch(() => setCartCount(0));
 
-    // Intercept cart click
-    cartLink.addEventListener("click", function(event) {
-        event.preventDefault(); // stop redirect first
+    // ✅ Intercept cart click
+    cartLink?.addEventListener("click", function (event) {
+        event.preventDefault();
 
         fetch('/api/cart/count/')
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
-                const cartCount = data.count;
-
-                if (cartCount > 0) {
-                    window.location.href = cartLink.getAttribute("href"); // go to cart
-                } else {
+                if (data.count > 0) {
+                    window.location.href = cartLink.getAttribute("href");
+                } else if (cartMsg) {
                     cartMsg.style.display = "block";
                     setTimeout(() => {
                         cartMsg.style.display = "none";
                     }, 2000);
                 }
             })
-            .catch(error => {
-                console.error("Error checking cart count:", error);
-            });
+            .catch(err => console.error("Cart check error:", err));
     });
 });
 </script>
 
+{{ wishlist_product_ids|json_script:"wishlist-data" }}
 
 <script>
-const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-const wishlistSocket = new WebSocket(`${wsScheme}://${window.location.host}/ws/wishlist/`);
+  const WISHLIST_IDS = JSON.parse(
+    document.getElementById("wishlist-data").textContent
+  );
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
 
-wishlistSocket.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-    if (data.count !== undefined) {
-        const countElem = document.querySelector("#wishlist-count");
-        if (countElem) countElem.textContent = data.count;
-    }
-};
-
-wishlistSocket.onclose = function(e) {
-    console.error("Wishlist WebSocket closed unexpectedly");
-};
-
-// Handle favorite icon click
-document.addEventListener("click", function(e) {
+  document.addEventListener("click", function (e) {
     const fav = e.target.closest(".favorite");
     if (!fav) return;
 
-    const productId = fav.dataset.productId;
-    const isActive = fav.classList.contains("active");
+    e.preventDefault();
 
-    // Choose URL based on current state
-    const url = isActive
-        ? "{% url 'remove_from_wishlist' %}"
-        : "{% url 'add_to_wishlist' %}";
+    const productId = Number(fav.dataset.productId);
 
-    fetch(url, {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
-            "X-Requested-With": "XMLHttpRequest",
-        },
-        body: new URLSearchParams({ product_id: productId })
+    fetch("{% url 'toggle_wishlist' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: `product_id=${productId}`
     })
     .then(res => res.json())
     .then(data => {
-        if (data.success) {
-            // Toggle heart color immediately (instant feedback)
-            fav.classList.toggle("active", !isActive);
+      if (!data.success) return;
 
-            // Also update count right away for smooth UX
-            const countElem = document.querySelector("#wishlist-count");
-            if (countElem) countElem.textContent = data.count;
+      if (data.status === "added") {
+        fav.classList.add("active");
+
+        // 🔥 IMPORTANT: update JS state
+        if (!WISHLIST_IDS.includes(productId)) {
+          WISHLIST_IDS.push(productId);
         }
+
+      } else {
+        fav.classList.remove("active");
+
+        // 🔥 IMPORTANT: update JS state
+        const index = WISHLIST_IDS.indexOf(productId);
+        if (index > -1) {
+          WISHLIST_IDS.splice(index, 1);
+        }
+      }
+
+      // Update count
+      // Update count
+const countElem = document.getElementById("wishlist-count");
+if (countElem) {
+  countElem.textContent = data.count;
+  countElem.style.display = data.count > 0 ? "inline-block" : "none";
+}
+
     })
-    .catch(err => console.error("Wishlist update error:", err));
+    .catch(err => console.error("Wishlist error:", err));
+  });
+
 });
 </script>
+
 
      
       

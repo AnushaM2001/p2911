@@ -2,7 +2,7 @@
 {% extends 'layouts/main.html' %}
 {% load static %}
 {% block title %}
-<h1>Add to cart </h1>
+  Cart Page
 {% endblock title %}
 {% block meta %}
 <meta property="og:title" content="{{ product.name }}">
@@ -1881,10 +1881,10 @@ function updateCartSidebar(items, summary) {
                         {% if reviews %}
   <h5 class="mb-3">🗣️ User Reviews:</h5>
   {% for review in reviews %}
-          {% if review.username != 'Anonymous' %}  {# Only show if review has a user #}
+          {% if review.guest_id != 'Anonymous' %}  {# Only show if review has a user #}
 
     <div class="review-card">
-      <div class="review-username">👤 {{ review.username }}</div>
+      <div class="review-username">👤 {{ review.guest_id }}</div>
 
       <div class="review-stars">
         <div class="inner" style="width: {{ review.bar_width }}%;">★★★★★</div>
@@ -2586,44 +2586,6 @@ document.querySelectorAll('.gift-option').forEach(option => {
 
 
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Favorite icon click handler
-    document.querySelectorAll('.favorite').forEach(icon => {
-        icon.addEventListener('click', async function(e) {
-            e.preventDefault();
-            const productId = this.dataset.productId;
-            const isActive = this.classList.contains('active');
-            
-            try {
-                const response = await fetch(
-                    isActive ? '{% url "remove_from_wishlist" %}' : '{% url "add_to_wishlist" %}', 
-                    {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': '{{ csrf_token }}',
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `product_id=${productId}`
-                    }
-                );
-                
-                const data = await response.json();
-                if (data.success) {
-                    this.classList.toggle('active');
-                    // Optional: Show toast notification
-                    showToast(data.message);
-                } else if (data.login_required) {
-                    window.location.href = '{% url "email_login" %}?next=' + encodeURIComponent(window.location.pathname);
-                }
-            } catch (error) {
-                console.error('Wishlist error:', error);
-            }
-        });
-    });
-});
-
-</script>
 <div class="modal fade" id="reviewModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content rounded-3 shadow-lg">

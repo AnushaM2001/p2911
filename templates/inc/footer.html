@@ -35,11 +35,8 @@
                         <li><a href="{% url 'about' %}">About Us</a></li>
                         <li><a href="{% url 'contact' %}">Contact Us</a></li>
                         <li>
-                            {% if user.is_authenticated %}
                                 <a href="{% url 'user_profile' %}?section=profile-section">My Account</a>
-                            {% else %}
-                                <a href="{% url 'email_login' %}">My Account</a>
-                            {% endif %}
+                           
                         </li>
                         <li><a href="{% url 'user_profile' %}?section=orders-section">Track Order</a></li>
                         <li><a href="{% url 'store_locator' %}">Store Locator</a></li>

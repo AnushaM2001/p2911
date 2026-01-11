@@ -247,7 +247,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </li>
       <li>
   <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteprofileModal-{{ profile.id }}">
-    🗑️ Block
+    🗑️ Delete
   </button>
 </li>
 
@@ -314,7 +314,7 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
             <div class="d-flex justify-content-between">
               <span class="text-muted">Email:</span>
-              <span class="fw-medium">{{ order.user.username  }}</span>
+              <span class="fw-medium">{{ order.address.email  }}</span>
             </div>
             <div class="d-flex justify-content-between">
               <span class="text-muted">Phone:</span>

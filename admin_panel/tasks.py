@@ -16,7 +16,7 @@ from django.contrib.auth import get_user_model
 from admin_panel.models import Order
 from .utils import create_shiprocket_order, assign_awb, notify_admins, send_invoice_email
 from django.db import transaction, OperationalError
-
+# from admin_panel.utils import get_guest_id
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +29,10 @@ def safe_save(instance, update_fields=None, max_retries=5, delay=1):
                 instance.save(update_fields=update_fields)
             return True
         except OperationalError as e:
-            if "database is locked" in str(e):
+            if "locked" in str(e).lower():
                 time.sleep(delay)
             else:
-                raise
+               raise
     raise OperationalError(f"Could not save {instance} after {max_retries} attempts")
 @shared_task
 def schedule_pending_shiprocket_orders():
@@ -77,42 +77,96 @@ def create_shiprocket_order_task(self, order_id):
 
 
 # Step 2: Assign AWB asynchronously
-@shared_task(bind=True, max_retries=5, default_retry_delay=60)
+from celery import shared_task
+from celery.exceptions import MaxRetriesExceededError
+import re
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def assign_shiprocket_awb_task(self, order_id):
     try:
-        order = Order.objects.get(id=order_id, shiprocket_order_id__isnull=False)
-        max_attempts = 10
+        order = Order.objects.get(
+            id=order_id,
+            shiprocket_shipment_id__isnull=False
+        )
+
+        awb_response = assign_awb(order.shiprocket_shipment_id)
+
         awb_code = None
+        courier_name = None
+        courier_id = None
 
-        for attempt in range(max_attempts):
-            awb_response = assign_awb(order.shiprocket_order_id, order.shiprocket_courier_id)
-            awb_code = awb_response.get("response", {}).get("data", {}).get("awb_code")
-            if awb_code:
-                break
-            time.sleep(5)  # wait 5 seconds before retry
+        # -------------------------------
+        # CASE 1️⃣ Normal success response
+        # -------------------------------
+        if isinstance(awb_response, dict):
+            awb_code = (
+                awb_response
+                .get("response", {})
+                .get("data", {})
+                .get("awb_code")
+            )
 
+            courier_name = (
+                awb_response
+                .get("response", {})
+                .get("data", {})
+                .get("courier_name")
+            )
+
+            courier_id = (
+                awb_response
+                .get("response", {})
+                .get("data", {})
+                .get("courier_company_id")
+            )
+
+        # ------------------------------------
+        # CASE 2️⃣ AWB already assigned (500)
+        # ------------------------------------
         if not awb_code:
-            raise Exception(f"AWB not generated yet for order {order_id}")
+            message = awb_response.get("message", "") if isinstance(awb_response, dict) else ""
 
+            if "AWB is already assigned" in message:
+                match = re.search(r"awb\s*-\s*(\w+)", message)
+                if match:
+                    awb_code = match.group(1)
+
+        # ------------------------------------
+        # FINAL VALIDATION
+        # ------------------------------------
+        if not awb_code:
+            raise Exception("AWB still not available")
+
+        # ✅ SAVE ONCE AND EXIT
         order.shiprocket_awb_code = awb_code
-        order.shiprocket_courier_id = awb_response.get("response", {}).get("data", {}).get("courier_company_id")
-        order.shiprocket_courier_name = awb_response.get("response", {}).get("data", {}).get("courier_name")
+        order.shiprocket_courier_name = courier_name
+        order.shiprocket_courier_id = courier_id
         order.status = "awb_assigned"
 
         safe_save(order, update_fields=[
             "shiprocket_awb_code",
-            "shiprocket_courier_id",
             "shiprocket_courier_name",
+            "shiprocket_courier_id",
             "status"
         ])
 
-        return {"success": f"AWB assigned for order {order_id}"}
+        print(f"✅ AWB CONFIRMED → Order #{order.id}: {awb_code}")
+
+        return {
+            "success": True,
+            "order_id": order.id,
+            "awb_code": awb_code
+        }
 
     except Exception as exc:
+        print("⚠️ AWB assignment retry:", exc)
         try:
-            self.retry(exc=exc, countdown=60)
+            self.retry(exc=exc)
         except MaxRetriesExceededError:
-            return {"error": f"AWB assignment failed for order {order_id}: {exc}"}
+            return {
+                "error": f"AWB assignment failed permanently for order {order_id}",
+                "reason": str(exc)
+            }
 
 
 # Helper function to run the full chain
@@ -125,43 +179,66 @@ def process_order_with_shiprocket(order_id):
     )
     workflow.apply_async()
 
+logger = logging.getLogger(__name__)
+
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
-def send_invoice_email_task(self, user_id=None, order_id=None):
+def send_invoice_email_task(self, order_id=None):
     """
-    Send invoice emails only once.
-    - If user_id + order_id provided → send for that order.
-    - Else → send for all completed orders without invoice_sent=True.
-    - Retries automatically if sending fails.
+    Send invoice emails for guest orders.
+    - Sends only once (invoice_sent=False)
+    - Uses email from AddressModel
+    - Retries automatically on failure
     """
-    User = get_user_model()
+
     try:
-        orders = Order.objects.filter(shiprocket_awb_code__isnull=False).exclude(shiprocket_awb_code="").filter(invoice_sent=False)
-     
-        if user_id and order_id:
-            orders = orders.filter(id=order_id, user_id=user_id)
+        orders = Order.objects.filter(
+            invoice_sent=False,
+            shiprocket_awb_code__isnull=False
+        ).exclude(shiprocket_awb_code="")
+
+        if order_id:
+            orders = orders.filter(id=order_id)
 
         results = []
+
         for order in orders:
             try:
-                send_invoice_email(order.user, order)
+                # ✅ Get email from address
+                email = None
+                if order.address and getattr(order.address, "email", None):
+                    email = order.address.email
+
+                if not email:
+                    logger.warning(f"No email found for order {order.id}")
+                    continue
+
+                # ✅ Send invoice
+                send_invoice_email(email=email, order=order)
+
+                # ✅ Mark as sent
                 order.invoice_sent = True
-                order.save(update_fields=["invoice_sent"])
+                safe_save(order, update_fields=["invoice_sent"])
+
                 results.append({"success": f"Invoice sent for order {order.id}"})
+
             except Exception as inner_e:
                 logger.exception(f"Failed to send invoice for order {order.id}, retrying...")
                 try:
                     self.retry(exc=inner_e, countdown=60)
                 except MaxRetriesExceededError:
-                    results.append({"error": f"Invoice failed for order {order.id} after retries: {inner_e}"})
+                    results.append({
+                        "error": f"Invoice failed permanently for order {order.id}: {inner_e}"
+                    })
 
-        return results or {"info": "No invoices to send"}
+        return results or {"info": "No invoices pending"}
 
     except Exception as e:
-        logger.exception("Invoice task failed")
+        logger.exception("Invoice task crashed")
         try:
             self.retry(exc=e, countdown=60)
         except MaxRetriesExceededError:
             return {"error": str(e)}
+
 
 
 @shared_task
@@ -199,13 +276,24 @@ def notify_low_stock_task(order_id=None):
 
 @shared_task
 def fetch_tracking_status():
-    from django.db import transaction
+    """
+    Periodically fetch Shiprocket tracking updates.
+    - Updates status only when changed
+    - Handles MISROUTED shipments (admin alert, no retries)
+    - Skips delivered / cancelled orders
+    """
 
-    # ✅ Filter only orders that are in transit / not delivered
+    # 🔍 Only active shipments
     active_orders = Order.objects.filter(
         shiprocket_awb_code__isnull=False
-    ).exclude(shiprocket_awb_code='').exclude(
-        shiprocket_tracking_status__in=["Delivered", "RTO Delivered", "Cancelled"]
+    ).exclude(
+        shiprocket_awb_code=''
+    ).exclude(
+        shiprocket_tracking_status__in=[
+            "Delivered",
+            "RTO Delivered",
+            "Cancelled"
+        ]
     )
 
     if not active_orders.exists():
@@ -218,58 +306,97 @@ def fetch_tracking_status():
     for order in active_orders:
         try:
             url = f"https://apiv2.shiprocket.in/v1/external/courier/track/awb/{order.shiprocket_awb_code}"
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=15)
 
-            if response.status_code == 200:
-                data = response.json()
-                tracking_data = data.get("tracking_data", {})
-                shipment_tracks = tracking_data.get("shipment_track", [])
+            if response.status_code != 200:
+                print(
+                    f"❌ Order #{order.id} tracking failed "
+                    f"[{response.status_code}] {response.text}"
+                )
+                continue
 
-                # Normalize response
-                if isinstance(shipment_tracks, dict):
-                    shipment_tracks = [shipment_tracks]
-                elif not isinstance(shipment_tracks, list):
-                    shipment_tracks = []
+            data = response.json()
+            tracking_data = data.get("tracking_data", {})
+            shipment_tracks = tracking_data.get("shipment_track", [])
 
-                if not shipment_tracks:
-                    print(f"⚠️ No shipment_track data for Order #{order.id}")
-                    continue
+            # 🔁 Normalize response
+            if isinstance(shipment_tracks, dict):
+                shipment_tracks = [shipment_tracks]
+            elif not isinstance(shipment_tracks, list):
+                shipment_tracks = []
 
-                latest_track = shipment_tracks[-1]
-                current_status = latest_track.get("current_status", "")
-                etd = tracking_data.get("etd", "")
+            if not shipment_tracks:
+                print(f"⚠️ Order #{order.id} has no tracking events")
+                continue
 
-                # ✅ Save only if new status
-                if current_status and current_status != order.shiprocket_tracking_status:
+            latest_track = shipment_tracks[-1]
+            current_status = latest_track.get("current_status", "").strip()
+            etd = tracking_data.get("etd", "")
+
+            if not current_status:
+                continue
+
+            # 🚨 MISROUTED HANDLING (ONE-TIME)
+            if current_status == "MISROUTED":
+                if not getattr(order, "shiprocket_issue_flag", False):
                     with transaction.atomic():
+                        order.shiprocket_issue_flag = True
+                        order.shiprocket_issue_reason = "MISROUTED"
                         order.shiprocket_tracking_status = current_status
                         order.shiprocket_tracking_info = tracking_data
-                        order.shiprocket_estimated_delivery = etd
                         order.shiprocket_tracking_events = shipment_tracks
                         order.shiprocket_tracking_status_updated_at = timezone.now()
                         order.save(update_fields=[
+                            "shiprocket_issue_flag",
+                            "shiprocket_issue_reason",
                             "shiprocket_tracking_status",
                             "shiprocket_tracking_info",
-                            "shiprocket_estimated_delivery",
                             "shiprocket_tracking_events",
                             "shiprocket_tracking_status_updated_at"
                         ])
 
-                    # 🔔 Notify customer/admins
-                    msg = f"📦 Order #{order.id} is now '{current_status}'"
-                    Notification.objects.create(message=msg)
-                    send_push_notification(order.user, msg)
+                    notify_admins(
+                        f"⚠️ MISROUTED shipment detected\n"
+                        f"Order #{order.id}\n"
+                        f"AWB: {order.shiprocket_awb_code}",
+                        category="shiprocket"
+                    )
 
-                    print(f"✅ Order #{order.id} updated → {current_status}")
-                else:
-                    print(f"ℹ️ Order #{order.id} already up-to-date: {current_status}")
+                    print(f"🚨 Order #{order.id} marked MISROUTED")
 
-            elif response.status_code == 500:
-                error_msg = response.json().get("message", "Unknown error")
-                print(f"❌ Order #{order.id} - AWB may be cancelled: {error_msg}")
+                # ⛔ Stop further processing for this order
+                continue
+
+            # ✅ Normal status update (only if changed)
+            if current_status != order.shiprocket_tracking_status:
+                with transaction.atomic():
+                    order.shiprocket_tracking_status = current_status
+                    order.shiprocket_tracking_info = tracking_data
+                    order.shiprocket_estimated_delivery = etd
+                    order.shiprocket_tracking_events = shipment_tracks
+                    order.shiprocket_tracking_status_updated_at = timezone.now()
+                    order.save(update_fields=[
+                        "shiprocket_tracking_status",
+                        "shiprocket_tracking_info",
+                        "shiprocket_estimated_delivery",
+                        "shiprocket_tracking_events",
+                        "shiprocket_tracking_status_updated_at"
+                    ])
+
+                msg = f"📦 Order #{order.id} is now '{current_status}'"
+                Notification.objects.create(message=msg)
+
+                send_push_notification(
+                    guest_id=order.guest_id,
+                    title="Order Update",
+                    message=msg
+                )
+
+                print(f"✅ Order #{order.id} updated → {current_status}")
+
             else:
-                print(f"❌ Order #{order.id} error {response.status_code}: {response.text}")
+                print(f"ℹ️ Order #{order.id} already up-to-date ({current_status})")
 
         except Exception as e:
-            print(f"⚠️ Error tracking Order #{order.id}: {e}")
+            print(f"⚠️ Tracking error for Order #{order.id}: {e}")
 

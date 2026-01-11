@@ -1,7 +1,7 @@
 {% extends 'layouts/main.html' %}
 {% load static %}
 {% block title %}
-<title>Shopping Page</title>
+Checkout Page
 
 {% endblock title %}
 
@@ -600,10 +600,7 @@ html, body {
 </button>
 
 
-    {% else %}
-        <button class="btn btn-outline-secondary btn-sm" disabled>
-            Not Eligible Sh
-        </button>
+   
     {% endif %}
 </div>
 
@@ -644,10 +641,13 @@ html, body {
    
 <div id="coupon-discount-row"
      class="d-flex justify-content-between mb-2"
-     style="display:none;">
+     {% if discount|default:0 > 0 %}style="display:flex;"{% else %}style="display:none;"{% endif %}>
     <span>Discount</span>
-    <span data-price="discount" class="text-success">-₹0.00</span>
+    <span data-price="discount" class="text-success">
+        -₹{{ discount|floatformat:2 }}
+    </span>
 </div>
+
 
     
     {% if gift_wrap_display %}
@@ -888,8 +888,8 @@ window.updateOrderSummary = function (prices, meta = {}) {
   const keyId = "{{ key_id }}";
   const Amount = "{{ amount_in_paise }}";  // in paise
   const orderId = "{{ razorpay_order_id }}";
-  const userEmail = "{{ request.user.email }}";
-  const userName = "{{ request.user.get_full_name }}";
+  // const userEmail = "{{ address.email }}";
+  const userName = "{{ address.Name }}";
   const totalPrice = "{{ total_price }}";
   const csrfToken = "{{ csrf_token }}";
   const orderSuccessUrl = "{% url 'order_success' %}";
@@ -926,7 +926,7 @@ function initiatePayment() {
       "order_id": orderId,
       "prefill": {
         "name": userName,
-        "email": userEmail
+        // "email": userEmail
       },
       "theme": {
         "color": "#F37254"
@@ -1177,9 +1177,18 @@ function markCouponApplied(code, discountAmount) {
         msg.style.display = 'block';
     }
 
+    // ✅ SHOW + UPDATE discount row (THIS WAS MISSING)
     const row = document.getElementById('coupon-discount-row');
-    if (row) row.style.display = 'flex';
+    if (row) {
+        row.style.display = 'flex';
+
+        const discountSpan = row.querySelector('[data-price="discount"]');
+        if (discountSpan) {
+            discountSpan.textContent = `-₹${Number(discountAmount).toFixed(2)}`;
+        }
+    }
 }
+
 function resetCouponUI() {
     document.querySelectorAll('button[data-applied="true"]').forEach(btn => {
         btn.textContent = 'Apply Coupon';
@@ -1213,50 +1222,6 @@ function resetCouponUI() {
 
 
 <script>
-// Connect to WebSocket for real-time updates
-const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-
-const cartSocket = new WebSocket(
-    protocol +
-    window.location.host +
-    '/ws/cart/{{ request.user.id }}/'
-);
-
-cartSocket.onmessage = function (e) {
-    const data = JSON.parse(e.data);
-    console.log('WebSocket message received:', data);
-
-    document.querySelectorAll('.cart-count').forEach(el => {
-        el.textContent = data.cart_count || '0';
-    });
-
-    if (data.action === 'remove') {
-        const itemElement = document.querySelector(`[data-item-id="${data.item_id}"]`);
-        if (itemElement) {
-            itemElement.closest('.d-flex.p-3.mb-3').remove();
-        }
-
-        showToast('Item removed from cart');
-
-        if (data.is_empty) {
-            setTimeout(() => location.reload(), 1000);
-        }
-
-    } else if (data.action === 'update') {
-        const itemElement = document.querySelector(`[data-item-id="${data.item_key}"]`);
-        if (itemElement) {
-            const quantityElement = itemElement.querySelector('.quantity-value');
-            if (quantityElement) {
-                quantityElement.textContent = data.quantity;
-            }
-        }
-    }
-};
-
-cartSocket.onclose = function (e) {
-    console.error('Cart socket closed unexpectedly:', e);
-};
-
 
 // Helper function to show toast messages
 function showToast(message) {

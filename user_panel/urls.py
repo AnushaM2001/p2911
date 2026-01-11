@@ -22,15 +22,13 @@ urlpatterns = [
     # path('register/', views.register, name='register'),
     # path('login/', views.user_login, name='login'),
     path('logout/', views.user_logout, name='logout'),
-    path('login/', views.send_otp_view, name='email_login'),
-    path('verify/', views.verify_otp_view, name='verify_email_otp'),
     path('blocked/', views.blocked_user_view, name='blocked_user'),
     path('sub_add',views.subscription_add,name='sub_add'),
 
     path('products/', views.filtered_products, name='products_list'),
-    path('products/<slug:category_slug>/', views.filtered_products, name='category_products'),
-    path('products/<slug:category_slug>/<slug:subcategory_slug>/', views.filtered_products, name='subcategory_products'),
-    path('products/<slug:category_slug>/sub/<slug:subcategory_slug>/', views.filtered_products, name='category_subcategory_products'),
+    path('products/<int:category_id>/', views.filtered_products, name='category_products'),
+    path('products/<int:subcategory_id>/', views.filtered_products, name='subcategory_products'),
+    path('products/<int:category_id>/sub/<int:subcategory_id>/', views.filtered_products, name='category_subcategory_products'),
     path('viewall/<str:section>/', views.viewall_products, name='viewall_products'),
     path("toggle-wishlist/", views.toggle_wishlist, name="toggle_wishlist"),
 
@@ -75,8 +73,7 @@ urlpatterns = [
     path('help/submit/', views.submit_help_query, name='submit_help_query'),
     # path('help/query/<int:query_id>/', views.view_help_query, name='view_help_query'),
     path('profile/update-picture/', views.update_profile_picture, name='update_profile_picture'),
-    path('wishlist/add/', views.add_to_wishlist, name='add_to_wishlist'),
-    path('wishlist/remove/', views.remove_from_wishlist, name='remove_from_wishlist'),
+    # path('wishlist/remove/', views.remove_from_wishlist, name='remove_from_wishlist'),
     path('cart/sync/', views.sync_redis_cart, name='sync_redis_cart'),
 
     path('profile/update-dob/', views.update_dob, name='update_dob'),

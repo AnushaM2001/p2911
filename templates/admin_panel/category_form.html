@@ -19,6 +19,19 @@
       <img src="{{ category.gif_file.url }}" alt="Current GIF" height="60" class="mt-2">
     {% endif %}
   </div>
+  <div class="mb-3">
+    <label for="editCategoryHTag" class="form-label">H1 Tag</label>
+    <input type="text" class="form-control" id="editCategoryHTag" name="h_tag" value="{{ category.h_tag }}">
+    </div>
+  <div class="mb-3">
+    <label for="editCategorySeoDescription" class="form-label">Meta Description</label>
+    <textarea class="form-control" id="editCategorySeoDescription" name="seo_description" rows="3">{{ category.seo_description }}</textarea>
+  </div>
+  <div class="mb-3">
+    <label for="editCategorySEOTitle" class="form-label">SEO Title</label>
+    <input type="text" class="form-control" id="editCategorySEOTitle" name="seo_title" value="{{ category.seo_title }}">
+    </div>
+  
   <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
     <button type="submit" class="btn btn-maroon">Update Category</button>

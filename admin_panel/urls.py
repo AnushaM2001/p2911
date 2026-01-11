@@ -56,7 +56,7 @@ urlpatterns = [
 
     path('payments/', Payment_view, name='payment_list'),
     path('users/', users_list, name='user_list'),
-    path('block-user/<int:user_id>/', block_user, name='block_user'),
+    # path('block-user/<int:user_id>/', block_user, name='block_user'),
 
     path('orders/<int:order_id>/invoice/', download_invoice,name='invoice_download'),
     

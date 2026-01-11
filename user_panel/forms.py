@@ -18,6 +18,8 @@ class AddressForm(forms.ModelForm):
         exclude=['user','is_blocked']
         widgets = {
             'Name': forms.TextInput(attrs={'placeholder': 'Enter Name', 'class': 'form-control'}),
+            'email': forms.TextInput(attrs={'placeholder': 'Enter Email', 'class': 'form-control'}),
+
             'MobileNumber': forms.TextInput(attrs={'placeholder': 'Enter Mobile Number', 'class': 'form-control'}),
             'Alternate_MobileNumber': forms.TextInput(attrs={'placeholder': 'Enter Alternate Mobile Number', 'class': 'form-control'}),
             'Pincode': forms.TextInput(attrs={'placeholder': 'Enter Pincode', 'class': 'form-control'}),

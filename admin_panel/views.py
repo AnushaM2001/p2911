@@ -660,6 +660,9 @@ def add_category(request):
                 'banner_url': category.banner.url if category.banner else '',
                 'gif_url': category.gif_file.url if category.gif_file else '',
                 'created_at': category.created_at.strftime("%Y-%m-%d"),
+                'h_tag': category.h_tag if category.h_tag else '',
+                'seo_description': category.seo_description if category.seo_description else '',
+                'seo_title': category.seo_title if category.seo_title else '',
             })
         return JsonResponse({'success': False, 'errors': form.errors}, status=400)
 
@@ -683,6 +686,9 @@ def edit_category(request, pk):
                 'banner_url': category.banner.url if category.banner else '',
                 'gif_url': category.gif_file.url if category.gif_file else '',
                 'created_at': category.created_at.strftime("%Y-%m-%d"),
+                'h_tag': category.h_tag if category.h_tag else '',
+                'seo_description': category.seo_description if category.seo_description else '',
+                'seo_title': category.seo_title if category.seo_title else '',
             })
         return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     else:
@@ -752,6 +758,9 @@ def add_subcategory(request):
                 'banner_url': subcategory.banner.url if subcategory.banner else '',
                 'image_url': subcategory.sub_image.url if subcategory.sub_image else '',
                 'created_at': subcategory.created_at.strftime("%Y-%m-%d"),
+                'h_tag': subcategory.h_tag if subcategory.h_tag else '',
+                'seo_description': subcategory.seo_description if subcategory.seo_description else '',
+                'seo_title': subcategory.seo_title if subcategory.seo_title else '',
             })
         return JsonResponse({'success': False, 'errors': form.errors}, status=400)
 
@@ -775,6 +784,9 @@ def edit_subcategory(request, pk):
                 'banner_url': subcategory.banner.url if subcategory.banner else '',
                 'image_url': subcategory.sub_image.url if subcategory.sub_image else '',
                 'created_at': subcategory.created_at.strftime("%Y-%m-%d"),
+                'h_tag': subcategory.h_tag if subcategory.h_tag else '',
+                'seo_description': subcategory.seo_description if subcategory.seo_description else '',
+                'seo_title': subcategory.seo_title if subcategory.seo_title else '',
             })
         return JsonResponse({'success': False, 'errors': form.errors}, status=400)
 
@@ -1484,16 +1496,21 @@ from django.db.models import Count, Sum, Max
 from user_panel.models import AddressModel
 @admin_login_required
 
+
 def users_list(request):
-    profiles =AddressModel.objects.select_related('user').all()
+    profiles = AddressModel.objects.all()
+
     query = request.GET.get('q', '')
     selected_date = request.GET.get('date', '')
 
+    # 🔍 Search
     if query:
         profiles = profiles.filter(
-            Q(name__icontains=query) | Q(mobile__icontains=query)
+            Q(Name__icontains=query) |
+            Q(MobileNumber__icontains=query)
         )
 
+    # 📅 Date filter
     if selected_date:
         try:
             date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
@@ -1501,25 +1518,27 @@ def users_list(request):
         except ValueError:
             pass
 
-    # Pagination
+    # 📄 Pagination
     paginator = Paginator(profiles.order_by('-id'), 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Attach purchase info
+    # 📊 Attach order stats (guest-based)
     for profile in page_obj:
-        
+        orders = Order.objects.filter(
+            guest_id=profile.guest_id,
+            status='awb_assigned'
+        )
 
-        orders = Order.objects.filter(user=profile.user, shiprocket_tracking_status='RTO Delivered')
         agg = orders.aggregate(
             total_orders=Count('id'),
             total_spent=Sum('total_price'),
             last_purchase=Max('created_at')
-)
+        )
+
         profile.total_orders = agg['total_orders'] or 0
         profile.total_spent = agg['total_spent'] or 0
         profile.last_purchase = agg['last_purchase']
-        print(f"User: {profile.user}, Orders: {orders.count()}, Spent: {profile.total_spent}, Last: {profile.last_purchase}")
 
     return render(request, 'admin_panel/users_list.html', {
         'page_obj': page_obj,
@@ -1531,14 +1550,14 @@ from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 
-@csrf_exempt
-def block_user(request, user_id):
-    if request.method == 'POST':
-        user = get_object_or_404(User, id=user_id)
-        user.is_active = False
-        user.save()
-        messages.success(request, f"{user.username} has been blocked.")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
+# @csrf_exempt
+# def block_user(request, user_id):
+#     if request.method == 'POST':
+#         user = get_object_or_404(guest_id, id=user_id)
+#         user.is_active = False
+#         user.save()
+#         messages.success(request, f"{user.username} has been blocked.")
+#         return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 
@@ -1864,20 +1883,31 @@ def download_invoice(request, order_id):
 @admin_login_required
 
 def orders_list(request):
-    orders = Order.objects.prefetch_related('items', 'user').all()
-    query = request.GET.get('q', '')
+    orders = (
+        Order.objects
+        .select_related('address')
+        .prefetch_related('items', 'items__product')
+    )
+
+    query = request.GET.get('q', '').strip()
     selected_date = request.GET.get('date', '')
 
+    # 🔍 Search
     if query:
-        orders = orders.filter(
-            Q(user__username__icontains=query) |
+        q_filter = (
+            Q(address__guest_id__icontains=query) |
             Q(address__Name__icontains=query) |
-            Q(id__icontains=query) |
             Q(address__MobileNumber__icontains=query) |
-            Q(shiprocket_tracking_status__icontains=query) |
-            Q(total_price__icontains=query)
+            Q(shiprocket_tracking_status__icontains=query)
         )
 
+        orders = orders.filter(q_filter)
+
+        # ✅ Numeric ID search
+        if query.isdigit():
+            orders = orders | Order.objects.filter(id=int(query))
+
+    # 📅 Date filter
     if selected_date:
         try:
             date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
@@ -1885,24 +1915,31 @@ def orders_list(request):
         except ValueError:
             pass
 
-    # Paginate
+    # 📄 Pagination
     paginator = Paginator(orders.order_by('-id'), 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Now annotate only the paginated orders
+    # 🧠 Enrich paginated orders only
     for order in page_obj.object_list:
+        total_discount = 0
+
         for item in order.items.all():
-            # Convert selected_flavours string to actual names
+            # Flavours
             if item.selected_flavours:
-                flavour_ids = [int(fid) for fid in item.selected_flavours.split(',') if fid.isdigit()]
-                flavours_qs = Flavour.objects.filter(id__in=flavour_ids)
-                item.flavour_names = ', '.join(f.name for f in flavours_qs)
+                flavour_ids = [
+                    int(fid)
+                    for fid in item.selected_flavours.split(',')
+                    if fid.isdigit()
+                ]
+                flavours = Flavour.objects.filter(id__in=flavour_ids)
+                item.flavour_names = ', '.join(f.name for f in flavours)
             else:
                 item.flavour_names = ''
 
-        # Sum up total discount for this order
-        order.total_discount = sum(item.discount_amount or 0 for item in order.items.all())
+            total_discount += item.discount_amount or 0
+
+        order.total_discount = total_discount
 
     return render(request, 'admin_panel/orders_list.html', {
         'orders': page_obj.object_list,
@@ -1910,6 +1947,7 @@ def orders_list(request):
         'query': query,
         'selected_date': selected_date,
     })
+
 
 
 
@@ -1951,10 +1989,10 @@ from django.db.models import Avg
 def save_subscription(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        user = request.user
+        guest_id= data.get('guest_id')
 
         PushSubscription.objects.update_or_create(
-            user=user,
+            guest_id=guest_id,
             defaults={
                 'endpoint': data.get('endpoint'),
                 'keys': data.get('keys')
@@ -1971,37 +2009,6 @@ from django.core.mail import send_mail
 from django.conf import settings
 from user_panel.models import HelpQuery  # Assuming your HelpQuery is in user_panel.models
 
-
-# def admin_help_query_list(request):
-#     status_filter = request.GET.get('status', '')
-
-#     # Filter queries based on status if provided
-#     if status_filter:
-#         queries_qs = HelpQuery.objects.filter(status=status_filter).order_by('-created_at')
-#     else:
-#         queries_qs = HelpQuery.objects.all().order_by('-created_at')
-
-#     # Pagination (10 per page)
-#     paginator = Paginator(queries_qs, 10)
-#     page_number = request.GET.get('page')
-#     page_obj = paginator.get_page(page_number)
-
-#     return render(request, 'admin_panel/help_query_list.html', {
-#         'page_obj': page_obj,
-#         'status_filter': status_filter
-#     })
-
-# def admin_help_query_reply(request, query_id):
-#     query = get_object_or_404(HelpQuery, id=query_id)
-#     if request.method == 'POST':
-#         response_text = request.POST.get('response')
-#         if response_text.strip():
-#             query.admin_reply = f"{response_text} (Replied on {now().strftime('%d-%m-%Y %H:%M')})"
-#             query.status = 'Solved'
-#             query.save()
-#             messages.success(request, "Reply sent successfully!")
-#         return redirect('admin_help_query_list')
-#     return render(request, 'admin_panel/help_query_reply.html', {'query': query})
 
 @admin_login_required
 def admin_help_query_list(request):
@@ -2101,14 +2108,21 @@ def export_products_excel(request):
     workbook.save(response)
     return response
 
+from django.http import HttpResponse
+from openpyxl import Workbook
+from django.db.models import Count, Sum, Max
+from admin_panel.models import Order
+from user_panel.models import AddressModel
+
+
 def export_user_summary(request):
     wb = Workbook()
     ws = wb.active
     ws.title = "User Summary"
 
-    # Header Row (EXACT same as HTML)
+    # ✅ Header Row (same as UI)
     ws.append([
-        "User ID",
+        "Guest ID",
         "Name",
         "Email",
         "Phone",
@@ -2118,38 +2132,35 @@ def export_user_summary(request):
         "Last Purchase Date",
     ])
 
-    # Fetch profiles
-    profiles = UserProfile.objects.select_related("user").all()
+    # ✅ Use AddressModel (guest-based)
+    addresses = (
+        AddressModel.objects
+        .values(
+            "guest_id",
+            "Name",
+            "email",
+            "MobileNumber",
+        )
+        .annotate(
+            total_orders=Count("order"),
+            total_spent=Sum("order__total_price"),
+            last_purchase=Max("order__created_at"),
+        )
+    )
 
-    for profile in profiles:
-
-        # Values shown in HTML
-        user = profile.user
-
-        # Order stats
-        orders = Order.objects.filter(user=user)
-        total_orders = orders.count()
-        total_spent = orders.aggregate(total=Sum("total_price"))["total"] or 0
-
-        last_order = orders.order_by("-created_at").first()
-        last_purchase = last_order.created_at.strftime("%Y-%m-%d") if last_order else "-"
-
-        # Status
-        status = "Blocked" if not user.is_active else "Active"
-
-        # Append EXACT HTML fields
+    for addr in addresses:
         ws.append([
-            user.id,
-            profile.Name,
-            user.username,
-            profile.MobileNumber,
-            status,
-            total_orders,
-            float(total_spent),
-            last_purchase,
+            addr["guest_id"],
+            addr["Name"],
+            addr["email"] or "-",
+            addr["MobileNumber"],
+            "Active",  # Guest users are always active
+            addr["total_orders"] or 0,
+            float(addr["total_spent"] or 0),
+            addr["last_purchase"].strftime("%Y-%m-%d") if addr["last_purchase"] else "-",
         ])
 
-    # Prepare response
+    # 📦 Download response
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
@@ -2198,47 +2209,62 @@ def export_product_sales(request):
     return response
 
 
+from django.http import HttpResponse
+from openpyxl import Workbook
+from django.db.models import Q
+from datetime import datetime
+from admin_panel.models import Order
+from user_panel.models import Flavour
+
+
 def export_orders_excel(request):
     wb = Workbook()
     ws = wb.active
     ws.title = "Orders Data"
 
+    # ✅ Correct headers
     ws.append([
         "Order ID",
+        "Guest ID",
         "Customer Name",
         "Email",
         "Phone",
-        "Address"
+        "Full Address",
         "Order Date",
-        "Status",
+        "Order Status",
         "Payment Status",
-        "Gift Wrap?",
+        "Gift Wrap",
         "Total Discount",
         "Order Total",
 
-        # Item Fields
+        # Item fields
         "Product Name",
         "Quantity",
         "Size",
-        "Bottle/Flavours",
-        "Price",
-        "Subtotal",
+        "Bottle / Flavours",
+        "Unit Price",
+        "Item Subtotal",
     ])
 
-    query = request.GET.get('q', '')
-    selected_date = request.GET.get('date', '')
+    query = request.GET.get("q", "")
+    selected_date = request.GET.get("date", "")
 
-    orders = Order.objects.prefetch_related("items", "user", "address").all()
+    orders = (
+        Order.objects
+        .select_related("address")
+        .prefetch_related("items__product", "items__product_variant", "items__gift_set")
+        .all()
+    )
 
-    # Apply filters (same as list view)
+    # 🔍 Filters (same logic as UI)
     if query:
         orders = orders.filter(
-            Q(user__username__icontains=query) |
+            Q(guest_id__icontains=query) |
             Q(address__Name__icontains=query) |
-            Q(id__icontains=query) |
             Q(address__MobileNumber__icontains=query) |
             Q(shiprocket_tracking_status__icontains=query) |
-            Q(total_price__icontains=query)
+            Q(total_price__icontains=query) |
+            Q(id__icontains=query)
         )
 
     if selected_date:
@@ -2248,67 +2274,82 @@ def export_orders_excel(request):
         except ValueError:
             pass
 
-    # Build Excel rows
+    # 📤 Build rows
     for order in orders:
 
-        # Total discount for order
-        total_discount = sum(item.discount_amount or 0 for item in order.items.all())
+        total_discount = sum(
+            item.discount_amount or 0 for item in order.items.all()
+        )
 
         for item in order.items.all():
 
-            # Flavours
+            # 🎯 Flavours
+            flavour_names = ""
             if item.selected_flavours:
                 ids = [int(f) for f in item.selected_flavours.split(",") if f.isdigit()]
-                flavours_qs = Flavour.objects.filter(id__in=ids)
-                flavour_names = ", ".join(f.name for f in flavours_qs)
-            else:
-                flavour_names = ""
+                flavour_names = ", ".join(
+                    Flavour.objects.filter(id__in=ids).values_list("name", flat=True)
+                )
 
-            # Size or Gift set
+            # 🎯 Size / Gift set
             if item.product_variant:
                 size = item.product_variant.size
                 bottle = item.product_variant.bottle_type
+            elif item.gift_set:
+                size = f"Gift Set: {item.gift_set.set_name}"
+                bottle = flavour_names or "-"
             else:
-                size = f"Set: {item.gift_set.set_name}" if item.gift_set else "-"
-                bottle = flavour_names or "Not Set"
+                size = "-"
+                bottle = "-"
 
+            # 🎯 Address
             if order.address:
-                address_full=[order.address.location,order.address.City,order.address.State,order.address.Pincode]
-                full_address = ", ".join(str(p) for p in address_full if p)
+                full_address = ", ".join(filter(None, [
+                    order.address.location,
+                    order.address.City,
+                    order.address.State,
+                    str(order.address.Pincode),
+                ]))
+                customer_name = order.address.Name
+                phone = order.address.MobileNumber
+                email = order.address.email
             else:
-                full_address = "No Adress"
+                full_address = "No Address"
+                customer_name = "-"
+                phone = "-"
+                email = "-"
 
             ws.append([
-                # Order details
                 order.id,
-                order.address.Name if order.address else "-",
-                order.user.username,
-                order.address.MobileNumber if order.address else "-",
-                full_address if order.address else "-",
+                order.guest_id,
+                customer_name,
+                email or "-",
+                phone,
+                full_address,
                 order.created_at.strftime("%Y-%m-%d"),
-                order.shiprocket_tracking_status or "No status",
-                "Paid" if order.total_price else "Unpaid",
+                order.shiprocket_tracking_status or "Pending",
+                "Paid" if order.status not in ["Pending", "Cancelled"] else "Unpaid",
                 "Yes" if item.gift_wrap else "No",
-                total_discount,
-                order.total_price,
+                float(total_discount),
+                float(order.total_price),
 
-                # Item details
-                item.product.name,
+                # Item info
+                item.product.name if item.product else "-",
                 item.quantity,
                 size,
                 bottle,
-                item.price,
-                item.quantity * item.price
+                float(item.price),
+                float(item.price * item.quantity),
             ])
 
-    # Response
+    # 📦 Excel download
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = 'attachment; filename="orders_export.xlsx"'
-
     wb.save(response)
     return response
+
 
 
 

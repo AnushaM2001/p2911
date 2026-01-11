@@ -38,6 +38,18 @@
       <img src="{{ subcategory.sub_image.url }}" alt="Current GIF" height="60" class="mt-2">
     {% endif %}
   </div>
+  <div class="mb-3">
+    <label for="editSubCategoryHTag" class="form-label">H1 Tag</label>
+    <input type="text" class="form-control" id="editSubCategoryHTag" name="h_tag" value="{{ subcategory.h_tag }}">
+    </div>
+  <div class="mb-3">
+    <label for="editSubCategorySeoDescription" class="form-label">Meta Description</label>
+    <textarea class="form-control" id="editSubCategorySeoDescription" name="seo_description" rows="3">{{ subcategory.seo_description }}</textarea>
+  </div>
+  <div class="mb-3">
+    <label for="editSubCategorySEOTitle" class="form-label">SEO Title</label>
+    <input type="text" class="form-control" id="editSubCategorySEOTitle" name="seo_title" value="{{ subcategory.seo_title }}">
+    </div>
 
   <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

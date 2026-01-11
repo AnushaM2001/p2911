@@ -1,9 +1,15 @@
 
 {% extends 'layouts/main.html' %}
 {% load static %}
-{% block title %}
+ {% block title %}
+            Best Perfume Store Online in India | Best Attars Store
+        {% endblock title %}
 
-{% endblock title %}
+    <!-- ✅ META DESCRIPTION -->
+    {% block meta %}
+        <meta name="description"
+              content="Perfume Valley World Offers Premium Perfumes and Attars for Men & Women in Mehdipatnam, Tolichowki and Shaikpet, Hyderabad, with Online Fragrance Shopping Available.">
+    {% endblock meta %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" />
@@ -1702,6 +1708,8 @@ html, body {
 
 {% endblock extra_css %}
 
+
+
 {% block content %}
 <!-- {% if festival_offer %}
 Festival Offer Modal
@@ -2465,7 +2473,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 {% if product.image1 and product.image2 %}
                 <img src="{{ product.image1.url }}"
                      class="product-img "
-                     alt="{{ product.name }}"
+                     alt="{{ product.name }}" 
                      loading="lazy"
                     
                      style="object-fit:fill;"
@@ -3876,49 +3884,6 @@ document.addEventListener('DOMContentLoaded', function () {
 </script> -->
 
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Favorite icon click handler
-  document.querySelectorAll('.favorite').forEach(icon => {
-    icon.addEventListener('click', async function(e) {
-      e.preventDefault();
-      const productId = this.dataset.productId;
-      const isActive = this.classList.contains('active');
-      const iconElem = this;
-
-      try {
-        const response = await fetch(
-          isActive ? '{% url "remove_from_wishlist" %}' : '{% url "add_to_wishlist" %}', 
-          {
-            method: 'POST',
-            headers: {
-              'X-CSRFToken': '{{ csrf_token }}',
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `product_id=${productId}`
-          }
-        );
-        
-        const data = await response.json();
-        if (data.success) {
-          // Ensure only this icon toggles, not all
-          if (isActive) {
-            iconElem.classList.remove('active');
-          } else {
-            iconElem.classList.add('active');
-          }
-          // Optional: Show toast notification
-          if (typeof showToast === 'function') showToast(data.message);
-        } else if (data.login_required) {
-          window.location.href = '{% url "email_login" %}?next=' + encodeURIComponent(window.location.pathname);
-        }
-      } catch (error) {
-        console.error('Wishlist error:', error);
-      }
-    });
-  });
-});
-</script>
 
 
 {% endblock content %}

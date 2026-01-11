@@ -1,3 +1,4 @@
+from celery import uuid
 import requests
 from admin_panel.models import *
 from django.conf import settings
@@ -8,6 +9,7 @@ import json
 from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
+
 
 def compress_image(image_field, quality=70):
     """
@@ -62,53 +64,53 @@ def get_shiprocket_token():
     else:
         raise Exception(f"Shiprocket login failed: {response.text}")
 
-
 #service check
-def check_shiprocket_service(user, address_id, declared_value=1000):
-    try:
-        address = AddressModel.objects.get(id=address_id, user=user)
-    except AddressModel.DoesNotExist:
-        return {"error": "Address not found"}
+def check_shiprocket_service(address, declared_value=1000):
+    if not address:
+        return {"error": "Address not provided"}
 
     token = get_shiprocket_token()
 
     headers = {
-        'Authorization': f'Bearer {token}'
+        "Authorization": f"Bearer {token}"
     }
 
     params = {
-        'pickup_postcode': '500008',  # replace with your warehouse pincode
-        'delivery_postcode': address.Pincode,
-        'cod': 0,  # prepaid
-        'weight': 0.5,
-        'order_type': 1,
-        'declared_value': declared_value
+        "pickup_postcode": "500008",
+        "delivery_postcode": address.Pincode,
+        "cod": 0,
+        "weight": 0.5,
+        "order_type": 1,
+        "declared_value": declared_value
     }
 
     response = requests.get(
-        'https://apiv2.shiprocket.in/v1/external/courier/serviceability/',
+        "https://apiv2.shiprocket.in/v1/external/courier/serviceability/",
         headers=headers,
-        params=params
+        params=params,
+        timeout=10
     )
 
     data = response.json()
-    couriers = data.get('data', {}).get('available_courier_companies', [])
+    couriers = data.get("data", {}).get("available_courier_companies", [])
 
     if not couriers:
         return {"error": "No couriers available", "raw": data}
 
-    # Automatically pick the best courier (lowest freight_charge or fastest delivery)
-    best = sorted(couriers, key=lambda x: (x.get('freight_charge') or 9999))[0]
+    best = min(
+        couriers,
+        key=lambda x: x.get("freight_charge") or float("inf")
+    )
 
     return {
         "best_courier": {
-            "name": best['courier_name'],
-            "freight_charge": best['freight_charge'],
-            "courier_company_id": best['courier_company_id'],
-            "etd": best['etd'],
-            # "estimated_delivery_days": best['estimated_delivery_days'],
+            "name": best.get("courier_name"),
+            "freight_charge": best.get("freight_charge"),
+            "courier_company_id": best.get("courier_company_id"),
+            "etd": best.get("etd"),
         }
     }
+
 
 def validate_address_for_shiprocket(address, order, order_items):
     errors = {}
@@ -120,7 +122,6 @@ def validate_address_for_shiprocket(address, order, order_items):
         "billing_pincode": address.Pincode,
         "billing_state": address.State,
         "billing_country": "India",
-        "billing_email": order.user.email,
         "billing_phone": address.MobileNumber,
     }
 
@@ -162,7 +163,8 @@ def create_shiprocket_order(order, address, order_items):
     token = get_shiprocket_token()
 
     #step 2 
-    courier_info = check_shiprocket_service(order.user, address.id)
+    courier_info = check_shiprocket_service(address)
+
     if not courier_info or "best_courier" not in courier_info:
         return {"status": "error", "message": "No eligible courier found", "details": courier_info}
 
@@ -224,7 +226,7 @@ def create_shiprocket_order(order, address, order_items):
         "billing_pincode": address.Pincode,
         "billing_state": address.State,
         "billing_country": "India",
-        "billing_email": order.user.email,
+        "billing_email": address.email or "support@perfumevalley.in",
         "billing_phone": address.MobileNumber,
         "billing_alternate_phone": address.Alternate_MobileNumber,
 
@@ -237,7 +239,7 @@ def create_shiprocket_order(order, address, order_items):
         "shipping_pincode": address.Pincode,
         "shipping_state": address.State,
         "shipping_country": "India",
-        "shipping_email": order.user.email,
+        "shipping_email": address.email or "support@perfumevalley.in",
         "shipping_phone": address.MobileNumber,
 
         "order_items": item_list,
@@ -308,7 +310,7 @@ def create_shiprocket_order(order, address, order_items):
                 'shiprocket_courier_id',  # Save courier ID too
                 'status'
             ])
-            notify_admins(f"✅ Order is Placed {order.id}-{order.shiprocket_order_id} - {order.user.email}", category="orders")
+            notify_admins(f"✅ Order is Placed {order.id}-{order.shiprocket_order_id}", category="orders")
 
             print(f"✅ Order updated with AWB: {awb_code}, Courier: {courier_name}")
         else:
@@ -340,13 +342,15 @@ def create_shiprocket_order(order, address, order_items):
 
 from django.core.mail import EmailMessage
 
-def send_invoice_email(user, order):
+def send_invoice_email(email, order):
     token = get_shiprocket_token()
     url = "https://apiv2.shiprocket.in/v1/external/orders/print/invoice"
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
+
     payload = {
         "ids": [order.shiprocket_order_id]
     }
@@ -356,18 +360,21 @@ def send_invoice_email(user, order):
 
     if response.status_code == 200 and data.get("invoice_url"):
         invoice_url = data["invoice_url"]
-
-        # Download the invoice PDF
         invoice_response = requests.get(invoice_url)
+
         if invoice_response.status_code == 200:
-            email = EmailMessage(
-                subject='Your Order Invoice',
-                body='Thank you for your order. Please find your invoice attached.',
+            mail = EmailMessage(
+                subject="Your Order Invoice",
+                body="Thank you for your order. Please find the invoice attached.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[user.email],
+                to=[email],
             )
-            email.attach(f'invoice_{order.id}.pdf', invoice_response.content, 'application/pdf')
-            email.send()
+            mail.attach(
+                f"invoice_{order.id}.pdf",
+                invoice_response.content,
+                "application/pdf"
+            )
+            mail.send()
 
 
 
@@ -566,9 +573,10 @@ def track_order_by_awb(awb_code):
 from pywebpush import webpush
 
 
-def send_push_notification(user, title, message):
+def send_push_notification(guest_id, title, message):
     try:
-        subscription = PushSubscription.objects.get(user=user)
+        subscription = PushSubscription.objects.get(guest_id=guest_id)
+
         payload = json.dumps({
             "title": title,
             "body": message
@@ -583,5 +591,36 @@ def send_push_notification(user, title, message):
             vapid_private_key=settings.VAPID_PRIVATE_KEY,
             vapid_claims={"sub": settings.VAPID_ADMIN_EMAIL}
         )
+
+    except PushSubscription.DoesNotExist:
+        pass
     except Exception as e:
-        print(f"[!] Push failed for {user.email}: {e}")
+        print("Push notification failed:", e)
+
+
+def run_shiprocket_now(order_id):
+    from admin_panel.models import Order
+
+    order = Order.objects.get(id=order_id)
+
+    print("🚀 Creating Shiprocket order...")
+    resp = create_shiprocket_order(
+        order,
+        order.address,
+        order.items.all()
+    )
+
+    if resp.get("status") != "success":
+        print("❌ Failed:", resp)
+        return resp
+
+    print("📦 Assigning AWB...")
+    awb_resp = assign_awb(order.shiprocket_shipment_id)
+
+    print("✅ Done")
+    return {
+        "order_id": order.id,
+        "shiprocket_order_id": order.shiprocket_order_id,
+        "shipment_id": order.shiprocket_shipment_id,
+        "awb": order.shiprocket_awb_code,
+    }

@@ -4,6 +4,7 @@ import json
 import time
 import traceback
 from io import BytesIO
+from urllib.parse import urlparse
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from django.shortcuts import render, get_object_or_404, redirect
@@ -28,6 +29,7 @@ from django.db.models.functions import Coalesce, Cast
 
 import razorpay
 import redis
+from requests import request
 from xhtml2pdf import pisa
 
 from .models import Category, Subcategory, Product, Order, OrderItem, Payment, Cart, GiftSet
@@ -44,9 +46,58 @@ from admin_panel.tasks import (
     notify_low_stock_task
 )
 from django.utils.timezone import now
-from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.apps import apps
 from django.db.models.functions import Cast, Lower, Greatest
+import uuid
+import time
+import json
+import hashlib
+from decimal import Decimal
+
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.utils import timezone
+from django.core.paginator import Paginator
+from django.core.cache import cache
+
+from django.db.models import (
+    Q,
+    F,
+    Min,
+    Max,
+    Avg,
+    Count,
+    FloatField,
+    Prefetch,
+    Window,
+)
+from django.db.models.functions import (
+    Cast,
+    RowNumber,
+)
+from decimal import Decimal
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+# from channels.layers import get_channel_layer
+# from asgiref.sync import async_to_sync
+import redis
+import json
+
+import logging
+
+# def get_guest_id(request):
+#     if not request.session.get("guest_id"):
+#         request.session["guest_id"] = f"guest_{uuid.uuid4().hex}"
+#     return request.session["guest_id"]
+def get_guest_id(request):
+    if not request.session.get("guest_id"):
+        request.session["guest_id"] = f"guest_{uuid.uuid4().hex}"
+    return request.session["guest_id"]
 
 # Redis client
 r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB)
@@ -61,88 +112,6 @@ def a(req):
 def generate_otp():
     return ''.join(random.choices(string.digits, k=4))
 
-
-def send_otp(email, otp_code):
-    subject = 'Your OTP Code'
-    message = f'Your OTP code is: {otp_code}'
-    from_email = settings.DEFAULT_FROM_EMAIL
-    try:
-        send_mail(subject, message, from_email, [email])
-        print("✅ OTP sent to:", email)
-    except Exception as e:
-        print("❌ Email sending failed:", e)
-    # send_mail(subject, message, from_email, [email])
-
-
-@csrf_exempt
-def send_otp_view(request):
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        if email:
-            otp_code = generate_otp()
-            OTP.objects.create(
-                email=email,
-                otp=otp_code,
-                expires_at=timezone.now() + timezone.timedelta(minutes=5)
-            )
-            send_otp(email, otp_code)
-            print(otp_code)
-            request.session['email'] = email
-            return redirect('verify_email_otp')
-    return render(request, 'user_panel/login.html')
-
-
-
-@csrf_exempt
-def verify_otp_view(request):
-    email = request.session.get('email')
-
-    if request.method == 'POST':
-        if 'resend_otp' in request.POST:
-            otp_code = generate_otp()
-            OTP.objects.create(
-                email=email,
-                otp=otp_code,
-                expires_at=timezone.now() + timezone.timedelta(minutes=5)
-            )
-            send_otp(email, otp_code)
-            print("resend:", otp_code)
-            return render(request, 'user_panel/verify_otp.html', {
-                'email': email,
-                'message': 'OTP resent successfully.'
-            })
-
-        # OTP submission
-        otp = request.POST.get('otp')
-        if otp:
-            try:
-                otp_entry = OTP.objects.filter(
-                    email=email,
-                    otp=otp,
-                    expires_at__gte=timezone.now()
-                ).latest('created_at')
-
-                # ✅ Get or create user
-                user, created = User.objects.get_or_create(username=email, defaults={'email': email})
-                if not user.is_active:
-                        return render(request, 'user_panel/verify_otp.html', {
-                                'email': email,
-                                'error': 'Your account is blocked. Please contact support.'
-                            })
-
-                # ✅ Log the user in
-                login(request, user)
-
-                request.session['emailSucessLogin'] = True
-                return redirect('home')
-
-            except OTP.DoesNotExist:
-                return render(request, 'user_panel/verify_otp.html', {
-                    'error': 'Invalid or expired OTP',
-                    'email': email
-                })
-
-    return render(request, 'user_panel/verify_otp.html', {'email': email})
 
 
 # ---------------- ADD TO CART ----------------
@@ -250,16 +219,6 @@ def home1(request):
     new_arrival = base_products.filter(is_new_arrival=True)[:12]
     trending = base_products.filter(is_trending=True)[:12]
 
-    # --------------------------------------------------
-    # 🔹 Wishlist (only IDs)
-    # --------------------------------------------------
-    wishlist_product_ids = []
-    if request.user.is_authenticated:
-        wishlist_product_ids = list(
-            Wishlist.objects
-            .filter(user=request.user)
-            .values_list("product_id", flat=True)
-        )
 
     # --------------------------------------------------
     # 🔹 Videos & Reviews
@@ -292,7 +251,6 @@ def home1(request):
 
         "videos": videos,
         "out_reviews": out_reviews,
-        "wishlist_product_ids": wishlist_product_ids,
         "other_banners": other_banners,
     })
 
@@ -339,86 +297,43 @@ def all_view(request):
     return render(request, 'user_panel/All.html', context)
 
 
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from .models import Product
 
 
-@login_required(login_url='email_login')
+@require_POST
 def toggle_wishlist(request):
-    if request.method == "POST":
-        product_id = request.POST.get("product_id")
-        product = get_object_or_404(Product, id=product_id)
+    guest_id = get_guest_id(request)
+    product_id = request.POST.get("product_id")
 
-        try:
-            with transaction.atomic():
-                wishlist_item, created = Wishlist.objects.get_or_create(
-                    user=request.user,
-                    product=product
-                )
-        except IntegrityError:
-            # If duplicate happens, fetch the existing one
-            wishlist_item = Wishlist.objects.get(user=request.user, product=product)
-            created = False
+    product = get_object_or_404(Product, id=product_id)
 
-        if created:
-            status = "added"
-        else:
-            wishlist_item.delete()
-            status = "removed"
+    wishlist_item = Wishlist.objects.filter(
+        guest_id=guest_id,
+        product=product
+    ).first()
 
-        return JsonResponse({"status": status})
+    if wishlist_item:
+        wishlist_item.delete()
+        status = "removed"
+    else:
+        Wishlist.objects.create(
+            guest_id=guest_id,
+            product=product
+        )
+        status = "added"
 
-    return JsonResponse({"error": "Invalid request"}, status=400)
+    count = Wishlist.objects.filter(guest_id=guest_id).count()
+
+    return JsonResponse({
+        "success":True,
+        "status": status,
+        "count": count
+    })
 
 
-from django.db.models import Min, Max, Avg, FloatField
-from django.db.models.functions import Cast
-from django.core.paginator import Paginator
-from django.db.models import Q
-from django.http import JsonResponse
-from django.utils import timezone
-from decimal import Decimal
 
-from django.db.models import Q, Avg, Min, Max,FloatField
-from django.core.paginator import Paginator
-from django.http import JsonResponse
-from django.utils import timezone
-from django.core.cache import cache
-
-# import your models (update this line)
-# from yourapp.models import ProductVariant, Product, GiftSet, Category, Subcategory, Wishlist, PremiumFestiveOffer
-
-from django.db.models import Min, Max, Avg, Count, Q, Prefetch, Window, F
-from django.db.models.functions import Cast, RowNumber
-from django.db.models import FloatField
-from django.core.paginator import Paginator
-from django.http import JsonResponse
-from django.shortcuts import render
-from django.utils import timezone
-from django.core.cache import cache
-import time
-import json
-import hashlib
-
-# ============================================================
-# 1) HTML TEMPLATE VIEW (filtered_products)
-# ============================================================
-from django.db.models import Min, Max, Avg, Count, Q, Prefetch
-from django.db.models.functions import Cast
-from django.db.models import FloatField
-from django.core.paginator import Paginator
-from django.http import JsonResponse
-from django.shortcuts import render
-from django.utils import timezone
-from django.core.cache import cache
-import time
-import json
-import hashlib
-
-# ============================================================
-# 1) HTML TEMPLATE VIEW (filtered_products) - FIXED
-# ============================================================
-# views.py
-from django.conf import settings
-from django.shortcuts import get_object_or_404, redirect
 
 def strip_seo_suffix(slug):
     suffix = f"-{settings.SEO_SUFFIX}"
@@ -1142,8 +1057,9 @@ def ajax_filter_products(request):
     cache.set(cache_key, response_data, 300)
     
     return JsonResponse(response_data, json_dumps_params={'ensure_ascii': False})
-@login_required(login_url='email_login')   
+
 def product_detail(request, product_id):
+    guest_id=get_guest_id(request)
     product = get_object_or_404(Product, id=product_id)
     reviews = Review.objects.filter(product=product).order_by('-created_at')
     review_stats = reviews.aggregate(
@@ -1155,8 +1071,8 @@ def product_detail(request, product_id):
     rating_percentage = round((average_rating / 5) * 100, 2)
     from_video = request.GET.get('from_video')
     all_variants = product.variants.all().order_by('bottle_type')
-    in_cart = Cart.objects.filter(user=request.user, product=product).exists()
-    cart_item = Cart.objects.filter(user=request.user, product=product).first()
+    in_cart = Cart.objects.filter(guest_id=guest_id, product=product).exists()
+    cart_item = Cart.objects.filter(guest_id=guest_id, product=product).first()
 
     is_giftset = product.category.name.lower().replace(' ', '').replace('-', '') == 'giftsets'
     flavours = Flavour.objects.all()
@@ -1166,7 +1082,7 @@ def product_detail(request, product_id):
     enhanced_reviews = []
     for r in reviews:
         enhanced_reviews.append({
-        'username': r.user.username if r.user else 'Anonymous',
+        'username': r.guest_id if r.guest_id else 'Anonymous',
         'rating': r.rating,
         'review_text': r.review_text,
         'bar_width': round((r.rating / 5) * 100, 2),
@@ -1344,147 +1260,11 @@ def product_detail(request, product_id):
     })
 
 
-# @login_required(login_url='email_login')
-# def add_to_cart(request, product_id):
-#     product = get_object_or_404(Product, id=product_id)
-
-#     try:
-#         quantity = int(request.POST.get('quantity', 1))
-#         action = request.POST.get('action')
-#         variant_id = request.POST.get('variant_id')
-#         gift_set_id = request.POST.get('gift_set_id')
-#         selected_price = request.POST.get('selected_price')
-#         selected_flavours = request.POST.get('selected-flavours', '')
-
-#         if quantity < 1:
-#             raise ValueError("Quantity must be at least 1")
-#         if not variant_id and not gift_set_id:
-#             raise ValueError("Please select a product variant or gift set")
-
-#         cart_key = f"cart:{request.user.id}"
-
-#         if gift_set_id:
-#             item_key = f"giftset:{gift_set_id}"
-#             gift_set = get_object_or_404(GiftSet, id=gift_set_id)
-#             price = float(selected_price) if selected_price else float(gift_set.price)
-#         elif variant_id:
-#             item_key = f"variant:{variant_id}"
-#             variant = get_object_or_404(ProductVariant, id=variant_id)
-#             price = float(variant.price)
-#         else:
-#             item_key = f"product:{product_id}"
-#             price = float(product.price)
-
-#         cart_filter = {
-#             'user': request.user,
-#             'product': product,
-#             'product_variant_id': variant_id if variant_id else None,
-#             'gift_set_id': gift_set_id if gift_set_id else None
-#         }
-
-#         if selected_flavours:
-#             cart_filter['selected_flavours'] = selected_flavours
-
-#         cart_item = Cart.objects.filter(**cart_filter).first()
-
-#         if cart_item:
-#             cart_item.quantity += quantity
-#             cart_item.price = price
-#             if selected_flavours:
-#                 cart_item.selected_flavours = selected_flavours
-#             cart_item.save()
-#         else:
-#             cart_item = Cart.objects.create(
-#                 user=request.user,
-#                 product=product,
-#                 product_variant_id=variant_id if variant_id else None,
-#                 gift_set_id=gift_set_id if gift_set_id else None,
-#                 quantity=quantity,
-#                 price=price,
-#                 selected_flavours=selected_flavours or ''
-#             )
-
-#         current_item = r.hget(cart_key, item_key)
-#         current_quantity = json.loads(current_item)['quantity'] if current_item else 0
-#         new_quantity = current_quantity + quantity
-
-#         item_data = {
-#             'product_id': product_id,
-#             'variant_id': variant_id,
-#             'gift_set_id': gift_set_id,
-#             'quantity': new_quantity,
-#             'price': price,
-#             'selected_flavours': selected_flavours or '',
-#             'updated_at': time.time()
-#         }
-
-#         r.hset(cart_key, item_key, json.dumps(item_data))
-#         r.publish(
-#             f"cart_updates:{request.user.id}",
-#             json.dumps({
-#                 'action': 'update',
-#                 'item_key': item_key,
-#                 'quantity': new_quantity,
-#                 'cart_count': r.hlen(cart_key)
-#             })
-#         )
-
-#         # 🟩 NEW — Build complete sidebar data
-#         cart_items_db = Cart.objects.filter(user=request.user)
-
-#         cart_items_list = []
-#         subtotal = 0
-
-#         for item in cart_items_db:
-#             item_total = item.price * item.quantity
-#             subtotal += item_total
-
-#             cart_items_list.append({
-#                 "id": item.id,
-#                 "name": item.product.name,
-#                 "price": float(item.price),
-#                 "quantity": item.quantity,
-#                 "image": item.product.image1.url if item.product.image1 else "",
-#                 "offer": f"{item.product.offer.percentage}% Off" if hasattr(item.product, "offer") else ""
-#             })
-
-#         delivery_charge = item.product.delivery_charges if subtotal > 0 else 0
-#         platform_fee = item.product.platform_fee if subtotal > 0 else 0
-#         total = subtotal + delivery_charge + platform_fee
-
-#         # 🟩 NEW — Return full JSON needed for sidebar
-#         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-#             return JsonResponse({
-#                 'status': 'success',
-#                 'message': 'Item added to cart successfully!',
-#                 'cart_count': r.hlen(cart_key),
-
-#                 'cart_items': cart_items_list,
-#                 'order_summary': {
-#                     "subtotal": subtotal,
-#                     "delivery": delivery_charge,
-#                     "platform_fee": platform_fee,
-#                     "total": total
-#                 }
-#             })
-
-#         return redirect('view_cart')
-
-#     except Exception as e:
-#         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-from decimal import Decimal
-from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-@login_required(login_url='email_login')
 @require_POST
 def add_to_cart(request, product_id):
-    
+    guest_id = get_guest_id(request)
     product = get_object_or_404(Product, id=product_id)
    
-
-
     try:
         quantity = int(request.POST.get("quantity", 1))
         variant_id = request.POST.get("variant_id")
@@ -1502,7 +1282,7 @@ def add_to_cart(request, product_id):
         price = Decimal(selected_price)
 
         cart_filter = {
-            "user": request.user,
+            "guest_id": guest_id,
             "product": product,
             "product_variant_id": variant_id or None,
             "gift_set_id": gift_set_id or None,
@@ -1517,7 +1297,7 @@ def add_to_cart(request, product_id):
             cart_item.save()
         else:
             Cart.objects.create(
-                user=request.user,
+                guest_id=guest_id,
                 product=product,
                 product_variant_id=variant_id or None,
                 gift_set_id=gift_set_id or None,
@@ -1540,10 +1320,11 @@ import traceback
 
 @require_POST
 def update_cart_item(request, item_id):
+    guest_id = get_guest_id(request)
     try:
         # 1️⃣ Fetch cart item
         cart_item = get_object_or_404(
-            Cart, id=item_id, user=request.user
+            Cart, id=item_id, guest_id=guest_id
         )
 
         # 2️⃣ Update quantity
@@ -1560,7 +1341,7 @@ def update_cart_item(request, item_id):
 
         # 4️⃣ Total items count
         total_items = Cart.objects.filter(
-            user=request.user
+            guest_id=guest_id
         ).aggregate(total=Sum("quantity"))["total"] or 0
 
         # 5️⃣ Return clean response (frontend will sync cart)
@@ -1587,15 +1368,10 @@ def update_cart_item(request, item_id):
             "trace": traceback.format_exc()
         }, status=400)
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import redis, json
-from decimal import Decimal
-
-
 
 def calculate_cart_totals(request):
-    cart_items = Cart.objects.filter(user=request.user)
+    guest_id = get_guest_id(request)
+    cart_items = Cart.objects.filter(guest_id=guest_id)
     now = timezone.now()
 
     festival_offers = list(
@@ -1703,24 +1479,17 @@ def calculate_cart_totals(request):
     }
     }
 
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from decimal import Decimal
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-from django.utils import timezone
 
-@login_required(login_url='email_login')
+@require_POST
 def sync_redis_cart(request):
-    if request.method != "POST":
-        return JsonResponse({"status": "error"}, status=405)
+    guest_id = get_guest_id(request)
 
     try:
         # 1️⃣ Totals
         totals = calculate_cart_totals(request)
         subtotal = totals["products_total"]
 
-        # 2️⃣ Time FIRST
+        # 2️⃣ Time
         now = timezone.now()
 
         # 3️⃣ Festival offers
@@ -1733,9 +1502,9 @@ def sync_redis_cart(request):
             )
         )
 
-        # 4️⃣ Cart items
+        # 4️⃣ Cart items (GUEST)
         cart_items = Cart.objects.filter(
-            user=request.user
+            guest_id=guest_id
         ).select_related("product", "product_variant", "gift_set")
 
         items = []
@@ -1782,16 +1551,17 @@ def sync_redis_cart(request):
 
             quantities[str(item.id)] = item.quantity
 
-        # 5️⃣ Coupon eligibility
+        # 5️⃣ Eligible coupons (GUEST)
         eligible_coupons = Coupon.objects.filter(
             is_active=True,
             required_amount__lte=subtotal
         )
 
-        if hasattr(request.user, "used_coupons"):
-            eligible_coupons = eligible_coupons.exclude(
-                id__in=request.user.used_coupons.values_list("coupon_id", flat=True)
-            )
+        used_coupon_ids = CouponUsage.objects.filter(
+            guest_id=guest_id
+        ).values_list("coupon_id", flat=True)
+
+        eligible_coupons = eligible_coupons.exclude(id__in=used_coupon_ids)
 
         # 6️⃣ Response
         return JsonResponse({
@@ -1821,362 +1591,89 @@ def sync_redis_cart(request):
         }, status=400)
 
 
-# @login_required(login_url='email_login')
-# def sync_redis_cart(request):
-#     if request.method != "POST":
-#         return JsonResponse({"status": "error"}, status=405)
-
-#     try:
-#         # 1️⃣ Calculate totals (already includes festival logic)
-#         totals = calculate_cart_totals(request)
-#         subtotal = totals["products_total"]
-
-#         # 2️⃣ Fetch cart items
-#         cart_items = Cart.objects.filter(
-#             user=request.user
-#         ).select_related("product", "product_variant", "gift_set")
-
-#         # 3️⃣ Festival info
-#         festival_pct = request.session.get("premium_offer_percentage", 0)
-#         festival_active = bool(festival_pct)
-#         festival_offers = list(
-#                 PremiumFestiveOffer.objects.filter(
-#         is_active=True,
-#         premium_festival="Festival",
-#         start_date__lte=now,
-#         end_date__gte=now
-#     )
-# )
-
-#         # 4️⃣ Build item list for UI (LEFT SIDE)
-#         items = []
-#         quantities = {}
-
-#         for item in cart_items:
-#             # original price (before festival)
-#             original_price = (
-#                 item.product_variant.price if item.product_variant
-#                 else item.gift_set.price if item.gift_set
-#                 else item.product.price
-#             )
-#             price = Decimal('0.00')
-#             # final price (after festival, already saved in DB)
-#             if item.gift_set:
-#                 base_price = Decimal(item.gift_set.price)
-#                 valid = [o for o in festival_offers if o.apply_offer(item.gift_set)]
-#                 if valid:
-#                     best = max(valid, key=lambda o: o.percentage)
-#                     price = base_price - (base_price * best.percentage / Decimal('100'))
-#                 else:
-#                     price = base_price
-#             elif item.product_variant:
-#                 base_price = Decimal(item.product_variant.price)
-#                 valid = [o for o in festival_offers if o.apply_offer(item.product_variant)]
-#                 if valid:
-#                     best = max(valid, key=lambda o: o.percentage)
-#                     price = base_price - (base_price * best.percentage / Decimal('100'))
-#                 else:
-#                     price = base_price
-#             else:
-#                 price = Decimal(item.product.price)
-#             final_price = price
-
-#             items.append({
-#                 "id": item.id,
-#                 "name": item.product.name,
-#                 "quantity": item.quantity,
-
-#                 "original_price": float(original_price),
-#                 "final_price": float(final_price),
-
-#                 "festival_active": festival_active,
-#                 "festival_percentage": festival_pct,
-
-#                 "image": item.product.image1.url if item.product.image1 else ""
-#             })
-
-#             quantities[str(item.id)] = item.quantity
-#         now = timezone.now()
-
-#         eligible_coupons = Coupon.objects.filter(
-#             is_active=True,
-#             required_amount__lte=subtotal,
-            
-#         )
-
-#         # Optional: exclude already-used coupons
-#         if hasattr(request.user, "used_coupons"):
-#             eligible_coupons = eligible_coupons.exclude(
-#                 id__in=request.user.used_coupons.values_list("coupon_id", flat=True)
-#             )
-
-
-#         # 5️⃣ Final response
-#         return JsonResponse({
-#             "status": "success",
-
-#             "cart_items": items,   # ✅ LEFT SIDE DATA
-
-#             "order_summary": {
-#                 "subtotal": float(totals["products_total"]),
-#                 "delivery": float(totals["delivery"]),
-#                 "platform_fee": float(totals["platform_fee"]),
-#                 "gift_wrap": float(totals["gift_wrap"]),
-#                 "premium_discount": float(totals["premium_discount"]),
-#                 "discount": float(totals["coupon_discount"]),
-#                 "total": float(totals["final_total"]),
-#             },
-
-#             "cart_count": totals["cart_count"],
-#             "quantities": quantities,  # ✅ qty sync
-#             "applied_coupon": request.session.get("applied_coupon"),
-#             "eligible_coupons": list(
-#                 eligible_coupons.values_list("code", flat=True)
-#             )
-#         })
-
-#     except Exception as e:
-#         return JsonResponse({
-#             "status": "error",
-#             "message": str(e)
-#         }, status=400)
-
-# def sync_redis_cart(request):
-#     if request.method != "POST":
-#         return JsonResponse({"status": "error", "message": "POST only allowed"}, status=405)
-
-#     try:
-#         r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB)
-#         redis_key = f"cart:{request.user.id}"
-#         body = json.loads(request.body)
-
-#         item_key = body.get("key")
-#         new_qty = int(body.get("quantity", 1))
-
-#         existing = r.hget(redis_key, item_key)
-#         if existing:
-#             data = json.loads(existing)
-#             data["quantity"] = new_qty
-#             r.hset(redis_key, item_key, json.dumps(data))
-#         else:
-#             # if item missing create minimal entry
-#             r.hset(redis_key, item_key, json.dumps({"quantity": new_qty, "product_id": item_key}))
-        
-#         # ✅ Forces Redis to respond updated values so removed items don't affect total
-#         r.save()
-
-#         # ✅ Return updated totals so UI summary is accurate and doesn't flash original values
-#         cart_items = Cart.objects.filter(user=request.user)
-#         subtotal = sum(Decimal(i.price) * i.quantity for i in cart_items)
-#         delivery = sum(Decimal(i.product.delivery_charges or 0) for i in cart_items)
-#         platform_fee = sum(Decimal(i.product.platform_fee or 0) for i in cart_items)
-#         total_items = cart_items.aggregate(total=Sum('quantity'))['total'] or 0
-
-#         return JsonResponse({
-#             "status": "success",
-#             "cart_items": list(cart_items.values()),
-#             "order_summary": {
-#                 "subtotal": float(subtotal),
-#                 "delivery": float(delivery),
-#                 "platform_fee": float(platform_fee),
-#                 "total": float(subtotal + delivery + platform_fee)
-#             },
-#             "cart_count": total_items,
-#             "item_count": total_items
-#         })
-
-#     except Exception as e:
-#         return JsonResponse({"status":"error","message":str(e)}, status=400)
-
-
-
-
-from django.views.decorators.http import require_POST
-from django.http import JsonResponse
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-import redis
-import json
-
-
-import logging
 
 logger = logging.getLogger(__name__)
-
 @require_POST
-@login_required
 def remove_cart_item(request, item_id):
+    guest_id = get_guest_id(request)
+
     try:
-        # Initialize Redis
-        r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB)
-        redis_key = f"cart:{request.user.id}"
-        
-        # Get cart item first to determine its type
-        cart_item = get_object_or_404(Cart, id=item_id, user=request.user)
-        
-        # Use the SAME key format as in add_to_cart
-        if cart_item.gift_set:
-            item_key = f"giftset:{cart_item.gift_set.id}"
-        elif cart_item.product_variant:
-            item_key = f"variant:{cart_item.product_variant.id}"
-        else:
-            item_key = f"product:{cart_item.product.id}"
-        
-        # Delete from database FIRST
+        # 1️⃣ Fetch cart item (guest-only)
+        cart_item = get_object_or_404(
+            Cart, id=item_id, guest_id=guest_id
+        )
+
+        # 2️⃣ Delete item
         cart_item.delete()
-        
-        # Then delete from Redis
-        deleted = r.hdel(redis_key, item_key)
-        logger.debug(f"Deleted {deleted} items from Redis")
-        
-        # Force immediate Redis sync
-        r.save()
-        
-        # Get accurate count from BOTH sources
-        db_items = Cart.objects.filter(user=request.user)
-        db_count = db_items.count()
-        db_total = db_items.aggregate(total=Sum('quantity'))['total'] or 0
-        
-        redis_items = r.hgetall(redis_key)
-        redis_count = len(redis_items)
-        redis_total = sum(
-            json.loads(item_data).get('quantity', 1)
-            for item_data in redis_items.values()
-        ) if redis_items else 0
-        
-        # Final count should be from database only since we're using it as source of truth
-        final_count = db_total
-        
-        # Clean up Redis if database is empty but Redis has items
-        if db_count == 0 and redis_count > 0:
-            r.delete(redis_key)
-            logger.warning("Cleared Redis cart due to database mismatch")
-            final_count = 0
-        
-        # Broadcast via WebSocket
-        try:
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f"user_{request.user.id}_cart",
-                {
-                    "type": "cart.update",
-                    "action": "remove",
-                    "item_id": item_id,
-                    "cart_count": final_count,
-                    "is_empty": final_count == 0
-                }
-            )
-        except Exception as e:
-            logger.error(f"WebSocket error: {e}")
-        
+
+        # 3️⃣ Recalculate cart totals (DB = source of truth)
+        totals = calculate_cart_totals(request)
+
+        # 4️⃣ Total cart count
+        cart_count = Cart.objects.filter(
+            guest_id=guest_id
+        ).aggregate(total=Sum("quantity"))["total"] or 0
+
         return JsonResponse({
-            'status': 'success',
-            'message': 'Item removed successfully',
-            'cart_count': final_count,
-            'is_empty': final_count == 0
+            "status": "success",
+            "message": "Item removed successfully",
+            "cart_count": cart_count,
+            "is_empty": cart_count == 0,
+            "prices": {
+                "subtotal": float(totals["products_total"]),
+                "delivery": float(totals["delivery"]),
+                "platform_fee": float(totals["platform_fee"]),
+                "gift_wrap": float(totals["gift_wrap"]),
+                "premium_discount": float(totals["premium_discount"]),
+                "discount": float(totals["coupon_discount"]),
+                "total": float(totals["final_total"]),
+            }
         })
-        
+
     except Exception as e:
-        logger.error(f"Error in remove_cart_item: {e}")
         return JsonResponse({
-            'status': 'error',
-            'message': str(e),
-            'cart_count': 0,
-            'is_empty': True
+            "status": "error",
+            "message": str(e),
+            "trace": traceback.format_exc(),
+            "cart_count": 0,
+            "is_empty": True
         }, status=400)
+
 
 @require_GET
 def cart_count(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({'count': 0, 'status': 'unauthenticated'})
+    guest_id = get_guest_id(request)
 
     try:
-        # Use database as source of truth
-        db_items = Cart.objects.filter(user=request.user)
-        db_count = db_items.count()
-        db_total = db_items.aggregate(total=Sum('quantity'))['total'] or 0
-        
-        # Edge case: items exist but quantities sum to 0
-        if db_total == 0 and db_count > 0:
-            db_total = db_count
-        
-        # Clean up Redis if out of sync
-        r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=settings.REDIS_DB)
-        redis_key = f"cart:{request.user.id}"
-        
-        if db_total == 0 and r.exists(redis_key):
-            r.delete(redis_key)
-            logger.debug("Cleared Redis cart due to empty database")
-        
+        total_items = Cart.objects.filter(
+            guest_id=guest_id
+        ).aggregate(total=Sum("quantity"))["total"] or 0
+
         return JsonResponse({
-            'count': db_total,
-            'status': 'success',
-            'source': 'database'  # Always use database as source of truth
+            "count": total_items,
+            "status": "success",
+            "source": "database"
         })
 
     except Exception as e:
-        logger.error(f"Error in cart_count: {e}")
         return JsonResponse({
-            'count': 0,
-            'status': 'error',
-            'message': str(e)
-        })
+            "count": 0,
+            "status": "error",
+            "message": str(e)
+        }, status=400)
 
 
-# @require_POST
-# @login_required(login_url='email_login')
-# def apply_coupon(request):
-#     code = request.POST.get('code')
-
-#     try:
-#         coupon = Coupon.objects.get(code=code, is_active=True)
-
-#         if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
-#             return JsonResponse({
-#                 "status": "error",
-#                 "message": "Coupon already used"
-#             })
-
-#         request.session['applied_coupon'] = coupon.code
-#         request.session['applied_coupon_discount'] = float(coupon.discount)
-
-#         totals = calculate_cart_totals(request)
-
-#         return JsonResponse({
-#             "status": "success",
-#             "message": "Coupon applied",
-#             "totals": totals
-#         })
-
-#     except Coupon.DoesNotExist:
-#         return JsonResponse({
-#             "status": "error",
-#             "message": "Invalid coupon"
-#         })
-# @require_POST
-# @login_required(login_url='email_login')
-# def remove_coupon(request):
-#     request.session.pop('applied_coupon', None)
-#     request.session.pop('applied_coupon_discount', None)
-
-#     totals = calculate_cart_totals(request)
-
-#     return JsonResponse({
-#         "status": "success",
-#         "message": "Coupon removed",
-#         "totals": totals
-#     })
 
 @require_POST
-@login_required(login_url='email_login')
 def apply_coupon(request):
+    guest_id=get_guest_id(request)
     code = request.POST.get('code', '').strip()
 
     try:
         coupon = Coupon.objects.get(code=code, is_active=True)
 
         # ❌ Already used
-        if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
+        if CouponUsage.objects.filter(guest_id=guest_id, coupon=coupon).exists():
             return JsonResponse({
                 "status": "error",
                 "message": "Coupon already used"
@@ -2221,7 +1718,6 @@ def apply_coupon(request):
             "message": "Invalid coupon"
         })
 @require_POST
-@login_required(login_url='email_login')
 def remove_coupon(request):
     request.session.pop('applied_coupon', None)
     request.session.pop('applied_coupon_discount', None)
@@ -2244,8 +1740,8 @@ def remove_coupon(request):
 
 
 
-@login_required(login_url='email_login')
 def apply_premium_offer(request):
+    guest_id=get_guest_id(request)
     if request.method != "POST":
         return JsonResponse({'status': 'error', 'message': "Invalid request."})
 
@@ -2259,7 +1755,7 @@ def apply_premium_offer(request):
         )
 
         if PremiumOfferUsage.objects.filter(
-            user=request.user,
+            guest_id=guest_id,
             offer_code=offer.code
         ).exists():
             return JsonResponse({'status': 'error', 'message': "Offer already used."})
@@ -2269,7 +1765,7 @@ def apply_premium_offer(request):
         request.session['premium_offer_percentage'] = float(offer.percentage)
 
         PremiumOfferUsage.objects.create(
-            user=request.user,
+            guest_id=guest_id,
             offer_code=offer.code
         )
 
@@ -2296,8 +1792,8 @@ def apply_premium_offer(request):
         })
 
 
-@login_required(login_url='email_login')
 def remove_premium_offer(request):
+    guest_id=get_guest_id(request)
     if request.method != "POST":
         return JsonResponse({'status': 'error', 'message': "Invalid request."})
 
@@ -2306,7 +1802,7 @@ def remove_premium_offer(request):
     if not code:
         return JsonResponse({'status': 'error', 'message': "No premium offer applied."})
 
-    PremiumOfferUsage.objects.filter(user=request.user, offer_code=code).delete()
+    PremiumOfferUsage.objects.filter(guest_id=guest_id, offer_code=code).delete()
 
     request.session.pop('premium_offer_code', None)
     request.session.pop('premium_offer_percentage', None)
@@ -2331,10 +1827,10 @@ def remove_premium_offer(request):
 
 
 from django.views.decorators.http import require_POST
-
+from admin_panel.utils import create_shiprocket_order
 @require_POST
-@login_required(login_url='email_login')
 def toggle_gift_wrap(request):
+    guest_id=get_guest_id(request)
     gift_wrap_status = request.session.get('gift_wrap', False)
     new_status = not gift_wrap_status
 
@@ -2343,16 +1839,15 @@ def toggle_gift_wrap(request):
     request.session.modified = True
 
     # Update all cart items for the logged-in user
-    Cart.objects.filter(user=request.user).update(gift_wrap=new_status)
+    Cart.objects.filter(guest_id=guest_id).update(gift_wrap=new_status)
 
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 import hashlib
 import razorpay
-
-@login_required(login_url='email_login')
 def view_cart(request):
+    guest_id=get_guest_id(request)
     from_video = request.GET.get('from_video')
 
     all_messages = messages.get_messages(request)
@@ -2361,15 +1856,15 @@ def view_cart(request):
     applied_successfully = False
     premium_offer_removed = False
 
-    cart_items = Cart.objects.filter(user=request.user).order_by('-created_at')
+    cart_items = Cart.objects.filter(guest_id=guest_id).order_by('-created_at')
     selected_address_id = request.session.get('selected_address_id')
   
     address = None
     if selected_address_id:
-        address = AddressModel.objects.filter(id=selected_address_id, user=request.user).first()
+        address = AddressModel.objects.filter(id=selected_address_id, guest_id=guest_id).first()
         print("address",address)
     else:
-        address = AddressModel.objects.filter(user=request.user).last()
+        address = AddressModel.objects.filter(guest_id=guest_id).last()
 
 
     if not cart_items.exists():
@@ -2463,7 +1958,7 @@ def view_cart(request):
     discount = Decimal('0.00')
     applied_coupon = None
     all_coupons = Coupon.objects.filter(is_active=True)
-    used_coupons = CouponUsage.objects.filter(user=request.user).values_list('coupon__id', flat=True)
+    used_coupons = CouponUsage.objects.filter(guest_id=guest_id).values_list('coupon__id', flat=True)
     eligible_coupons = [
         coupon for coupon in all_coupons
         if coupon.required_amount <= current_cart_total and coupon.id not in used_coupons
@@ -2477,7 +1972,7 @@ def view_cart(request):
         except Coupon.DoesNotExist:
             request.session.pop('applied_coupon', None)
 
-    total_price = current_cart_total + gift_wrap_display - discount
+    base_amount = current_cart_total + gift_wrap_display - discount
     print("Total price after coupon:", total_price)
 
     # Premium offer
@@ -2494,7 +1989,7 @@ def view_cart(request):
     .filter(is_active=True, premium_festival="Welcome")
     .exclude(
         code__in=PremiumOfferUsage.objects
-        .filter(user=request.user)
+        .filter(guest_id=guest_id)
         .values_list("offer_code", flat=True)
     )
     .first()
@@ -2523,11 +2018,11 @@ def view_cart(request):
            pass
 
 
-    total_price = premium_base_amount - premium_discount
+    total_price = base_amount - premium_discount
     total_price = max(total_price, Decimal('0.00'))
-
+    print("Total price after premium discount:", total_price)
     # Razorpay
-    cart_hash_data = f"{request.user.id}_{total_items}_{float(total_price)}"
+    cart_hash_data = f"{guest_id}_{total_items}_{float(total_price)}"
     cart_hash = hashlib.md5(cart_hash_data.encode()).hexdigest()
     client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET))
 
@@ -2594,10 +2089,10 @@ def view_cart(request):
     return render(request, 'user_panel/cart.html', context)
 
 @csrf_exempt
-@login_required(login_url="email_login")
 def order_success(request):
+    guest_id = get_guest_id(request)
     if request.method == "POST":
-        user = request.user
+        
         total_price = float(request.POST.get("total_price", 0))
         razorpay_payment_id = request.POST.get("razorpay_payment_id")
         razorpay_order_id = request.POST.get("razorpay_order_id")
@@ -2606,12 +2101,12 @@ def order_success(request):
 
         # ✅ Fetch address
         address = AddressModel.objects.filter(
-            id=selected_address_id, user=user
-        ).first() if selected_address_id else AddressModel.objects.filter(user=user).last()
+            id=selected_address_id, guest_id=guest_id
+        ).first() if selected_address_id else AddressModel.objects.filter(guest_id=guest_id).last()
 
         # ✅ Prevent duplicate orders (same user + same price in last 5 mins)
         existing_order = Order.objects.filter(
-            user=user,
+            guest_id=guest_id,
             total_price=total_price,
             status="Completed",
             created_at__gte=timezone.now() - timedelta(minutes=5),
@@ -2633,7 +2128,7 @@ def order_success(request):
                 with transaction.atomic():
                     # ✅ Create order
                     order = Order.objects.create(
-                        user=user,
+                        guest_id=guest_id,
                         address=address,
                         total_price=total_price,
                         status="Completed",
@@ -2648,7 +2143,7 @@ def order_success(request):
                     )
 
                     # ✅ Move cart → order items
-                    cart_items = Cart.objects.filter(user=user)
+                    cart_items = Cart.objects.filter(guest_id=guest_id)
                     cart_total_before_discount = sum(item.price * item.quantity for item in cart_items)
 
                     coupon_discount = Decimal(request.session.get("applied_coupon_discount", 0.00))
@@ -2696,7 +2191,7 @@ def order_success(request):
 
                     # ✅ Fire Celery tasks *after commit*
                     transaction.on_commit(lambda: create_shiprocket_order_task.delay(order.id))
-                    transaction.on_commit(lambda: send_invoice_email_task.delay(user.id, order.id))
+                    transaction.on_commit(lambda: send_invoice_email_task.delay(order.id))
                     transaction.on_commit(lambda: notify_low_stock_task.delay(order.id))
 
             except razorpay.errors.SignatureVerificationError:
@@ -2707,7 +2202,7 @@ def order_success(request):
         if coupon_code:
             try:
                 coupon = Coupon.objects.get(code=coupon_code)
-                CouponUsage.objects.create(user=user, coupon=coupon)
+                CouponUsage.objects.create(guest_id=guest_id, coupon=coupon)
             except Coupon.DoesNotExist:
                 pass
 
@@ -2716,7 +2211,7 @@ def order_success(request):
         if premium_offer_code:
             offer = PremiumFestiveOffer.objects.filter(code=premium_offer_code).first()
             if offer:
-                PremiumOfferUsage.objects.create(user=user, offer_code=offer.code)
+                PremiumOfferUsage.objects.create(guest_id=guest_id, offer_code=offer.code)
             request.session.pop("premium_offer_percentage", None)
             request.session.pop(f"premium_offer_used_{premium_offer_code}", None)
 
@@ -2730,11 +2225,11 @@ def order_success(request):
 
     return redirect("view_cart")
 
-
+from django.contrib.auth import logout
 def user_logout(request):
     logout(request)
     messages.success(request, "Logged out successfully!")
-    return redirect('email_login')
+    return redirect('/')
 
 from django.db.models import Min, Max, Avg, Prefetch, Q
 from django.views.decorators.http import require_GET
@@ -2879,18 +2374,26 @@ from django.db.models import Min, Max, Avg, Count, Q
 
 def viewall_products(request, section):
     title = ""
+    seo_title=""
+    seo_description=""
     base_products = Product.objects.none()
 
     # -------- SECTION FILTER --------
     if section == "new-arrival":
         base_products = Product.objects.filter(is_new_arrival=True, is_active=True)
         title = "New Arrivals"
+        seo_title= "New Arrivals Perfumes & Attars in India"
+        seo_description="Explore latest perfume & attar new arrivals at Perfume Valley World in Mehdipatnam, Tolichowki and Shaikpet, Hyderabad. Discover premium fragrances for men and women with online shopping available."
     elif section == "trending":
         base_products = Product.objects.filter(is_trending=True, is_active=True)
         title = "Trending Products"
+        seo_title="Trending Premium Perfumes & Attars in India"
+        seo_description="Best trending perfume & attar new arrivals at Perfume Valley World in Mehdipatnam, Tolichowki and Shaikpet, Hyderabad. Discover premium fragrances for men and women with online shopping available."
     elif section == "best-seller":
         base_products = Product.objects.filter(is_best_seller=True, is_active=True)
         title = "Best Selling Products"
+        seo_title ="Best Sellers Premium Perfumes & Attars in India"
+        seo_description ="Discover best selling premium perfumes and attars at Perfume Valley World in Mehdipatnam, Tolichowki and Shaikpet, Hyderabad. Shop luxury fragrances online from top choices for men and women in India."
     elif section == "shopbyocassions":
         base_products = Product.objects.filter(is_shop_by_occassion=True, is_active=True)
         title = "Shop By Occasions"
@@ -2922,11 +2425,16 @@ def viewall_products(request, section):
     giftset_product_ids = set(giftset_price_map.keys())
 
     # -------- WISHLIST --------
-    wishlist_product_ids = []
-    if request.user.is_authenticated:
-        wishlist_product_ids = list(
-            Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True)
-        )
+    
+    guest_id = get_guest_id(request)
+
+    wishlist_product_ids = list(
+    Wishlist.objects.filter(guest_id=guest_id)
+    .values_list('product_id', flat=True)
+)
+
+
+    
 
     combined_items = []
 
@@ -2976,6 +2484,8 @@ def viewall_products(request, section):
         'combined_items': combined_items,
         'title': title,
         'banner': banner,
+        'seo_title': seo_title,
+        'seo_description':seo_description,
         'wishlist_product_ids': wishlist_product_ids,
     })
 
@@ -3028,10 +2538,11 @@ def user_address(request):
     return render(request, 'user_panel/add_address.html', {'form': form})
 
 def update_address(request, address_id):
-    # item_id = request.GET.get('item_id')  
+    # item_id = request.GET.get('item_id')
+    guest_id=get_guest_id(request)  
 
     try:
-        address = AddressModel.objects.get(id=address_id, user=request.user)  # Get the address to update
+        address = AddressModel.objects.get(id=address_id, guest_id=guest_id)  # Get the address to update
     except AddressModel.DoesNotExist:
         # Handle case where address doesn't exist
         return HttpResponse('No Adreess Found')  
@@ -3097,15 +2608,15 @@ def fetch_shiprocket_tracking(awb_code):
         return {"error": str(e)}
     
 
-@login_required(login_url='email_login')
 def user_profile(request):
-    user = request.user
-    name = request.user.username.split('@')[0]
-    profile, _ = UserProfile.objects.get_or_create(user=user)
+    guest_id=get_guest_id(request)
+    print("guest_id",guest_id)
+    # name = request.user.username.split('@')[0]
+    profile, _ = UserProfile.objects.get_or_create(guest_id=guest_id)
 
     orders = (
         Order.objects
-        .filter(user=user)
+        .filter(guest_id=guest_id)
         .order_by('-created_at')
         .prefetch_related('items__product', 'items__product_variant')  # Prefetch nested items
     )
@@ -3130,31 +2641,31 @@ def user_profile(request):
             order.shipment_activities = []
             order.tracking_url = None
 
-    wishlist = Wishlist.objects.filter(user=user).select_related('product').prefetch_related(Prefetch('product__variants', queryset=ProductVariant.objects.filter(stock__gt=0)))
+    wishlist = Wishlist.objects.filter(guest_id=guest_id).select_related('product').prefetch_related(Prefetch('product__variants', queryset=ProductVariant.objects.filter(stock__gt=0)))
 
     for item in wishlist:
-        variants = item.product.variants.all()
-
-        if variants:
-            cheapest_variant = min(
-            variants,
-            key=lambda v: v.price if v.price else float('inf')
-        )
-            item.variant_price = cheapest_variant.price
-            item.variant_original_price = cheapest_variant.original_price
-            item.variant_size = cheapest_variant.size
-            item.variant_bottle = cheapest_variant.bottle_type
+        cheapest_variant = (
+        item.product.variants
+        .filter(stock__gt=0)
+        .order_by('price')
+        .first()
+    )
+        if cheapest_variant:
+           item.variant_price = cheapest_variant.price
+           item.variant_original_price = cheapest_variant.original_price
+           item.variant_size = cheapest_variant.size
+           item.variant_bottle = cheapest_variant.bottle_type
         else:
-            item.variant_price = None
+           item.variant_price = None
 
-    addresses = AddressModel.objects.filter(user=user).order_by('-created_at')
-    help_queries = HelpQuery.objects.filter(user=user).order_by('-created_at')
+    addresses = AddressModel.objects.filter(guest_id=guest_id).order_by('-created_at')
+    help_queries = HelpQuery.objects.filter(guest_id=guest_id).order_by('-created_at')
 
 
 
     default_address = addresses.first()
 
-    ordered_product_ids = OrderItem.objects.filter(order__user=user).values_list('product_id', flat=True)
+    ordered_product_ids = OrderItem.objects.filter(order__guest_id=guest_id).values_list('product_id', flat=True)
     product_reviews = Review.objects.filter(product_id__in=ordered_product_ids)
 
     avg_rating_dict = {
@@ -3166,10 +2677,10 @@ def user_profile(request):
     }
 
     reviewed_product_ids = list(
-        product_reviews.filter(user=user).values_list('product_id', flat=True)
+        product_reviews.filter(guest_id=guest_id).values_list('product_id', flat=True)
     )
 
-    tracking_stages = ["AWB Assigned", "Pickup Generated", "Out for Pickup", "Delivered"]
+    tracking_stages = ["AWB Assigned","RTO Delivered", "Pickup Generated", "Out for Pickup", "Delivered"]
 
     if request.method == 'POST':
         form = UserProfileForm(request.POST, request.FILES, instance=profile)
@@ -3182,7 +2693,7 @@ def user_profile(request):
 
     return render(request, 'user_panel/user_profile2.html', {
         'profile': profile,
-        'user': user,
+        'guest_id':guest_id,
         'orders': orders,
         'wishlist': wishlist,
         'addresses': addresses,
@@ -3191,18 +2702,96 @@ def user_profile(request):
         'avg_rating_dict': avg_rating_dict,
         'reviewed_product_ids': reviewed_product_ids,
         'tracking_stages': tracking_stages,
-        'display_name': name,
+        # 'display_name': name,
         'default_address': default_address,
     })
+# def user_profile(request):
+#     guest_id = get_guest_id(request)
+#     profile, _ = UserProfile.objects.get_or_create(guest_id=guest_id)
+
+#     # -------- ORDERS --------
+#     orders = (
+#         Order.objects
+#         .filter(guest_id=guest_id)
+#         .order_by("-created_at")
+#         .prefetch_related("items__product", "items__product_variant")
+#     )
+
+#     for order in orders:
+#         for item in order.items.all():
+#             if item.selected_flavours:
+#                 flavour_ids = [
+#                     int(fid) for fid in item.selected_flavours.split(",")
+#                     if fid.isdigit()
+#                 ]
+#                 item.flavour_names = ", ".join(
+#                     Flavour.objects.filter(id__in=flavour_ids)
+#                     .values_list("name", flat=True)
+#                 )
+#             else:
+#                 item.flavour_names = ""
+
+#         # ✅ READ TRACKING FROM DB ONLY
+#         if order.shiprocket_awb_code:
+#             order.shipment_activities = order.shiprocket_tracking_events or []
+#             order.shiprocket_tracking_status = (
+#                 order.shiprocket_tracking_status or "AWB Assigned"
+#             )
+#             order.tracking_url = f"https://shiprocket.co/tracking/{order.shiprocket_awb_code}"
+#         else:
+#             order.shipment_activities = []
+#             order.shiprocket_tracking_status = "Order Placed"
+#             order.tracking_url = None
+
+#     # -------- WISHLIST --------
+#     wishlist = (
+#         Wishlist.objects
+#         .filter(guest_id=guest_id)
+#         .select_related("product")
+#         .prefetch_related(
+#             Prefetch(
+#                 "product__variants",
+#                 queryset=ProductVariant.objects.filter(stock__gt=0)
+#             )
+#         )
+#     )
+
+#     for item in wishlist:
+#         variant = (
+#             item.product.variants
+#             .filter(stock__gt=0)
+#             .order_by("price")
+#             .first()
+#         )
+#         if variant:
+#             item.variant_price = variant.price
+#             item.variant_original_price = variant.original_price
+#             item.variant_size = variant.size
+#             item.variant_bottle = variant.bottle_type
+#         else:
+#             item.variant_price = None
+
+#     addresses = AddressModel.objects.filter(guest_id=guest_id)
+#     help_queries = HelpQuery.objects.filter(guest_id=guest_id)
+
+#     return render(request, "user_panel/user_profile2.html", {
+#         "profile": profile,
+#         "guest_id": guest_id,
+#         "orders": orders,
+#         "wishlist": wishlist,
+#         "addresses": addresses,
+#         "help_queries": help_queries,
+#         "default_address": addresses.first(),
+#     })
 
 
-@login_required(login_url='email_login')
+
 def add_address(request):
     if request.method == 'POST':
         form = AddressForm(request.POST)
         if form.is_valid():
             address = form.save(commit=False)
-            address.user = request.user
+            address.guest_id = get_guest_id(request)
             address.save()
             messages.success(request, "Address added successfully!")
             next_url = request.POST.get('next')
@@ -3213,9 +2802,8 @@ def add_address(request):
         form = AddressForm()
     return render(request, 'user_panel/add_address.html', {'form': form})
 
-@login_required(login_url='email_login')
 def edit_address(request, address_id):
-    address = get_object_or_404(AddressModel, id=address_id, user=request.user)
+    address = get_object_or_404(AddressModel, id=address_id, guest_id=get_guest_id(request))
     if request.method == 'POST':
         form = AddressForm(request.POST, instance=address)
         if form.is_valid():
@@ -3226,9 +2814,8 @@ def edit_address(request, address_id):
         form = AddressForm(instance=address)
     return render(request, 'user_panel/edit_address.html', {'form': form, 'address': address})
 
-@login_required(login_url='email_login')
 def delete_address(request, address_id):
-    address = get_object_or_404(AddressModel, id=address_id, user=request.user)
+    address = get_object_or_404(AddressModel, id=address_id, guest_id=get_guest_id(request))
     if request.method == 'POST':
         address.delete()
         messages.success(request, "Address deleted successfully!")
@@ -3240,10 +2827,10 @@ def submit_help_query(request):
         form = HelpQueryForm(request.POST)
         if form.is_valid():
             query = form.save(commit=False)
-            query.user = request.user
+            query.guest_id = get_guest_id(request)
             query.save()
             messages.success(request, "Your query has been submitted successfully!")
-            notify_admins(f"A new query has been submitted by {query.user.email}. Query: {query.message}",category='queries')
+            notify_admins(f"A new query has been submitted by {query.guest_id}. Query: {query.message}",category='queries')
             return redirect('user_profile')
     else:
         form = HelpQueryForm()
@@ -3251,9 +2838,8 @@ def submit_help_query(request):
 
 
 
-@login_required(login_url='email_login')
 def user_help_chat(request, query_id):
-    query = get_object_or_404(HelpQuery, id=query_id, user=request.user)
+    query = get_object_or_404(HelpQuery, id=query_id, guest_id=get_guest_id(request))
 
     return render(request, 'help_query_chat.html', {
         'query': query,
@@ -3265,11 +2851,11 @@ import os
 import uuid
 
 @csrf_exempt
-@login_required(login_url='email_login')
 def update_profile_picture(request):
+    guest_id=get_guest_id(request)
     if request.method == 'POST':
         try:
-            profile = UserProfile.objects.get(user=request.user)
+            profile = UserProfile.objects.get(guest_id=guest_id)
             
             if 'profile_image' not in request.FILES:
                 return JsonResponse({'success': False, 'error': 'No image provided'})
@@ -3285,7 +2871,7 @@ def update_profile_picture(request):
             
             # Generate unique filename with timestamp
             ext = uploaded_file.name.split('.')[-1]
-            filename = f"{request.user.username}_{uuid.uuid4().hex[:8]}_{int(time.time())}.{ext}"
+            filename = f"{guest_id}_{uuid.uuid4().hex[:8]}_{int(time.time())}.{ext}"
             
             # Save new image
             profile.profile_image.save(filename, uploaded_file)
@@ -3303,10 +2889,10 @@ def update_profile_picture(request):
     
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
-@login_required(login_url='email_login')
 def product_list(request):
+    guest_id=get_guest_id(request)
     products = Product.objects.all()
-    wishlist_product_ids = Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True)
+    wishlist_product_ids = Wishlist.objects.filter(guest_id=guest_id).values_list('product_id', flat=True)
     return render(request, 'home3.html', {
         'products': products,
         'wishlist_product_ids': list(wishlist_product_ids)
@@ -3314,58 +2900,15 @@ def product_list(request):
 
 
 
-@require_POST
-@login_required(login_url='email_login')
-def add_to_wishlist(request):
-    product_id = request.POST.get('product_id')
-    product = Product.objects.get(id=product_id)
-    Wishlist.objects.get_or_create(user=request.user, product=product)
-
-    # update count in DB + Redis
-    count = Wishlist.objects.filter(user=request.user).count()
-    cache.set(f"wishlist_count_{request.user.id}", count, timeout=None)
-
-    # notify via Channels (pub/sub)
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"wishlist_{request.user.id}",
-        {"type": "wishlist_update", "count": count}
-    )
-
-    return JsonResponse({'success': True, 'count': count})
-
-from django.core.cache import cache
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-@require_POST
-@login_required(login_url='email_login')
-def remove_from_wishlist(request):
-    product_id = request.POST.get('product_id')
-    product = Product.objects.get(id=product_id)
-    Wishlist.objects.filter(user=request.user, product=product).delete()
-
-    count = Wishlist.objects.filter(user=request.user).count()
-    cache.set(f"wishlist_count_{request.user.id}", count, timeout=None)
-
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"wishlist_{request.user.id}",
-        {"type": "wishlist_update", "count": count}
-    )
-
-    return JsonResponse({'success': True, 'count': count})
-
-
-
 @csrf_exempt
-@login_required(login_url='email_login')
 def update_dob(request):
     if request.method == 'POST':
+        guest_id=get_guest_id(request)
         data = json.loads(request.body)
         dob_str = data.get('dob')
         try:
             dob = datetime.strptime(dob_str, "%d-%m-%Y").date()
-            profile = UserProfile.objects.get(user=request.user)
+            profile = UserProfile.objects.get(guest_id=guest_id)
             profile.dob = dob
             profile.save()
             return JsonResponse({'success': True})
@@ -3377,11 +2920,12 @@ def update_dob(request):
 from admin_panel.models import Order, OrderItem  # update if your models are named differently
 from admin_panel.utils import fetch_shiprocket_tracking,get_shiprocket_token
 def shiprocket_order_result_view(request):
+    guest_id=get_guest_id(request)
     # Example: assume latest order by logged-in user
     try:
-        user = request.user
-        order = Order.objects.filter(user=user).latest('created_at')  # adjust field if needed
-        address = AddressModel.objects.filter(user=user).latest('created_at')  # Or order.address if you store it
+        guest_id=guest_id
+        order = Order.objects.filter(guest_id=guest_id).latest('created_at')  # adjust field if needed
+        address = AddressModel.objects.filter(guest_id=guest_id).latest('created_at')  # Or order.address if you store it
         order_items = OrderItem.objects.filter(order=order)
 
         result = create_shiprocket_order(order, address, order_items)
@@ -3397,9 +2941,9 @@ def shiprocket_order_result_view(request):
             }
         })
 
-@login_required(login_url='email_login')
 def order_tracking_view(request, order_id):
-    order = get_object_or_404(Order, id=order_id, user=request.user)
+    guest_id=get_guest_id(request)
+    order = get_object_or_404(Order, id=order_id, guest_id=guest_id)
     tracking = order.shiprocket_tracking_info
     print(tracking,"tracking")
 
@@ -3447,11 +2991,9 @@ def order_tracking_view(request, order_id):
 
 
 
-
-
-@login_required(login_url='email_login')
 def download_invoices(request, order_id):
-    order = get_object_or_404(Order, id=order_id, user=request.user)
+    guest_id=get_guest_id(request)
+    order = get_object_or_404(Order, id=order_id, guest_id=guest_id)
     token = get_shiprocket_token()
     url = "https://apiv2.shiprocket.in/v1/external/orders/print/invoice"
 
@@ -3629,13 +3171,13 @@ from django.http import HttpResponseForbidden
 
 
 
-@login_required(login_url='email_login')
 def write_review(request, product_id):
+    guest_id=get_guest_id(request)
     product = get_object_or_404(Product, id=product_id)
 
     # ✅ Ensure user purchased the product
     has_purchased = OrderItem.objects.filter(
-        order__user=request.user,
+        order__guest_id=guest_id,
         product=product
     ).exists()
 
@@ -3643,7 +3185,7 @@ def write_review(request, product_id):
         return HttpResponseForbidden("You can only review products you've purchased.")
 
     # ✅ Check if already reviewed this product
-    already_reviewed = Review.objects.filter(user=request.user, product=product).exists()
+    already_reviewed = Review.objects.filter(guest_id=guest_id, product=product).exists()
     if already_reviewed:
         messages.error(request, "You've already reviewed this product.")
         return redirect('product_detail', product_id=product.id)
@@ -3653,7 +3195,7 @@ def write_review(request, product_id):
         form = ReviewForm(request.POST)
         if form.is_valid():
             review = form.save(commit=False)
-            review.user = request.user
+            review.guest_id = guest_id
             review.product = product
             review.save()
             messages.success(request, "Thank you for reviewing this product!")

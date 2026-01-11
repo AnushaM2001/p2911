@@ -30,7 +30,7 @@
                 <div class="ms-md-3 mt-2 w-100">
                   {% with addresses|dictsortreversed:"id"|first as latest_address %}
                   <!-- Name -->
-                  <h4 class="user-name">{{ latest_address.Name|default:display_name }}</h4>
+                  <h4 class="user-name">{{ latest_address.Name|default:'' }}</h4>
 
                   <!-- HR and Edit in one row -->
                   <div class="d-flex align-items-center flex-wrap">
@@ -162,8 +162,12 @@
                       {% with addresses|dictsortreversed:"id"|first as latest_address %}
                       <div class="card input-card">
                       <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Name</label>
-                      <input type="text" value="{{ latest_address.Name|default:user.username }}" style="outline: none;border: none;" class="form-control" readonly>
+                      <input type="text" value="{{ latest_address.Name|default:'' }}" style="outline: none;border: none;" class="form-control" readonly>
                       </div>
+                      <div class="card input-card">
+                      <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Email</label>
+                      <input type="email" value="{{ latest_address.email }}" style="outline: none;border: none;" class="form-control" readonly>
+                    </div>
 
                       <div class="card input-card d-flex align-items-center justify-content-between">
                       <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Phone Number</label>
@@ -177,10 +181,7 @@
                       <p class="text-muted ms-2">No address added yet.</p>
                     {% endif %}
                     
-                    <div class="card input-card">
-                      <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Email</label>
-                      <input type="email" value="{{ user.email }}" style="outline: none;border: none;" class="form-control" readonly>
-                    </div>
+                    
                     
                      <div class="card input-card d-flex align-items-center justify-content-between">
                           <label style="color: #595959; font-size: 14px;" class="ms-2 mt-2">Date of Birth</label>
@@ -393,7 +394,7 @@
                     <div class="shipping-card">
                       <h5 class="card-title " style="color: #0c0c0c; font-family: Jomolhari, serif; font-size: 20px;">Shipping Details</h5>
                       <div class="d-flex ">
-                        <p class="card-text mb-0 mt-2 me-2" style="color: #0f0f0f; font-family: Jomolhari, serif; font-size: 18px;">{{ default_address.Name|default:user.username }}</p> <span class="mt-2">|</span>
+                        <p class="card-text mb-0 mt-2 me-2" style="color: #0f0f0f; font-family: Jomolhari, serif; font-size: 18px;">{{ default_address.Name|default:'' }}</p> <span class="mt-2">|</span>
                         <p class="card-text mb-0 mt-2 ms-2" style="color: #0f0e0e; font-family: Jomolhari, serif; font-size: 18px;">{{ default_address.MobileNumber|default:"No phone number" }}</p>
                       </div>
                       <p class="card-text mb-0 " style="color: #4D4D4D; font-family: Jomolhari, serif; font-size: 16px;">{{ default_address.location }} - {{ default_address.Pincode }}</p>
@@ -744,6 +745,42 @@
     </div>
   </div>
 </div>
+<script>
+document.addEventListener("click", function (e) {
+  const removeBtn = e.target.closest(".remove-wishlist");
+  if (!removeBtn) return;
+
+  const card = removeBtn.closest("[data-product-id]");
+  if (!card) return;
+
+  const productId = card.dataset.productId;
+
+  fetch("{% url 'toggle_wishlist' %}", {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": "{{ csrf_token }}",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Requested-With": "XMLHttpRequest"
+    },
+    body: `product_id=${productId}`
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === "removed") {
+      // 🔥 Remove card from DOM instantly
+      card.remove();
+
+      // 🔢 Update wishlist count
+      const countElem = document.getElementById("wishlist-count");
+      if (countElem) {
+        countElem.textContent = data.count;
+        countElem.style.display = data.count > 0 ? "inline-block" : "none";
+      }
+    }
+  })
+  .catch(err => console.error("Remove wishlist error:", err));
+});
+</script>
 
 <style>
 /* Wishlist Styles */
@@ -2011,38 +2048,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const removeButtons = document.querySelectorAll('.remove-wishlist');
 
-  removeButtons.forEach(button => {
-    button.addEventListener('click', function () {
-      const card = this.closest('.wishlist-card');
-      const productId = card.dataset.productId;
-
-      fetch("{% url 'remove_from_wishlist' %}", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: `product_id=${productId}`
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          card.remove();
-        } else {
-          alert("Error removing item from wishlist.");
-        }
-      })
-      .catch(error => {
-        console.error('Error:', error);
-      });
-    });
-  });
-});
-</script>
 
 
 

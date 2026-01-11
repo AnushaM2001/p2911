@@ -1,5 +1,4 @@
 from django.db import models
-from django.contrib.auth.models import User
 import requests
 import random
 import string
@@ -43,15 +42,24 @@ class AdminUser(models.Model):
 
 
 
-# Category Model
-class Category(AutoCompressImagesMixin,models.Model):
+from django.db import models
+from django.utils.text import slugify
+from django.urls import reverse
+from django.conf import settings
+
+class Category(AutoCompressImagesMixin, models.Model):
     name = models.CharField(max_length=255, unique=True, verbose_name="Category Name")
     created_at = models.DateTimeField(auto_now_add=True)
     banner = models.ImageField(upload_to='category_banners/', blank=True, null=True)
-    gif_file = models.FileField(upload_to='gifs/', blank=True, null=True,)
-    slug = models.SlugField(blank=True, null=True)
+    gif_file = models.FileField(upload_to='gifs/', blank=True, null=True)
+
+    slug = models.SlugField(null=True, blank=True)  # 🔥 FIXED
+    seo_title = models.CharField(max_length=255, blank=True, null=True)
+    seo_description = models.TextField(blank=True, null=True)
+    h_tag = models.CharField(max_length=50, blank=True, null=True)
+
     class Meta:
-        ordering = ['-created_at']  # Order categories by name
+        ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -72,44 +80,54 @@ class Category(AutoCompressImagesMixin,models.Model):
             }
         )
 
-
     def __str__(self):
         return self.name
 
-class Subcategory(AutoCompressImagesMixin,models.Model):
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="subcategories")
+class Subcategory(AutoCompressImagesMixin, models.Model):
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="subcategories"
+    )
     name = models.CharField(max_length=255, unique=True, verbose_name="Subcategory Name")
     created_at = models.DateTimeField(auto_now_add=True)
-    sub_image = models.ImageField(upload_to='subcategory_images/', null=True, blank=True)
+
+    sub_image = models.ImageField(upload_to='subcategory_images/', blank=True, null=True)
     banner = models.ImageField(upload_to='subcategory_banners/', blank=True, null=True)
-    slug = models.SlugField(blank=True, null=True)
-    
+
+    slug = models.SlugField(null=True,blank=True)  # 🔥 FIXED
+    seo_title = models.CharField(max_length=255, blank=True, null=True)
+    seo_description = models.TextField(blank=True, null=True)
+    h_tag = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
-        ordering = ['-created_at'] 
-
+        ordering = ['-created_at']
 
     def save(self, *args, **kwargs):
         if not self.slug:
             base_slug = slugify(self.name)
             slug = base_slug
             counter = 1
+            # ✅ FIXED MODEL HERE
             while Subcategory.objects.filter(slug=slug).exclude(id=self.id).exists():
                 slug = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = slug
+
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse(
             'subcategory_products',
             kwargs={
-                'category_slug': f"{self.category.slug}",
+                'category_slug': self.category.slug,
                 'subcategory_slug': f"{self.slug}-{settings.SEO_SUFFIX}",
             }
         )
+
     def __str__(self):
         return self.name
+
 # Example (models.py)
 class Banner(AutoCompressImagesMixin,models.Model):
     SECTION_CHOICES = [
@@ -259,7 +277,7 @@ class Order(models.Model):
         ('invoice_ready', 'Invoice Ready'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    guest_id = models.CharField(max_length=64, db_index=True,)
     address = models.ForeignKey('user_panel.AddressModel', on_delete=models.SET_NULL, null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="Pending")
@@ -281,12 +299,14 @@ class Order(models.Model):
     invoice_sent = models.BooleanField(default=False)  # To track if invoice email sent
     invoice_number = models.CharField(max_length=50, blank=True, null=True)
     invoice_date = models.DateField(auto_now_add=True, null=True)
+    shiprocket_issue_flag = models.BooleanField(default=False)
+    shiprocket_issue_reason = models.CharField(max_length=50, blank=True, null=True)
 
     
 
 
     def __str__(self):
-        return f"Order {self.id} - {self.user.username}"
+        return f"Order {self.id} - {self.guest_id}"
 
 # Order Items Model (to store products in an order)
 class OrderItem(models.Model):
@@ -345,14 +365,14 @@ class Payment(models.Model):
 
 # Review Model
 class Review(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE,null=True, blank=True)
+    guest_id = models.CharField(max_length=64, db_index=True,null=True,blank=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE,related_name='reviews',null=True, blank=True)
     review_text = models.TextField()
     rating = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Review by {self.user.username}"
+        return f"Review by {self.guest_id}"
 
 # Coupon Model
 class Coupon(models.Model):
@@ -374,14 +394,14 @@ class Coupon(models.Model):
         return self.code
 
 class CouponUsage(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    guest_id = models.CharField(max_length=64)
     coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE)
     used_at = models.DateTimeField(auto_now_add=True)
     class Meta:
-        unique_together = ('user', 'coupon') 
+        unique_together = ('guest_id', 'coupon') 
 
     def __str__(self):
-        return f"{self.user.email} - {self.coupon.code}"
+        return f"{self.guest_id} - {self.coupon.code}"
     
 
 
@@ -543,12 +563,12 @@ class PremiumFestiveOffer(models.Model):
 
 
 class PremiumOfferUsage(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    guest_id = models.CharField(max_length=64, db_index=True,null=True,blank=True)
     offer_code = models.CharField(max_length=50)
     used_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Offer {self.offer_code} used by {self.user.email}"
+        return f"Offer {self.offer_code} used by {self.guest_id}"
 
 
 
@@ -570,7 +590,7 @@ class ShiprocketToken(models.Model):
         return f"Token at {self.created_at}"
 
 class PushSubscription(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    guest_id = models.CharField(max_length=64, db_index=True,null=True,blank=True)
     endpoint = models.TextField()
     keys = models.JSONField()
 
