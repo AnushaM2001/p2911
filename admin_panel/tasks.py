@@ -36,44 +36,71 @@ def safe_save(instance, update_fields=None, max_retries=5, delay=1):
     raise OperationalError(f"Could not save {instance} after {max_retries} attempts")
 @shared_task
 def schedule_pending_shiprocket_orders():
-    pending_orders = Order.objects.filter(
+    orders = Order.objects.filter(
         status="Completed",
         shiprocket_order_id__isnull=True
     )
 
-    for order in pending_orders:
+    for order in orders:
         process_order_with_shiprocket.delay(order.id)
+@shared_task
+def schedule_awb_fetch():
+    orders = Order.objects.filter(
+        shiprocket_shipment_id__isnull=False,
+        shiprocket_awb_code__isnull=True
+    )
+
+    for order in orders:
+        fetch_shiprocket_awb_task.delay(order.id)
+
 
 
 # Step 1: Create Shiprocket Order
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def create_shiprocket_order_task(self, order_id):
     try:
-        order = Order.objects.get(id=order_id, status="Completed", shiprocket_order_id__isnull=True)
+        order = Order.objects.get(
+            id=order_id,
+            status="Completed",
+            shiprocket_order_id__isnull=True
+        )
+
         if not order.address:
-            return {"error": f"No address linked for order {order_id}"}
+            return {"error": "Address missing"}
 
-        shiprocket_response = create_shiprocket_order(order, order.address, order.items.all())
-        if shiprocket_response.get("status") != "success":
-            raise Exception(f"Shiprocket API error: {shiprocket_response}")
+        response = create_shiprocket_order(
+            order,
+            order.address,
+            order.items.all()
+        )
 
-        shiprocket_order_id = shiprocket_response.get("shiprocket_response", {}).get("order_id")
-        if not shiprocket_order_id:
-            # fallback from awb_response
-            shiprocket_order_id = shiprocket_response.get("awb_response", {}).get("response", {}).get("data", {}).get("order_id")
-            if not shiprocket_order_id:
-                raise Exception(f"No order_id returned by Shiprocket: {shiprocket_response}")
+        if response.get("status") != "success":
+            raise Exception(response)
 
-        order.shiprocket_order_id = shiprocket_order_id
-        safe_save(order, update_fields=["shiprocket_order_id"])
+        shiprocket_data = response.get("shiprocket", {})
 
-        return order.id  # Pass order ID to next task in the chain
+        order.shiprocket_order_id = shiprocket_data.get("order_id")
+        order.shiprocket_shipment_id = shiprocket_data.get("shipment_id")
+        order.status = "processing"
+
+        safe_save(order, update_fields=[
+            "shiprocket_order_id",
+            "shiprocket_shipment_id",
+            "status"
+        ])
+
+        notify_admins(
+            f"📦 Shiprocket order created\nOrder #{order.id}",
+            category="orders"
+        )
+
+        return order.id
 
     except Exception as exc:
         try:
-            self.retry(exc=exc, countdown=60)
+            self.retry(exc=exc)
         except MaxRetriesExceededError:
-            return {"error": f"Order creation failed for {order_id}: {exc}"}
+            return {"error": f"Shiprocket create failed for {order_id}"}
 
 
 # Step 2: Assign AWB asynchronously
@@ -81,92 +108,53 @@ from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 import re
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def assign_shiprocket_awb_task(self, order_id):
+@shared_task(bind=True, max_retries=10, default_retry_delay=120)
+def fetch_shiprocket_awb_task(self, order_id):
     try:
         order = Order.objects.get(
             id=order_id,
-            shiprocket_shipment_id__isnull=False
+            shiprocket_shipment_id__isnull=False,
+            shiprocket_awb_code__isnull=True
         )
 
-        awb_response = assign_awb(order.shiprocket_shipment_id)
+        token = get_shiprocket_token()
+        headers = {"Authorization": f"Bearer {token}"}
 
-        awb_code = None
-        courier_name = None
-        courier_id = None
+        url = f"https://apiv2.shiprocket.in/v1/external/shipments/{order.shiprocket_shipment_id}"
+        response = requests.get(url, headers=headers, timeout=15)
 
-        # -------------------------------
-        # CASE 1️⃣ Normal success response
-        # -------------------------------
-        if isinstance(awb_response, dict):
-            awb_code = (
-                awb_response
-                .get("response", {})
-                .get("data", {})
-                .get("awb_code")
-            )
+        if response.status_code != 200:
+            raise Exception("Shipment fetch failed")
 
-            courier_name = (
-                awb_response
-                .get("response", {})
-                .get("data", {})
-                .get("courier_name")
-            )
+        data = response.json().get("data", {})
+        awb = data.get("awb")
+        courier = data.get("courier_name")
 
-            courier_id = (
-                awb_response
-                .get("response", {})
-                .get("data", {})
-                .get("courier_company_id")
-            )
+        if not awb:
+            raise Exception("AWB not generated yet")
 
-        # ------------------------------------
-        # CASE 2️⃣ AWB already assigned (500)
-        # ------------------------------------
-        if not awb_code:
-            message = awb_response.get("message", "") if isinstance(awb_response, dict) else ""
-
-            if "AWB is already assigned" in message:
-                match = re.search(r"awb\s*-\s*(\w+)", message)
-                if match:
-                    awb_code = match.group(1)
-
-        # ------------------------------------
-        # FINAL VALIDATION
-        # ------------------------------------
-        if not awb_code:
-            raise Exception("AWB still not available")
-
-        # ✅ SAVE ONCE AND EXIT
-        order.shiprocket_awb_code = awb_code
-        order.shiprocket_courier_name = courier_name
-        order.shiprocket_courier_id = courier_id
+        order.shiprocket_awb_code = awb
+        order.shiprocket_courier_name = courier
         order.status = "awb_assigned"
 
         safe_save(order, update_fields=[
             "shiprocket_awb_code",
             "shiprocket_courier_name",
-            "shiprocket_courier_id",
             "status"
         ])
 
-        print(f"✅ AWB CONFIRMED → Order #{order.id}: {awb_code}")
+        notify_admins(
+            f"✅ AWB auto-assigned\nOrder #{order.id}\nAWB: {awb}",
+            category="orders"
+        )
 
-        return {
-            "success": True,
-            "order_id": order.id,
-            "awb_code": awb_code
-        }
+        return {"success": True}
 
     except Exception as exc:
-        print("⚠️ AWB assignment retry:", exc)
         try:
             self.retry(exc=exc)
         except MaxRetriesExceededError:
-            return {
-                "error": f"AWB assignment failed permanently for order {order_id}",
-                "reason": str(exc)
-            }
+            return {"error": f"AWB fetch failed for {order_id}"}
 
 
 # Helper function to run the full chain
@@ -175,7 +163,7 @@ def process_order_with_shiprocket(order_id):
     """Create order and assign AWB using Celery chain."""
     workflow = chain(
         create_shiprocket_order_task.s(order_id),
-        assign_shiprocket_awb_task.s()
+        # assign_shiprocket_awb_task.s()
     )
     workflow.apply_async()
 
