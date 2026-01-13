@@ -146,77 +146,68 @@ from admin_panel.views import notify_admins
 import datetime
 import json
 
-def create_shiprocket_order(order, address, order_items):
-    import datetime
-    import json
+import datetime
+import requests
+import json
 
-    # Step 1: Validate Address (unchanged)
+def create_shiprocket_order(order, address, order_items):
+    """
+    Create Shiprocket order without product weight.
+    Handles primary + fallback courier, AWB assignment, and logging.
+    """
+    # 1️⃣ Validate address
     validation_errors = validate_address_for_shiprocket(address, order, order_items)
     if validation_errors:
-        return {
-            "status": "error",
-            "message": "Validation failed before API call",
-            "errors": validation_errors
-        }
+        return {"status": "error", "message": "Validation failed", "errors": validation_errors}
 
-    # Step 2: Shiprocket Token (unchanged)
+    # 2️⃣ Shiprocket token
     token = get_shiprocket_token()
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
-    #step 2 
-    courier_info = check_shiprocket_service(address)
-
-    if not courier_info or "best_courier" not in courier_info:
-        return {"status": "error", "message": "No eligible courier found", "details": courier_info}
-
-    best_courier_id = courier_info['best_courier']['courier_company_id']
-
-    # Step 3: Totals
+    # 3️⃣ Totals
     giftwrap_charge = 150 if any(getattr(item, 'gift_wrap', False) for item in order_items) else 0
-    platform_fee = sum(
-    float(getattr(item, "platform_fee", 0) or 0) for item in order_items
-)
-
-    delivery_charge = sum(
-    float(getattr(item, "delivery_charges", 0) or 0) for item in order_items
-)
-
-    sub_total = sum(float(item.price) * item.quantity for item in order_items)
+    platform_fee = sum(float(getattr(item, "platform_fee", 0) or 0) for item in order_items)
+    delivery_charge = sum(float(getattr(item, "delivery_charges", 0) or 0) for item in order_items)
     total_discount = sum(float(item.discount_amount or 0) for item in order_items)
-    # Use order.total_price from the Order table for order_total
     order_total = float(order.total_price)
 
-    # Step 4: Build item list - FIX DISCOUNT HERE
+    # 4️⃣ Default weight
+    DEFAULT_ITEM_WEIGHT = 0.5  # kg per item
+    total_weight = sum(DEFAULT_ITEM_WEIGHT * item.quantity for item in order_items)
+
+    # Standard box dimensions (cm)
+    length, breadth, height = 10, 15, 20
+    volumetric_weight = (length * breadth * height) / 5000
+    shipping_weight = max(total_weight, volumetric_weight)
+
+    # 5️⃣ Select primary and fallback courier
+    primary_courier, fallback_courier = select_couriers_by_etd(address, order_total, shipping_weight)
+    if not primary_courier:
+        return {"status": "error", "message": "No couriers available for this address"}
+
+    # 6️⃣ Prepare order items
     item_list = []
     for item in order_items:
         sku_value = item.product.sku.strip() if item.product.sku else f"AUTO-{item.product.id}"
-        item_price = float(item.price)
-        item_qty = item.quantity
-        item_discount = float(item.discount_amount or 0)
-
-        # Per-unit discount MUST BE POSITIVE (Shiprocket subtracts this from the price)
-        unit_discount = round(item_discount / item_qty, 2) if item_qty else 0
-
+        unit_discount = round(float(item.discount_amount or 0) / item.quantity, 2) if item.quantity else 0
         item_list.append({
             "name": item.product.name,
             "category": item.product.category.name if item.product.category else "General",
             "sku": sku_value,
-            "units": item_qty,
-            "selling_price": item_price,
-            "discount": unit_discount,  # Per-unit discount
+            "units": item.quantity,
+            "selling_price": float(item.price),
+            "discount": unit_discount,
             "hsn": 441122
         })
 
-    # Step 5: Build payload
+    # 7️⃣ Build payload
     payload = {
         "order_id": f"ORD-{order.id}",
-        # "courier_id" : order.shiprocket_courier_id,
-        "courier_company_id": best_courier_id,
         "order_date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "pickup_location": "warehouse",
         "comment": "Placed via Razorpay",
         "reseller_name": "Mohammed",
         "company_name": "PerFume Valley",
-
         "billing_customer_name": address.Name,
         "billing_last_name": "",
         "billing_address": address.location,
@@ -229,7 +220,6 @@ def create_shiprocket_order(order, address, order_items):
         "billing_email": address.email or "support@perfumevalley.in",
         "billing_phone": address.MobileNumber,
         "billing_alternate_phone": address.Alternate_MobileNumber,
-
         "shipping_is_billing": True,
         "shipping_customer_name": address.Name,
         "shipping_last_name": "",
@@ -241,104 +231,113 @@ def create_shiprocket_order(order, address, order_items):
         "shipping_country": "India",
         "shipping_email": address.email or "support@perfumevalley.in",
         "shipping_phone": address.MobileNumber,
-
         "order_items": item_list,
         "payment_method": "Prepaid",
         "shipping_charges": 0,
         "giftwrap_charges": round(giftwrap_charge, 2),
         "transaction_charges": round(platform_fee + delivery_charge, 2),
-        "total_discount": round(total_discount, 2),  # Set total discount as positive value
+        "total_discount": round(total_discount, 2),
         "sub_total": round(order_total, 2),
-        # "order_total": round(order_total, 2),
-
-        "length": 10,
-        "breadth": 15,
-        "height": 20,
-        "weight": 2.0,
+        "courier_company_id": primary_courier["courier_company_id"],
+        "length": length,
+        "breadth": breadth,
+        "height": height,
+        "weight": shipping_weight,
         "ewaybill_no": "",
         "customer_gstin": "",
         "invoice_number": "",
-        "order_type": "",
-        # "courier_id": best_courier_id,
-
+        "order_type": ""
     }
 
-    print("✅ Final Payload Sent to Shiprocket:")
-    print(json.dumps(payload, indent=4))
+    print("✅ Shiprocket Payload:", json.dumps(payload, indent=4))
 
-    headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
-
-    # Step 5: Send request to Shiprocket
+    # 8️⃣ Create order
     response = requests.post(
         "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc",
         json=payload,
-        headers=headers
+        headers=headers,
+        timeout=15
     )
-    print("Shiprocket response full text:", response.text)
     response_data = response.json()
+    shiprocket_shipment_id = response_data.get("shipment_id")
+    print("📦 Shiprocket Order Response:", response_data)
 
-    if response.status_code == 200 and "order_id" in response_data:
-        shiprocket_order_id = response_data.get("order_id")
-        shiprocket_shipment_id = response_data.get("shipment_id")
-        # Save to order
-        order.shiprocket_courier_id = best_courier_id
-        order.shiprocket_order_id = shiprocket_order_id
-        order.shiprocket_shipment_id = shiprocket_shipment_id
+    awb_code, courier_name = None, None
 
-        # 🚀 Try assigning AWB
-        awb_response = assign_awb(shiprocket_shipment_id,payload=payload)
-        print("AWB Assignment Response:", awb_response)
-
+    # 9️⃣ Assign AWB
+    if shiprocket_shipment_id:
+        awb_response = assign_awb(shiprocket_shipment_id, payload=payload)
         awb_data = awb_response.get("response", {}).get("data", {})
+        awb_code = awb_data.get("awb_code") or response_data.get("awb_code")
+        courier_name = awb_data.get("courier_name") or response_data.get("courier_name")
+        print("🚚 AWB Assignment Response:", awb_response)
 
-        # ✅ Fallback if AWB already assigned
-        awb_code = awb_data.get("awb_code") or response_data.get("awb_code", "")
-        courier_name = awb_data.get("courier_name") or response_data.get("courier_name", "")
+    # 10️⃣ Retry with fallback if primary fails
+    if not awb_code and fallback_courier:
+        print(f"⚠️ Primary courier failed, retrying with fallback: {fallback_courier['courier_name']}")
+        payload["courier_company_id"] = fallback_courier["courier_company_id"]
+        fallback_resp = requests.post(
+            "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc",
+            json=payload,
+            headers=headers,
+            timeout=15
+        )
+        fallback_data = fallback_resp.json()
+        fallback_shipment_id = fallback_data.get("shipment_id")
+        print("📦 Fallback Order Response:", fallback_data)
 
-        if awb_code:
-            order.shiprocket_awb_code = awb_code
-            order.shiprocket_courier_name = courier_name
-            order.status = "awb_assigned"
-            order.save(update_fields=[
-                'shiprocket_order_id',
-                'shiprocket_shipment_id',
-                'shiprocket_awb_code',
-                'shiprocket_courier_name',
-                'shiprocket_courier_id',  # Save courier ID too
-                'status'
-            ])
-            notify_admins(f"✅ Order is Placed {order.id}-{order.shiprocket_order_id}", category="orders")
+        if fallback_shipment_id:
+            awb_response = assign_awb(fallback_shipment_id, payload=payload)
+            awb_data = awb_response.get("response", {}).get("data", {})
+            awb_code = awb_data.get("awb_code") or fallback_data.get("awb_code")
+            courier_name = awb_data.get("courier_name") or fallback_data.get("courier_name")
+            shiprocket_shipment_id = fallback_shipment_id
 
-            print(f"✅ Order updated with AWB: {awb_code}, Courier: {courier_name}")
-        else:
-            # Just save order ID and shipment ID if AWB failed
-            order.save(update_fields=['shiprocket_order_id', 'shiprocket_shipment_id'])
-            print("⚠️ AWB code not assigned")
+    # 11️⃣ Update Order in DB
+    if awb_code:
+        order.shiprocket_awb_code = awb_code
+        order.shiprocket_courier_name = courier_name
+        order.status = "awb_assigned"
+        order.shiprocket_order_id = response_data.get("order_id")
+        order.shiprocket_shipment_id = shiprocket_shipment_id
+        order.save(update_fields=[
+            "shiprocket_awb_code", "shiprocket_courier_name",
+            "status", "shiprocket_order_id", "shiprocket_shipment_id"
+        ])
+        print(f"✅ Order {order.id} AWB assigned: {awb_code} Courier: {courier_name}")
+    else:
+        print(f"⚠️ AWB not assigned for Order {order.id}")
 
-        # Generate URLs
-        tracking_url = f"https://apiv2.shiprocket.in/v1/external/courier/track?shipment_id={shiprocket_shipment_id}"
-        label_url = f"https://apiv2.shiprocket.in/v1/external/courier/generate/label?shipment_id={shiprocket_shipment_id}"
+    # 12️⃣ Return result
+    tracking_url = f"https://apiv2.shiprocket.in/v1/external/courier/track?shipment_id={shiprocket_shipment_id}"
+    label_url = f"https://apiv2.shiprocket.in/v1/external/courier/generate/label?shipment_id={shiprocket_shipment_id}"
 
-        return {
-            "status": "success",
-            "status_code": 200,
-            "shiprocket_response": response_data,
-            "tracking_url": tracking_url,
-            "label_url": label_url,
-            "sent_payload": payload,
-            "awb_response": awb_response
-        }
-
-    # Failure
     return {
-        "status": "error",
-        "status_code": response.status_code,
+        "status": "success" if awb_code else "error",
         "shiprocket_response": response_data,
-        "sent_payload": payload
+        "tracking_url": tracking_url,
+        "label_url": label_url,
+        "sent_payload": payload,
+        "awb_response": awb_response if shiprocket_shipment_id else None
     }
+
+
+def select_couriers_by_etd(address, declared_value, weight):
+    """
+    Returns primary and fallback courier based on ETD (fastest delivery first).
+    """
+    courier_info = check_shiprocket_service(address, declared_value=declared_value)
+    couriers = courier_info.get("data", {}).get("available_courier_companies", [])
+
+    if not couriers:
+        return None, None
+
+    # Sort by ETD (fastest delivery), then freight charge
+    sorted_couriers = sorted(couriers, key=lambda x: (x.get("etd", 99), x.get("freight_charge", 9999)))
+    primary = sorted_couriers[0] if len(sorted_couriers) > 0 else None
+    fallback = sorted_couriers[1] if len(sorted_couriers) > 1 else None
+    return primary, fallback
+
 
 from django.core.mail import EmailMessage
 
