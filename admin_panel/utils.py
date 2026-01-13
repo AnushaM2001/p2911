@@ -171,6 +171,20 @@ def create_shiprocket_order(order, address, order_items):
     # 📦 SAFE FIXED PACKAGE (IMPORTANT)
     weight = 1.0
     length, breadth, height = 20, 15, 10
+    
+    giftwrap_charge = 150 if any(getattr(item, 'gift_wrap', False) for item in order_items) else 0
+    platform_fee = sum(
+    float(getattr(item, "platform_fee", 0) or 0) for item in order_items
+)
+
+    delivery_charge = sum(
+    float(getattr(item, "delivery_charges", 0) or 0) for item in order_items
+)
+
+    sub_total = sum(float(item.price) * item.quantity for item in order_items)
+    total_discount = sum(float(item.discount_amount or 0) for item in order_items)
+    # Use order.total_price from the Order table for order_total
+    order_total = float(order.total_price)
 
     # 3️⃣ Items
     items = []
@@ -200,7 +214,9 @@ def create_shiprocket_order(order, address, order_items):
 
         # Billing
         "billing_customer_name": address.Name,
+        "billing_last_name": "",
         "billing_address": address.location,
+        "billing_isd_code": "+91",
         "billing_city": address.City,
         "billing_pincode": address.Pincode,
         "billing_state": address.State,
@@ -211,6 +227,7 @@ def create_shiprocket_order(order, address, order_items):
         # Shipping
         "shipping_is_billing": True,
         "shipping_customer_name": address.Name,
+        "shipping_last_name": "",
         "shipping_address": address.location,
         "shipping_city": address.City,
         "shipping_pincode": address.Pincode,
@@ -220,8 +237,9 @@ def create_shiprocket_order(order, address, order_items):
 
         "order_items": items,
         "payment_method": "Prepaid",
-
-        "sub_total": float(order.total_price),
+        "giftwrap_charges": round(giftwrap_charge, 2),
+        "total_discount": round(total_discount, 2),
+        "sub_total": round(order_total, 2),
 
         # 📦 SAME PACKAGE AS SERVICEABILITY
         "weight": weight,
