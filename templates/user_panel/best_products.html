@@ -130,7 +130,7 @@
   .addcart {
     display: none;
     position: absolute;
-    top: 73%;
+    bottom: -25px;              /* ✅ FIXED */
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: #6D3F0BF2;
@@ -150,6 +150,7 @@
   .product-card:hover .favorite,
   .product-card:hover .addcart {
     display: flex;
+    
   }
 
   .addcart a {
@@ -370,7 +371,7 @@
       width: calc(100% - -7px);
       height: 45px;
       font-size: 16px;
-      top:59%;
+      top:93%;
     }
     .badge-rating {
       font-size: 0.7rem;
@@ -473,7 +474,7 @@
                  onmouseout="this.src='{{ entry.product.image1.url }}'"
                  {% endif %}>
           {% endif %}
-        </div>
+       
 
         <!-- Add to Cart -->
         {% if entry.product.stock_status != 'Out of Stock' %}
@@ -486,7 +487,7 @@
           </a>
         </div>
         {% endif %}
-
+ </div>
         <!-- Product Info -->
         <div class="product-info">
           <div class="product-name mb-2 mt-4" style="font-family: Jomolhari;margin-top: 2.4rem;">{{ entry.product.name }}</div>
