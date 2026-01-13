@@ -58,11 +58,15 @@ def schedule_awb_fetch():
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def create_shiprocket_order_task(self, order_id):
     try:
-        order = Order.objects.get(
-            id=order_id,
-            status="Completed",
+        order = Order.objects.filter(
+           id=order_id,
+             status="Completed",
             shiprocket_order_id__isnull=True
-        )
+                 ).first()
+
+        if not order:
+            return {"info": f"Order {order_id} already processed or not eligible"}
+
 
         if not order.address:
             return {"error": "Address missing"}
