@@ -154,7 +154,7 @@ CHANNEL_LAYERS = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',  # Use PostgreSQL backend
-        'NAME': 'PerfumeValley',  # Replace with your database name
+        'NAME': 'perfume',  # Replace with your database name
         'USER':'admin',  # Replace with your database user
         'PASSWORD': 'Perfumevalley12345',  # Replace with your database password
         'HOST': 'database-2.cr4y64o0iohu.eu-north-1.rds.amazonaws.com',  # Set to 'localhost' or the IP address of your PostgreSQL server

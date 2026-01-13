@@ -45,8 +45,8 @@ urlpatterns = [
     path('ajax/search/', views.search_suggestions, name='search_suggestions'),
     path('disclaimer/',views.disclaimer,name="disclaimer"),
 
-    path('home/',views.home1,name='home'),
-    path('',views.progress,name='progress'),
+    path('',views.home1,name='home'),
+    path('prg/',views.progress,name='progress'),
 
     path('apply-coupon/', views.apply_coupon, name='apply_coupon'),
 
