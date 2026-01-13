@@ -250,8 +250,7 @@ def notify_low_stock_task(order_id=None):
                         notify_admins(f"⚠️ Low stock: {item.product_variant}", category="stocks")
                     elif item.gift_set and item.gift_set.stock <= 5:
                         notify_admins(f"⚠️ Low stock: {item.gift_set}", category="stocks")
-                    elif item.product and item.product.stock <= 5:
-                        notify_admins(f"⚠️ Low stock: {item.product}", category="stocks")
+                    
                 except Exception as inner_e:
                     logger.warning(f"Stock check failed for order {order.id}: {inner_e}")
 
@@ -375,7 +374,11 @@ def fetch_tracking_status():
                     ])
 
                 msg = f"📦 Order #{order.id} is now '{current_status}'"
-                Notification.objects.create(message=msg)
+                Notification.objects.create(
+                message=msg,
+                user=order.user if order.user_id else None
+                 )
+
 
                 send_push_notification(
                     guest_id=order.guest_id,
