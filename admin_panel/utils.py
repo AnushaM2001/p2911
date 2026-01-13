@@ -9,6 +9,7 @@ import json
 from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
+from admin_panel.views import notify_admins
 
 
 def compress_image(image_field, quality=70):
