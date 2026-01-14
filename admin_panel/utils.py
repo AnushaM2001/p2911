@@ -167,7 +167,7 @@ def create_shiprocket_order(order, address, order_items):
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
-
+    shiprocket_order_id = f"ORD-{order.id}-{uuid.uuid4().hex[:8]}"
     # 📦 SAFE FIXED PACKAGE (IMPORTANT)
     weight = 1.0
     length, breadth, height = 20, 15, 10
@@ -203,7 +203,7 @@ def create_shiprocket_order(order, address, order_items):
         })
 
     payload = {
-        "order_id": f"ORD-{order.id}",
+        "order_id": shiprocket_order_id,
         "order_date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
 
         # ⚠️ EXACT NAME FROM SHIPROCKET PANEL
@@ -211,7 +211,7 @@ def create_shiprocket_order(order, address, order_items):
 
         "comment": "Prepaid Order",
         "company_name": "PerFume Valley",
-
+        "payment_method": "Prepaid",
         # Billing
         "billing_customer_name": address.Name,
         "billing_last_name": "",
@@ -259,6 +259,10 @@ def create_shiprocket_order(order, address, order_items):
 
     if response.status_code != 200:
         return {"status": "error", "shiprocket": data}
+        
+    order.shiprocket_order_id = shiprocket_order_id
+    order.shiprocket_shipment_id = data.get("shipment_id")
+    order.save(update_fields=["shiprocket_order_id", "shiprocket_shipment_id"])
 
     return {
         "status": "success",
