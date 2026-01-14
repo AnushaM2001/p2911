@@ -55,77 +55,22 @@ def schedule_awb_fetch():
 
 
 # Step 1: Create Shiprocket Order
-# @shared_task(bind=True, max_retries=5, default_retry_delay=60)
-# def create_shiprocket_order_task(self, order_id):
-#     try:
-#         order = Order.objects.filter(
-#            id=order_id,
-#              status="Completed",
-#             shiprocket_order_id__isnull=True
-#                  ).first()
-
-#         if not order:
-#             return {"info": f"Order {order_id} already processed or not eligible"}
-
-
-#         if not order.address:
-#             return {"error": "Address missing"}
-
-#         response = create_shiprocket_order(
-#             order,
-#             order.address,
-#             order.items.all()
-#         )
-
-#         if response.get("status") != "success":
-#             raise Exception(response)
-
-#         shiprocket_data = response.get("shiprocket", {})
-
-#         order.shiprocket_order_id = shiprocket_data.get("order_id")
-#         order.shiprocket_shipment_id = shiprocket_data.get("shipment_id")
-#         order.status = "processing"
-
-#         safe_save(order, update_fields=[
-#             "shiprocket_order_id",
-#             "shiprocket_shipment_id",
-#             "status"
-#         ])
-
-#         notify_admins(
-#             f"📦 Shiprocket order created\nOrder #{order.id}",
-#             category="orders"
-#         )
-
-#         return order.id
-
-#     except Exception as exc:
-#         try:
-#             self.retry(exc=exc)
-#         except MaxRetriesExceededError:
-#             return {"error": f"Shiprocket create failed for {order_id}"}
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def create_shiprocket_order_task(self, order_id):
     try:
-        with transaction.atomic():
-            order = Order.objects.select_for_update().get(
-                id=order_id,
-                status="Completed"
-            )
+        order = Order.objects.filter(
+           id=order_id,
+             status="Completed",
+            shiprocket_order_id__isnull=True
+                 ).first()
 
-            # ⛔ STOP if already created
-            if order.shiprocket_shipment_id:
-                return {"info": f"Order {order.id} already sent to Shiprocket"}
+        if not order:
+            return {"info": f"Order {order_id} already processed or not eligible"}
 
-            if not order.address:
-                return {"error": "Address missing"}
 
-            # ✅ Generate Shiprocket Order ID ONCE (NO UUID)
-            if not order.shiprocket_order_id:
-                order.shiprocket_order_id = f"PV-2026-ORD-{order.id}"
-                order.save(update_fields=["shiprocket_order_id"])
+        if not order.address:
+            return {"error": "Address missing"}
 
-        # 🚀 Call Shiprocket AFTER lock released
         response = create_shiprocket_order(
             order,
             order.address,
@@ -137,10 +82,12 @@ def create_shiprocket_order_task(self, order_id):
 
         shiprocket_data = response.get("shiprocket", {})
 
+        order.shiprocket_order_id = shiprocket_data.get("order_id")
         order.shiprocket_shipment_id = shiprocket_data.get("shipment_id")
         order.status = "processing"
 
         safe_save(order, update_fields=[
+            "shiprocket_order_id",
             "shiprocket_shipment_id",
             "status"
         ])
@@ -150,13 +97,13 @@ def create_shiprocket_order_task(self, order_id):
             category="orders"
         )
 
-        return {"success": True, "order_id": order.id}
+        return order.id
 
     except Exception as exc:
         try:
             self.retry(exc=exc)
         except MaxRetriesExceededError:
-            return {"error": f"Shiprocket create failed for order {order_id}"}
+            return {"error": f"Shiprocket create failed for {order_id}"}
 
 
 # Step 2: Assign AWB asynchronously
