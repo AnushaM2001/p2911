@@ -553,3 +553,77 @@ def run_shiprocket_now(order_id):
         "shipment_id": order.shiprocket_shipment_id,
         "awb": order.shiprocket_awb_code,
     }
+def debug_awb_not_generated(order):
+    """
+    Debug why AWB is not generated for a Shiprocket shipment
+    """
+    if not order.shiprocket_shipment_id:
+        return {
+            "status": "error",
+            "reason": "Shipment not created yet"
+        }
+
+    token = get_shiprocket_token()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1️⃣ Fetch shipment details
+    shipment_url = (
+        f"https://apiv2.shiprocket.in/v1/external/shipments/"
+        f"{order.shiprocket_shipment_id}"
+    )
+    shipment_resp = requests.get(shipment_url, headers=headers, timeout=15)
+    shipment_data = shipment_resp.json().get("data", {})
+
+    courier_name = shipment_data.get("courier_name")
+    awb = shipment_data.get("awb")
+    status = shipment_data.get("status")
+
+    # ✅ AWB exists
+    if awb:
+        return {
+            "status": "success",
+            "message": "AWB already generated",
+            "awb": awb,
+            "courier": courier_name
+        }
+
+    # 2️⃣ Check courier serviceability
+    serviceability_url = (
+        "https://apiv2.shiprocket.in/v1/external/"
+        "courier/serviceability/"
+    )
+
+    params = {
+        "pickup_postcode": "500008",  # MUST MATCH pickup location
+        "delivery_postcode": order.address.Pincode,
+        "cod": 0,
+        "weight": 1.0
+    }
+
+    service_resp = requests.get(
+        serviceability_url,
+        headers=headers,
+        params=params,
+        timeout=15
+    )
+
+    service_data = service_resp.json().get("data", {})
+    couriers = service_data.get("available_courier_companies", [])
+
+    # ❌ No couriers available
+    if not couriers:
+        return {
+            "status": "blocked",
+            "reason": "No courier available for this route",
+            "pickup_pincode": params["pickup_postcode"],
+            "delivery_pincode": params["delivery_postcode"]
+        }
+
+    # ⚠️ Courier available but not assigned yet
+    return {
+        "status": "pending",
+        "reason": "Courier available but not yet assigned by Shiprocket",
+        "shipment_status": status,
+        "available_couriers_count": len(couriers),
+        "suggestion": "Wait 5–15 minutes or assign courier manually"
+    }
