@@ -1,5 +1,7 @@
 from django.db import models
 import requests
+import uuid
+
 import random
 import string
 from django.utils import timezone
@@ -308,7 +310,7 @@ class Order(models.Model):
         
     def save(self, *args, **kwargs):
         if not self.order_ref:
-             self.order_ref = f"PV-{uuid.uuid4().hex[:5].upper()}"
+             self.order_ref = f"PV-{uuid.uuid4().hex[:8].upper()}"
         super().save(*args, **kwargs)
     
 
