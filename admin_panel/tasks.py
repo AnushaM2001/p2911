@@ -5,7 +5,7 @@ from django.utils import timezone
 import time
 
 # admin_panel/tasks.py
-from admin_panel.notifications import notify_admins
+from admin_panel.Notifications import notify_admins
 
 import logging
 from decimal import Decimal
