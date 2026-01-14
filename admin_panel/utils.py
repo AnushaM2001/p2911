@@ -260,9 +260,9 @@ def create_shiprocket_order(order, address, order_items):
     if response.status_code != 200:
         return {"status": "error", "shiprocket": data}
         
-    order.shiprocket_order_id = shiprocket_order_id
-    order.shiprocket_shipment_id = data.get("shipment_id")
-    order.save(update_fields=["shiprocket_order_id", "shiprocket_shipment_id"])
+    # order.shiprocket_order_id = shiprocket_order_id
+    # order.shiprocket_shipment_id = data.get("shipment_id")
+    # order.save(update_fields=["shiprocket_order_id", "shiprocket_shipment_id"])
 
     return {
         "status": "success",
