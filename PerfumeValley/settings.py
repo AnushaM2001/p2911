@@ -151,20 +151,36 @@ CHANNEL_LAYERS = {
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',  # Use PostgreSQL backend
+#         'NAME': 'perfume',  # Replace with your database name
+#         'USER':'admin',  # Replace with your database user
+#         'PASSWORD': 'Perfumevalley12345',  # Replace with your database password
+#         'HOST': 'database-2.cr4y64o0iohu.eu-north-1.rds.amazonaws.com',  # Set to 'localhost' or the IP address of your PostgreSQL server
+#         'PORT': '3306',  # Default PostgreSQL port
+#         'OPTIONS': {
+#              'ssl': {'ssl-ca': ''},  # Disable SSL
+#              'init_command': 'SET sql_mode="STRICT_TRANS_TABLES";',
+#           },
+#     }
+# }
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',  # Use PostgreSQL backend
-        'NAME': 'perfume',  # Replace with your database name
-        'USER':'admin',  # Replace with your database user
-        'PASSWORD': 'Perfumevalley12345',  # Replace with your database password
-        'HOST': 'database-2.cr4y64o0iohu.eu-north-1.rds.amazonaws.com',  # Set to 'localhost' or the IP address of your PostgreSQL server
-        'PORT': '3306',  # Default PostgreSQL port
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'perfume',
+        'USER': 'admin',
+        'PASSWORD': 'Perfumevalley12345',
+        'HOST': 'database-2.cr4y64o0iohu.eu-north-1.rds.amazonaws.com',
+        'PORT': '3306',
         'OPTIONS': {
-             'ssl': {'ssl-ca': ''},  # Disable SSL
-             'init_command': 'SET sql_mode="STRICT_TRANS_TABLES";',
-          },
+            'charset': 'utf8mb4',
+            'use_unicode': True,
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
+
 
 
 # Password validation
