@@ -167,7 +167,7 @@ def create_shiprocket_order(order, address, order_items):
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
-    shiprocket_order_id = f"ORD-{order.id}-{uuid.uuid4().hex[:8]}"
+    
     # 📦 SAFE FIXED PACKAGE (IMPORTANT)
     weight = 1.0
     length, breadth, height = 20, 15, 10
@@ -203,7 +203,7 @@ def create_shiprocket_order(order, address, order_items):
         })
 
     payload = {
-        "order_id": shiprocket_order_id,
+        "order_id": order.shiprocket_order_id,
         "order_date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
 
         # ⚠️ EXACT NAME FROM SHIPROCKET PANEL
