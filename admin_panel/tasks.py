@@ -82,13 +82,13 @@ def create_shiprocket_order_task(self, order_id):
 
         shiprocket_data = response.get("shiprocket", {})
 
-        order.shiprocket_order_id = shiprocket_data.get("order_id")
-        order.shiprocket_shipment_id = shiprocket_data.get("shipment_id")
+        # order.shiprocket_order_id = shiprocket_data.get("order_id")
+        # order.shiprocket_shipment_id = shiprocket_data.get("shipment_id")
         order.status = "processing"
 
         safe_save(order, update_fields=[
-            "shiprocket_order_id",
-            "shiprocket_shipment_id",
+            # "shiprocket_order_id",
+            # "shiprocket_shipment_id",
             "status"
         ])
 
@@ -166,27 +166,27 @@ from .models import Order
 from .utils import get_shiprocket_token   # or wherever your token function is
 
 @shared_task(bind=True, max_retries=3)
-def generate_shiprocket_pickup_task(self, shipment_id):
+def generate_shiprocket_pickup_task(self, order_id):
     try:
-        token = get_shiprocket_token()
+        order = Order.objects.get(id=order_id, shiprocket_shipment_id__isnull=False)
 
+        token = get_shiprocket_token()
         url = "https://apiv2.shiprocket.in/v1/external/courier/generate/pickup"
+
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
-        payload = {
-            "shipment_id": shipment_id
-        }
+
+        payload = {"shipment_id": order.shiprocket_shipment_id}
 
         response = requests.post(url, json=payload, headers=headers)
         data = response.json()
 
-        if response.status_code == 200 and data.get("success"):
-            Order.objects.filter(shiprocket_shipment_id=shipment_id).update(
-                shiprocket_pickup_generated=True
-            )
-            return "Pickup generated successfully"
+        if response.status_code == 200:
+            order.shiprocket_pickup_generated = True
+            order.save(update_fields=["shiprocket_pickup_generated"])
+            return "Pickup generated"
 
         raise Exception(data)
 
