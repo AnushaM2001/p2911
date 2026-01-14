@@ -263,7 +263,7 @@ def process_order_with_shiprocket(order_id):
     """Create order and assign AWB using Celery chain."""
     workflow = chain(
         create_shiprocket_order_task.s(order_id),
-        # assign_shiprocket_awb_task.s(),
+        assign_shiprocket_awb_task.s(),
         generate_shiprocket_pickup_task.s()
     )
     workflow.apply_async()
