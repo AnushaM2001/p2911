@@ -42,6 +42,30 @@ from django.db.models import Sum, F, DecimalField
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
+from admin_panel.utils import debug_awb_not_generated
+
+
+@require_GET
+def debug_awb_status(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+        debug_info = debug_awb_not_generated(order)
+
+        return JsonResponse({
+            "order_id": order.id,
+            "order_status": order.status,
+            "shiprocket_order_id": order.shiprocket_order_id,
+            "shiprocket_shipment_id": order.shiprocket_shipment_id,
+            "debug": debug_info
+        })
+
+    except Order.DoesNotExist:
+        return JsonResponse(
+            {"error": "Order not found"},
+            status=404
+        )
+
+
 def notify_admins(message, category="orders"):
     admin_user = AdminUser.objects.first()
     if not admin_user:
