@@ -82,13 +82,13 @@ def create_shiprocket_order_task(self, order_id):
 
         shiprocket_data = response.get("shiprocket", {})
 
-        # order.shiprocket_order_id = shiprocket_data.get("order_id")
-        # order.shiprocket_shipment_id = shiprocket_data.get("shipment_id")
+        order.shiprocket_order_id = shiprocket_data.get("order_id")
+        order.shiprocket_shipment_id = shiprocket_data.get("shipment_id")
         order.status = "processing"
 
         safe_save(order, update_fields=[
-            # "shiprocket_order_id",
-            # "shiprocket_shipment_id",
+            "shiprocket_order_id",
+            "shiprocket_shipment_id",
             "status"
         ])
 
