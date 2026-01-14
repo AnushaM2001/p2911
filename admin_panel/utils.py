@@ -203,7 +203,7 @@ def create_shiprocket_order(order, address, order_items):
         })
 
     payload = {
-        "order_id": order.shiprocket_order_id,
+        "order_id": order.order_ref,
         "order_date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
 
         # ⚠️ EXACT NAME FROM SHIPROCKET PANEL
