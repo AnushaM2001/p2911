@@ -302,7 +302,15 @@ class Order(models.Model):
     shiprocket_issue_flag = models.BooleanField(default=False)
     shiprocket_issue_reason = models.CharField(max_length=50, blank=True, null=True)
     shiprocket_pickup_generated = models.BooleanField(default=False)
-
+    order_ref = models.CharField( max_length=40,unique=True,editable=False,blank=True,null=True)
+       
+        
+        
+    def save(self, *args, **kwargs):
+        if not self.order_ref:
+             self.order_ref = f"PV-{uuid.uuid4().hex[:5].upper()}"
+        super().save(*args, **kwargs)
+    
 
     
 
