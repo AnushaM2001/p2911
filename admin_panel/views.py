@@ -44,7 +44,7 @@ from asgiref.sync import async_to_sync
 
 from admin_panel.utils import debug_awb_not_generated
 
-from admin_panel.notifications import notify_admins
+from admin_panel.Notifications import notify_admins
 
 @require_GET
 def debug_awb_status(request, order_id):
