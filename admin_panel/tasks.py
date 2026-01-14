@@ -167,11 +167,21 @@ import re
 @shared_task(bind=True, max_retries=10, default_retry_delay=120)
 def fetch_shiprocket_awb_task(self, order_id):
     try:
-        order = Order.objects.get(
-            id=order_id,
-            shiprocket_shipment_id__isnull=False,
-            shiprocket_awb_code__isnull=True
+        order = (
+            Order.objects
+            .filter(
+                id=order_id,
+                shiprocket_shipment_id__isnull=False,
+                shiprocket_awb_code__isnull=True
+            )
+            .first()
         )
+
+        # ✅ Order no longer eligible → STOP RETRYING
+        if not order:
+            return {
+                "info": f"Order {order_id} not eligible for AWB fetch"
+            }
 
         token = get_shiprocket_token()
         headers = {"Authorization": f"Bearer {token}"}
@@ -186,6 +196,7 @@ def fetch_shiprocket_awb_task(self, order_id):
         awb = data.get("awb")
         courier = data.get("courier_name")
 
+        # ⏳ AWB not generated yet → RETRY (this is OK)
         if not awb:
             raise Exception("AWB not generated yet")
 
@@ -210,7 +221,7 @@ def fetch_shiprocket_awb_task(self, order_id):
         try:
             self.retry(exc=exc)
         except MaxRetriesExceededError:
-            return {"error": f"AWB fetch failed for {order_id}"}
+            return {"error": f"AWB fetch failed for order {order_id}"}
 
 import requests
 from django.conf import settings
