@@ -159,6 +159,39 @@ def fetch_shiprocket_awb_task(self, order_id):
         except MaxRetriesExceededError:
             return {"error": f"AWB fetch failed for {order_id}"}
 
+import requests
+from django.conf import settings
+from celery import shared_task
+from .models import Order
+from .utils import get_shiprocket_token   # or wherever your token function is
+
+@shared_task(bind=True, max_retries=3)
+def generate_shiprocket_pickup_task(self, shipment_id):
+    try:
+        token = get_shiprocket_token()
+
+        url = "https://apiv2.shiprocket.in/v1/external/courier/generate/pickup"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "shipment_id": shipment_id
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+
+        if response.status_code == 200 and data.get("success"):
+            Order.objects.filter(shiprocket_shipment_id=shipment_id).update(
+                shiprocket_pickup_generated=True
+            )
+            return "Pickup generated successfully"
+
+        raise Exception(data)
+
+    except Exception as exc:
+        raise self.retry(exc=exc, countdown=30)
 
 # Helper function to run the full chain
 @shared_task
@@ -166,7 +199,8 @@ def process_order_with_shiprocket(order_id):
     """Create order and assign AWB using Celery chain."""
     workflow = chain(
         create_shiprocket_order_task.s(order_id),
-        # assign_shiprocket_awb_task.s()
+        # assign_shiprocket_awb_task.s(),
+        generate_shiprocket_pickup_task.s()
     )
     workflow.apply_async()
 
