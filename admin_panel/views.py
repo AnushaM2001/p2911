@@ -44,6 +44,7 @@ from asgiref.sync import async_to_sync
 
 from admin_panel.utils import debug_awb_not_generated
 
+from admin_panel.notifications import notify_admins
 
 @require_GET
 def debug_awb_status(request, order_id):
@@ -66,53 +67,53 @@ def debug_awb_status(request, order_id):
         )
 
 
-def notify_admins(message, category="orders"):
-    admin_user = AdminUser.objects.first()
-    if not admin_user:
-        print("No admin user found!")
-        return
+# def notify_admins(message, category="orders"):
+#     admin_user = AdminUser.objects.first()
+#     if not admin_user:
+#         print("No admin user found!")
+#         return
 
-    # ✅ Prevent duplicates: check if this exact message already exists
-    if Notification.objects.filter(user=admin_user, message=message, category=category, is_read=False).exists():
-        print(f"Duplicate notification skipped: {message}")
-        return
+#     # ✅ Prevent duplicates: check if this exact message already exists
+#     if Notification.objects.filter(user=admin_user, message=message, category=category, is_read=False).exists():
+#         print(f"Duplicate notification skipped: {message}")
+#         return
 
-    # Save notification for the admin user
-    Notification.objects.create(user=admin_user, message=message, category=category)
+#     # Save notification for the admin user
+#     Notification.objects.create(user=admin_user, message=message, category=category)
 
-    # Fresh counts filtered by admin user
-    counts = {
-        "orders": Notification.objects.filter(user=admin_user, category="orders", is_read=False).count(),
-        "stocks": Notification.objects.filter(user=admin_user, category="stocks", is_read=False).count(),
-        "queries": Notification.objects.filter(user=admin_user, category="queries", is_read=False).count(),
-    }
+#     # Fresh counts filtered by admin user
+#     counts = {
+#         "orders": Notification.objects.filter(user=admin_user, category="orders", is_read=False).count(),
+#         "stocks": Notification.objects.filter(user=admin_user, category="stocks", is_read=False).count(),
+#         "queries": Notification.objects.filter(user=admin_user, category="queries", is_read=False).count(),
+#     }
 
-    # Send counts + message to WebSocket group
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        "admin_notifications",
-        {
-            "type": "send_notification",
-            "message": message,
-            "counts": counts,
-            "category": category,
-        }
-    )
+#     # Send counts + message to WebSocket group
+#     channel_layer = get_channel_layer()
+#     async_to_sync(channel_layer.group_send)(
+#         "admin_notifications",
+#         {
+#             "type": "send_notification",
+#             "message": message,
+#             "counts": counts,
+#             "category": category,
+#         }
+#     )
 
-    # Send email notification
-    if admin_user.email:
-        try:
-            send_mail(
-                subject=f"New Admin Notification - {category.capitalize()}",
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[admin_user.email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            print(f"Error sending email: {e}")
-    else:
-        print(f"Admin user {admin_user.name} has no email.")
+#     # Send email notification
+#     if admin_user.email:
+#         try:
+#             send_mail(
+#                 subject=f"New Admin Notification - {category.capitalize()}",
+#                 message=message,
+#                 from_email=settings.DEFAULT_FROM_EMAIL,
+#                 recipient_list=[admin_user.email],
+#                 fail_silently=False,
+#             )
+#         except Exception as e:
+#             print(f"Error sending email: {e}")
+#     else:
+#         print(f"Admin user {admin_user.name} has no email.")
 
 
 
