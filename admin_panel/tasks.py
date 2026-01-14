@@ -38,11 +38,13 @@ def safe_save(instance, update_fields=None, max_retries=5, delay=1):
 def schedule_pending_shiprocket_orders():
     orders = Order.objects.filter(
         status="Completed",
-        shiprocket_shipment_id__isnull=True
+        shiprocket_shipment_id__isnull=True,
+        order_ref__isnull=False   # ✅ VERY IMPORTANT
     )
 
     for order in orders:
         process_order_with_shiprocket.delay(order.id)
+
 @shared_task
 def schedule_awb_fetch():
     orders = Order.objects.filter(
@@ -66,7 +68,7 @@ def create_shiprocket_order_task(self, order_id):
                  ).first()
 
         if not order:
-            return {"info": f"Order {order_id} already processed or not eligible"}
+            return None
 
 
         if not order.address:
@@ -112,22 +114,19 @@ import re
 
 @shared_task(bind=True, max_retries=10, default_retry_delay=120)
 def fetch_shiprocket_awb_task(self, order_id):
-    try:
-        order = (
-            Order.objects
-            .filter(
-                id=order_id,
-                shiprocket_shipment_id__isnull=False,
-                shiprocket_awb_code__isnull=True
-            )
-            .first()
-        )
 
-        # ✅ Order no longer eligible → STOP RETRYING
+    if not isinstance(order_id, int):
+        return {"info": "Invalid order id, skipping AWB fetch"}
+
+    try:
+        order = Order.objects.filter(
+            id=order_id,
+            shiprocket_shipment_id__isnull=False,
+            shiprocket_awb_code__isnull=True
+        ).first()
+
         if not order:
-            return {
-                "info": f"Order {order_id} not eligible for AWB fetch"
-            }
+            return {"info": f"Order {order_id} not eligible for AWB fetch"}
 
         token = get_shiprocket_token()
         headers = {"Authorization": f"Bearer {token}"}
@@ -135,14 +134,16 @@ def fetch_shiprocket_awb_task(self, order_id):
         url = f"https://apiv2.shiprocket.in/v1/external/shipments/{order.shiprocket_shipment_id}"
         response = requests.get(url, headers=headers, timeout=15)
 
+        if response.status_code == 404:
+            return {"error": f"Shipment not found for order {order_id}"}
+
         if response.status_code != 200:
-            raise Exception("Shipment fetch failed")
+            raise Exception(f"Shipment fetch failed: {response.text}")
 
         data = response.json().get("data", {})
         awb = data.get("awb")
         courier = data.get("courier_name")
 
-        # ⏳ AWB not generated yet → RETRY (this is OK)
         if not awb:
             raise Exception("AWB not generated yet")
 
@@ -167,8 +168,7 @@ def fetch_shiprocket_awb_task(self, order_id):
         try:
             self.retry(exc=exc)
         except MaxRetriesExceededError:
-            return {"error": f"AWB fetch failed for order {order_id}"}
-
+            return {"error": f"AWB fetch failed permanently for order {order_id}"}
 import requests
 from django.conf import settings
 from celery import shared_task
@@ -209,8 +209,8 @@ def process_order_with_shiprocket(order_id):
     """Create order and assign AWB using Celery chain."""
     workflow = chain(
         create_shiprocket_order_task.s(order_id),
-        fetch_shiprocket_awb_task.s(),
-        generate_shiprocket_pickup_task.s()
+        # fetch_shiprocket_awb_task.s(),
+        # generate_shiprocket_pickup_task.s()
     )
     workflow.apply_async()
 
