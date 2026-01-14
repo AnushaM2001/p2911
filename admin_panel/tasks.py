@@ -84,12 +84,10 @@ def create_shiprocket_order_task(self, order_id):
 
         order.shiprocket_order_id = shiprocket_data.get("order_id")
         order.shiprocket_shipment_id = shiprocket_data.get("shipment_id")
-        order.status = "processing"
 
         safe_save(order, update_fields=[
             "shiprocket_order_id",
             "shiprocket_shipment_id",
-            "status"
         ])
 
         notify_admins(
@@ -210,7 +208,7 @@ def process_order_with_shiprocket(order_id):
     """Create order and assign AWB using Celery chain."""
     workflow = chain(
         create_shiprocket_order_task.s(order_id),
-        assign_shiprocket_awb_task.s(),
+        fetch_shiprocket_awb_task.s(),
         generate_shiprocket_pickup_task.s()
     )
     workflow.apply_async()
