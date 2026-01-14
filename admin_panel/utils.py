@@ -1,4 +1,4 @@
-from celery import uuid
+import uuid
 import requests
 from admin_panel.models import *
 from django.conf import settings
