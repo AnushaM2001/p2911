@@ -37,7 +37,7 @@ def safe_save(instance, update_fields=None, max_retries=5, delay=1):
 def schedule_pending_shiprocket_orders():
     orders = Order.objects.filter(
         status="Completed",
-        shiprocket_order_id__isnull=True
+        shiprocket_shipment_id__isnull=True
     )
 
     for order in orders:
