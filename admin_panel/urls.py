@@ -9,6 +9,11 @@ urlpatterns = [
     path('admin-logout/', admin_logout_view, name='admin_logout'),
     path('admin-change-password/', change_admin_password_view, name='admin_change_password'),
     path('', admin_dashboard, name='admin_dashboard'),
+    path(
+        "debug/awb/<int:order_id>/",
+        debug_awb_status,
+        name="debug_awb_status"
+    ),
 # urls.py
     path("admin/notifications/", all_notifications, name="all_notifications"),
     # urls.py
