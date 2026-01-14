@@ -13,7 +13,7 @@ from celery.exceptions import MaxRetriesExceededError
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from admin_panel.models import Order
-from admin_panel.utils import create_shiprocket_order, assign_awb, send_invoice_email,get_shiprocket_token, send_push_notification
+from admin_panel.utils import create_shiprocket_order, assign_awb, send_invoice_email,get_shiprocket_token, send_push_notification,notify_admins
 from django.db import transaction, OperationalError
 # from admin_panel.utils import get_guest_id
 
