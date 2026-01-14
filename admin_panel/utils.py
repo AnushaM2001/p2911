@@ -211,7 +211,7 @@ def create_shiprocket_order(order, address, order_items):
 
         "comment": "Prepaid Order",
         "company_name": "PerFume Valley",
-        "payment_method": "Prepaid",
+        
         # Billing
         "billing_customer_name": address.Name,
         "billing_last_name": "",
