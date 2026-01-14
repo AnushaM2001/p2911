@@ -301,6 +301,8 @@ class Order(models.Model):
     invoice_date = models.DateField(auto_now_add=True, null=True)
     shiprocket_issue_flag = models.BooleanField(default=False)
     shiprocket_issue_reason = models.CharField(max_length=50, blank=True, null=True)
+    shiprocket_pickup_generated = models.BooleanField(default=False)
+
 
     
 
