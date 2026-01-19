@@ -1769,7 +1769,7 @@ def download_invoices_by_date(request):
     zip_file = zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED)
 
     domain = get_current_site(request).domain
-    logo_url = "https://perfumevalleyworld.com/static/images2/hi1.png"
+    logo_url = "https://www.perfumevalleyworld.com/static/images2/hi1.png"
 
     for order in orders:
         generate_invoice_number(order)
