@@ -2517,26 +2517,17 @@ def disclaimer(request):
 
 
 def add_address(request):
-    # get next url safely
     next_url = request.GET.get("next") or request.POST.get("next")
 
-    # fallback
     if not next_url:
-        if request.session.get("guest_id"):
-            next_url = "/cart/"
-        else:
-            next_url = "/"
-
+        next_url = "/cart/"  # fallback for guest
     if request.method == "POST":
         form = AddressForm(request.POST)
         if form.is_valid():
             address = form.save(commit=False)
-
-            # attach guest id
             guest_id = request.session.get("guest_id")
             if guest_id:
                 address.guest_id = guest_id
-
             address.save()
             return redirect(next_url)
     else:
