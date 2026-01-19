@@ -186,7 +186,8 @@
 <body>
 <div class="container mt-4 mb-4">
    
-         <a href="javascript:void(0);" onclick="window.history.back();" class="back-button">← Back</a>
+<a href="{{ next_url }}" class="back-button">⬅ Back</a>
+
     <form method="post" id="address-form" autocomplete="off">
         {% csrf_token %}
        <div class="header-line mb-3">
@@ -200,7 +201,7 @@
 
 
 
-        <input type="hidden" name="next" value="{{ request.GET.next|default:request.META.HTTP_REFERER }}">
+<input type="hidden" name="next" value="{{ next_url }}">
 
         <div class="section-box">
             <h6 class="mb-3">Contact Info</h6>
