@@ -2516,31 +2516,36 @@ def disclaimer(request):
     return render(request, 'user_panel/disclaimer.html')
 
 
+def add_address(request):
+    form = AddressForm()
 
+    # Try to get referer safely
+    referer = request.META.get("HTTP_REFERER")
 
+    # Fallbacks for guest users
+    if not referer:
+        if request.session.get("guest_id"):
+            referer = "/cart/"     # change if needed
+        else:
+            referer = "/"
 
-
-def user_address(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = AddressForm(request.POST)
         if form.is_valid():
             address = form.save(commit=False)
-            address.user = request.user
+
+            # Attach guest_id if exists
+            guest_id = request.session.get("guest_id")
+            if guest_id:
+                address.guest_id = guest_id
+
             address.save()
-            
-            # Save selected address ID for both billing and shipping
-            request.session['selected_address_id'] = address.id
-            request.session['billing_address_id'] = address.id
-            request.session['shipping_address_id'] = address.id
+            return redirect(referer)
 
-            messages.success(request, "Address saved successfully!")
-            return redirect('view_cart')
-        else:
-            print('jjjjjjj',form.errors)
-    else:
-        form = AddressForm()
-
-    return render(request, 'user_panel/add_address.html', {'form': form})
+    return render(request, "user_panel/add_address.html", {
+        "form": form,
+        "referer": referer
+    })
 
 def update_address(request, address_id):
     # item_id = request.GET.get('item_id')
