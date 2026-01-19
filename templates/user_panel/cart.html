@@ -559,7 +559,7 @@ html, body {
                       inactive
                   {% endif %}
               ">
-                  <span class="fw-bold">{{ coupon.code }}</span>
+                  <span class="fw-bold">{{ coupon.code }}<p class="text-danger">Shop above ₹{{ coupon.required_amount }}</p><i class="text-success">Save ₹{{ coupon.discount }}</i></span>
                   
                   {% if coupon.id in used_coupons %}
                       <span class="text-danger">Already used ₹{{ coupon.discount }}</span>
