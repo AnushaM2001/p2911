@@ -2516,7 +2516,7 @@ def disclaimer(request):
     return render(request, 'user_panel/disclaimer.html')
 
 
-def add_address(request):
+def user_address(request):
     next_url = request.GET.get("next") or request.POST.get("next")
 
     if not next_url:
