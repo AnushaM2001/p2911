@@ -1434,7 +1434,17 @@ $('#applyFiltersModal').on('click', function () {
 
     // ✅ CLOSE MODAL
     const modal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
-    modal.hide();
+   modal.hide();
+
+// 🔥 FORCE CLEANUP (fix blur issue)
+setTimeout(() => {
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+
+    $('.modal-backdrop').remove();
+}, 300);
+
 });
 
 </script>
