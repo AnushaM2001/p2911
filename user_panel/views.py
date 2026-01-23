@@ -706,7 +706,7 @@ def ajax_filter_products(request):
     # not subcategory_ids and
     # not request.GET.getlist('category[]') and
     # not request.GET.getlist('subcategory[]')
-))
+# ))
 
     
         try:
