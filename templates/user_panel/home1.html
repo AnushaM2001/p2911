@@ -2204,7 +2204,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         {% if subcategory.sub_image %}
                         <div class="circle-container me-2 mt-3">
                             <div class="clickable-circle circle" 
-                                     data-url="{% url 'products_list' %}?subcategory={{ subcategory.id }}">
+                                     data-url="{{ subcategory.get_absolute_url }}">
                                 <img src="{{ subcategory.sub_image.url }}" alt="{{ subcategory.name }}">
                             </div>
                             <div class="arc-main"></div>
@@ -2238,7 +2238,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         {% for category in section_categories %}
                         {% if category.gif_file %}
                         <div class="circle-container me-2 mt-3">
-                            <div class="clickable-circle circle" data-url="{% url 'products_list' %}?category={{ category.id }}">
+                            <div class="clickable-circle circle" data-url="{{ category.get_absolute_url}}">
                                 <img src="{{ category.gif_file.url }}" alt="{{ category.name }}">
                             </div>
                             <div class="arc-main"></div>
@@ -3477,7 +3477,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         {% if occasion.sub_image %}
                         <div class="circle-container me-2 mb-2">
                             <div class="clickable-circle circle" 
-                                 data-url="{% url 'products_list' %}?subcategory={{ occasion.id }}">
+                                 data-url="{{ occasion.get_absolute_url }}">
                                 <img src="{{ occasion.sub_image.url }}" alt="{{ occasion.name }}" loading="lazy" decoding="async">
                             </div>
                             <div class="arc-main"></div>
