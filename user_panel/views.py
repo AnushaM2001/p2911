@@ -504,7 +504,7 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
 
     if is_giftset and category:
         # GIFTSETS
-        giftsets_products = Product.objects.filter(category=category).prefetch_related('giftset_set__flavours')
+        giftsets_products = Product.objects.filter(category=category).prefetch_related('gift_sets__flavours')
 
         # Active offers
         now = timezone.now()
@@ -514,7 +514,7 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
         )
 
         for product in giftsets_products:
-            giftset = product.giftset_set.first()
+            giftset = product.gift_sets.first()
             if not giftset:
                 continue
 
