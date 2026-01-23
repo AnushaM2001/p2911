@@ -693,7 +693,7 @@
             </a>
         </div>
         <!-- Desktop Navbar links (centered on desktop) -->
-        <div class="collapse navbar-collapse order-4 order-lg-2 mt-lg-4 d-none d-lg-block" id="navbarNav">
+         <div class="collapse navbar-collapse order-4 order-lg-2 mt-lg-4 d-none d-lg-block" id="navbarNav">
             <ul class="navbar-nav mx-auto mb-2 mb-lg-0 w-100 justify-content-center">
                 <li class="nav-item">
                     <a class="nav-link category-name"  href="{% url 'all_view' %}">Shop All</a>
@@ -710,7 +710,7 @@
                 {% for category in navbar_categories %}
                     {% if category.subcategories.all %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link category-name d-flex align-items-center" href="{% url 'products_list' %}?category={{ category.id }}"
+                            <a class="nav-link category-name d-flex align-items-center" href="{{ category.get_absolute_url }}"
                                     id="navbarDropdownPerfumes{{ category.id }}" role="button" style="gap: 0.4em;">
                                 <span>{{ category.name }}</span>
                               <span class="ms-1" style="font-weight: normal; font-size: 0.85rem;">
@@ -720,7 +720,7 @@
                             <ul class="dropdown-menu" aria-labelledby="navbarDropdownPerfumes{{ category.id }}">
                                 {% for sub in category.subcategories.all %}
                                     <li>
-                                        <a class="dropdown-item" href="{% url 'products_list' %}?subcategory={{ sub.id }}">
+                                        <a class="dropdown-item" href="{{ sub.get_absolute_url }}">
                                             {{ sub.name }}
                                         </a>
                                     </li>
@@ -731,7 +731,7 @@
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link category-name" href="{% url 'products_list' %}?category={{ category.id }}">{{ category.name }}</a>
+                            <a class="nav-link category-name" href="{{ category.get_absolute_url }}">{{ category.name }}</a>
                         </li>
                     {% endif %}
                 {% endfor %}
@@ -770,7 +770,7 @@
       {% for category in navbar_categories %}
         {% if category.subcategories.all %}
           <li class="nav-item dropdown">
-           <a href="{% url 'products_list' %}?category={{ category.id }}"
+           <a href="{{ category.get_absolute_url }}"
             class="nav-link category-name offcanvas-link d-flex justify-content-between align-items-center dropdown-toggle"
             data-category="{{ category.id }}"
             data-has-dropdown="true">
@@ -781,7 +781,7 @@
             <ul class="dropdown-menu">
               {% for sub in category.subcategories.all %}
                 <li>
-                  <a class="dropdown-item" href="{% url 'products_list' %}?subcategory={{ sub.id }}">
+                  <a class="dropdown-item" href="{{ sub.get_absolute_url }}">
                     {{ sub.name }}
                   </a>
                 </li>
@@ -793,7 +793,7 @@
           </li>
         {% else %}
           <li class="nav-item">
-            <a class="nav-link category-name offcanvas-link" href="{% url 'products_list' %}?category={{ category.id }}">
+            <a class="nav-link category-name offcanvas-link" href="{{ category.get_absolute_url }}">
               {{ category.name }}
             </a>
             <div class="divider"></div>
