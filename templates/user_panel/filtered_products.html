@@ -1,15 +1,44 @@
  {% extends 'layouts/main.html' %}
 {% load static %}
-{% block title %}
+
+ {% block title %}
+      {{ seo_title }}      
 {% endblock title %}
 
-{% block extra_css %}
+    <!-- ✅ META DESCRIPTION -->
+    {% block meta %}
+        <meta name="description"
+              content="{{ seo_description }}">
+        {% if page_obj.number > 1 %}
+        <meta name="robots" content="noindex,follow">
+    {% endif %}
+
+    {% endblock meta %}
+
+    {% block canonical %}
+    {% if subcategory %}
+        <link rel="canonical"
+              href="{{ request.scheme }}://{{ request.get_host }}/products/{{ category.slug }}/{{ subcategory.slug }}/">
+    {% elif category %}
+        <link rel="canonical"
+              href="{{ request.scheme }}://{{ request.get_host }}/{{ category.slug }}/">
+    {% endif %}
+{% endblock canonical %}
+
 <!-- <link rel="stylesheet" href="{% static 'css/home.css' %}?v2" type="text/css" /> -->
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+{% block extra_css %}
 <style>
+.visually-hidden {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
 /* --- Card and Grid Styling --- */
 .filter-box {
     width: 100% !important;
@@ -627,6 +656,10 @@ html, body {
 {% block content %}
 </head>
 <body>
+   <h1 class="visually-hidden">
+    {{ h_tag }}
+</h1>
+
     <div class="container-fluid p-0">
         <!-- Display Category Banner with Name Overlay -->
         <div id="category-banner" class="banner-container">
@@ -636,8 +669,8 @@ html, body {
             <!-- Subcategory Banner will be dynamically inserted here -->
         </div>
         <!-- Mobile & Tablet Filter Button (centered, always visible on <=1024px) -->
-<div class="d-flex justify-content-center my-3 w-100 d-lg-none">
-  <button class="btn px-4 py-2 text-white" style="background-color:#981945" data-bs-toggle="modal" data-bs-target="#filterModal">
+<div class="d-flex justify-content-center w-100 d-lg-none">
+  <button class="btn filter-btn px-4 py-2 text-white" style="background-color:#981945 !important; color: white !important;" data-bs-toggle="modal" data-bs-target="#filterModal">
     <i class="bi bi-funnel"></i> Filter
   </button>
 </div>
@@ -679,7 +712,11 @@ html, body {
                                         {% for cat in navbar_categories %}
                                         <li>
                                             <label class="dropdown-item d-flex align-items-center">
-                                                <input class="form-check-input me-2 categoryFilter" type="checkbox" value="{{ cat.id }}" {% if cat.id == category.id %}selected{% endif %} id="cat{{ cat.id }}" data-name="{{ cat.name }}">
+<input class="form-check-input me-2 categoryFilter"
+       type="checkbox"
+       value="{{ cat.id }}"
+       {% if category and cat.id == category.id %}checked{% endif %}
+       data-name="{{ cat.name }}">
                                                 {{ cat.name }}
                                             </label>
                                         </li>
@@ -699,7 +736,7 @@ html, body {
                                         {% for sub in subcategories %}
                                         <li>
                                             <label class="dropdown-item d-flex align-items-center">
-                                                <input class="form-check-input me-2 subcategoryFilter" type="checkbox" value="{{ sub.id }}" {% if sub.id == subcategory.id %}selected{% endif %}id="sub{{ sub.id }}" data-name="{{ sub.name }}">
+                                                <input class="form-check-input me-2 subcategoryFilter" type="checkbox" value="{{ sub.id }}" {% if subcategory and sub.id == subcategory.id %}checked{% endif %} data-name="{{ sub.name }}">
                                                 {{ sub.name }}
                                             </label>
                                         </li>
@@ -838,123 +875,148 @@ html, body {
         
     </script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {{ wishlist_product_ids|json_script:"wishlist-data" }}
+
 <script>
+  const WISHLIST_IDS = JSON.parse(
+    document.getElementById("wishlist-data").textContent
+  );
+</script>
+
+<script>
+   
+    let isMobileFilterOpen = false;
+
+$('#filterModal').on('show.bs.modal', function () {
+
+    isMobileFilterOpen = true;
+
+    // CATEGORY
+    $('.categoryFilterModal').prop('checked', false);
+    $('.categoryFilter:checked').each(function () {
+        $(`.categoryFilterModal[value="${this.value}"]`).prop('checked', true);
+    });
+
+    // SUBCATEGORY
+    $('.subcategoryFilterModal').prop('checked', false);
+    $('.subcategoryFilter:checked').each(function () {
+        $(`.subcategoryFilterModal[value="${this.value}"]`).prop('checked', true);
+    });
+
+    // SIZE
+    $('.sizeFilterModal').prop('checked', false);
+    $('.sizeFilter:checked').each(function () {
+        $(`.sizeFilterModal[value="${this.value}"]`).prop('checked', true);
+    });
+
+    // PRICE
+    $('#priceRangeModal').val($('#priceRange').val());
+    $('#priceRangeValueModal').text($('#priceRange').val());
+});
+
+
+$('#filterModal').on('hidden.bs.modal', function () {
+    isMobileFilterOpen = false;
+
+    // 🔥 force cleanup (fix blur forever)
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+});
+
+    console.log("🔥 FILTER JS LOADED");
+
 let currentPage = 1;
 let loading = false;
 let hasNext = true;
-let loadedProductIds = new Set(); // Prevent duplicate products
+let loadedProductIds = new Set();
 
-/* ------------------------------
+const ACTIVE_CATEGORY_ID = {{ active_category_id|default:"null" }};
+const ACTIVE_SUBCATEGORY_ID = {{ active_subcategory_id|default:"null" }};
+
+/* ==============================
    GET URL PARAMETERS
------------------------------- */
+================================ */
 function getUrlParams() {
     const params = new URLSearchParams(window.location.search);
     return {
-        categories: params.getAll('category').length ? params.getAll('category') : (params.get('categories') ? params.get('categories').split(',') : []),
-        subcategories: params.getAll('subcategory').length ? params.getAll('subcategory') : (params.get('subcategories') ? params.get('subcategories').split(',') : []),
+        categories: params.get('categories') ? params.get('categories').split(',') : [],
+        subcategories: params.get('subcategories') ? params.get('subcategories').split(',') : [],
         sizes: params.getAll('size'),
         min_price: params.get('min_price') || 0,
         max_price: params.get('max_price') || null,
-        page: params.get('page') || 1
+        page: parseInt(params.get('page') || 1)
     };
 }
 
-/* ------------------------------
-   APPLY FILTERS FROM URL
------------------------------- */
-(function applyFiltersFromURL() {
-    const urlParams = getUrlParams();
-
-    urlParams.categories.forEach(id => {
-        $(`.categoryFilter[value="${id}"]`).prop("checked", true);
-        $(`.categoryFilterModal[value="${id}"]`).prop("checked", true);
-    });
-
-    urlParams.subcategories.forEach(id => {
-        $(`.subcategoryFilter[value="${id}"]`).prop("checked", true);
-        $(`.subcategoryFilterModal[value="${id}"]`).prop("checked", true);
-    });
-
-    urlParams.sizes.forEach(id => {
-        $(`.sizeFilter[value="${id}"]`).prop("checked", true);
-        $(`.sizeFilterModal[value="${id}"]`).prop("checked", true);
-    });
-
-    if (urlParams.max_price) {
-        $("#priceRange").val(urlParams.max_price).trigger("input");
-        $("#priceRangeModal").val(urlParams.max_price).trigger("input");
-    }
-    if (urlParams.min_price) {
-        $("#priceRangeMin").val(urlParams.min_price);
-    }
-
-    // Set initial page
-    currentPage = parseInt(urlParams.page);
-
-    // Expand dropdowns if something is auto-checked
-    if (urlParams.categories.length > 0) $("#categoryDropdownModal").click();
-    if (urlParams.subcategories.length > 0) $("#brandDropdownModal").click();
-})();
-
-/* ------------------------------
-   UPDATE URL DYNAMICALLY
------------------------------- */
+/* ==============================
+   UPDATE URL (QUERY ONLY)
+================================ */
 function updateURL() {
-    const categories = $('.categoryFilter:checked').map(function(){ return $(this).val(); }).get();
-    const subcategories = $('.subcategoryFilter:checked').map(function(){ return $(this).val(); }).get();
-    const sizes = $('.sizeFilter:checked').map(function(){ return $(this).val(); }).get();
-    const min_price = $('#priceRangeMin').val();
-    const max_price = $('#priceRange').val();
-
     const params = new URLSearchParams();
 
-    if(categories.length) params.set('categories', categories.join(','));
-    if(subcategories.length) params.set('subcategories', subcategories.join(','));
-    if(sizes.length) params.set('size', sizes.join(','));
-    if(min_price && min_price != 0) params.set('min_price', min_price);
-    if(max_price && max_price != 0) params.set('max_price', max_price);
-    if(currentPage > 1) params.set('page', currentPage);
+    const sizes = $('.sizeFilter:checked').map(function () {
+        return $(this).val();
+    }).get();
 
-    const newUrl = window.location.pathname + '?' + params.toString();
-    window.history.replaceState({}, '', newUrl);
+    if (sizes.length) params.set('size', sizes.join(','));
+
+    if ($('#priceRange').val() < {{ max_price }}) {
+        params.set('max_price', $('#priceRange').val());
+    }
+
+    if (currentPage > 1) {
+        params.set('page', currentPage);
+    }
+
+    const query = params.toString();
+    window.history.replaceState(
+        {},
+        '',
+        query ? `${window.location.pathname}?${query}` : window.location.pathname
+    );
 }
 
-/* ------------------------------
-   UPDATE SELECTED FILTERS UI
------------------------------- */
+/* ==============================
+   SELECTED FILTERS UI
+================================ */
 function updateSelectedFilters() {
     let filters = [];
-    $('.categoryFilter:checked').each(function(){
-        filters.push({ type: 'category', id: $(this).val(), name: $(this).data('name') });
-    });
-    $('.subcategoryFilter:checked').each(function(){
-        filters.push({ type: 'subcategory', id: $(this).val(), name: $(this).data('name') });
-    });
-    $('.sizeFilter:checked').each(function(){
-        filters.push({ type: 'size', id: $(this).val(), name: $(this).data('name') });
+
+    $('.categoryFilter:checked').each(function () {
+        filters.push({ type: 'category', id: this.value, name: $(this).data('name') });
     });
 
-    renderSelectedFilters(filters);
-}
+    $('.subcategoryFilter:checked').each(function () {
+        filters.push({ type: 'subcategory', id: this.value, name: $(this).data('name') });
+    });
 
-function renderSelectedFilters(filters) {
+    $('.sizeFilter:checked').each(function () {
+        filters.push({ type: 'size', id: this.value, name: $(this).data('name') });
+    });
+
     let html = '';
-    filters.forEach(filter => {
+    filters.forEach(f => {
         html += `
-        <div class="filter-item1 d-flex align-items-center justify-content-between gap-2">
-            <div class="text-black font-jomolhari">${filter.name}</div>
-            <img src="{% static 'images2/close_small.svg' %}" class="img-fluid remove-filter"
-                 style="max-width: 20px; cursor:pointer;"
-                 data-type="${filter.type}" data-id="${filter.id}">
+        <div class="filter-item1 d-flex justify-content-between gap-2">
+            <span>${f.name}</span>
+            <img src="{% static 'images2/close_small.svg' %}"
+                 class="remove-filter"
+                 data-type="${f.type}"
+                 data-id="${f.id}"
+                 style="cursor:pointer;max-width:18px;">
         </div>`;
     });
+
     $('#selectedFilters').html(html);
 }
 
-/* ------------------------------
-   RENDER PRODUCT CARD
------------------------------- */
+/* ==============================
+   RENDER PRODUCT
+================================ */
 function renderProduct(prod) {
+    const isFavorite = WISHLIST_IDS.includes(prod.id);
     const discountPercentage =
   prod.is_offer_active && prod.discounted_price && prod.price
     ? Math.round(((prod.price - prod.discounted_price) / prod.price) * 100)
@@ -970,9 +1032,11 @@ function renderProduct(prod) {
      data-max-price="${prod.max_price}"
      data-min-original="${prod.min_original_price}"
      data-max-original="${prod.max_original_price}">
-        <div class="favorite ${prod.is_favorite ? 'active' : ''}" data-product-id="${prod.id}">
+        <div class="favorite ${isFavorite ? 'active' : ''}"
+             data-product-id="${prod.id}">
           <img src="{% static 'images2/favorite.svg' %}">
         </div>
+        
         <div class="filter-img position-relative">
           <img src="${prod.image}" class="card-img-top main-img ${prod.stock_status === 'Out of Stock' ? 'blurred' : ''}">
           ${prod.image2 ? `<img src="${prod.image2}" class="card-img-top hover-img ${prod.stock_status === 'Out of Stock' ? 'blurred' : ''}">` : ''}
@@ -1017,37 +1081,76 @@ ${prod.is_offer_active ? `
     </div>`;
 }
 
-/* ------------------------------
-   LOAD PRODUCTS VIA AJAX
------------------------------- */
+/* ==============================
+   LOAD PRODUCTS (AJAX)
+================================ */
 function loadProducts(append = false) {
+
+    console.log("🔥 loadProducts called", append);
     if (loading || (!hasNext && append)) return;
+
     loading = true;
     $("#infiniteLoader").show();
 
     const urlParams = getUrlParams();
-    const categories = $('.categoryFilter:checked').map(function(){ return $(this).val(); }).get() || urlParams.categories;
-    const subcategories = $('.subcategoryFilter:checked').map(function(){ return $(this).val(); }).get() || urlParams.subcategories;
-    const sizes = $('.sizeFilter:checked').map(function(){ return $(this).val(); }).get() || urlParams.sizes;
-    const max_price = $('#priceRange').val() || urlParams.max_price;
-    const min_price = $('#priceRangeMin').val() || urlParams.min_price || 0;
+
+    let categories = $('.categoryFilter:checked')
+    .map(function () {
+        return this.value;
+    }).get();
+
+// 🔥 FORCE URL CATEGORY ALWAYS
+if ((!categories || !categories.length) && ACTIVE_CATEGORY_ID) {
+    categories = [String(ACTIVE_CATEGORY_ID)];
+}
+
+
+    const subcategories = $('.subcategoryFilter:checked').map(function () {
+        return this.value;
+    }).get().length ? $('.subcategoryFilter:checked').map(function () {
+        return this.value;
+    }).get() : urlParams.subcategories;
+    const data = {
+    page: currentPage,
+    min_price: 0,
+    max_price: $('#priceRange').val() || urlParams.max_price
+};
+
+// ✅ ALWAYS send category (URL-based fallback)
+data["category[]"] = categories;
+
+if (subcategories && subcategories.length) {
+    data["subcategory[]"] = subcategories;
+}
+
+console.log("✅ FINAL CATEGORY IDS:", categories);
 
     $.ajax({
         url: "{% url 'ajax_filter_products' %}",
-        data: {
-            page: currentPage,
-            "category[]": categories,
-            "subcategory[]": subcategories,
-            "size[]": sizes,
-            min_price: min_price,
-            max_price: max_price
-        },
+        data:data,
+        method: "GET",
         dataType: "json",
-        success: function(res){
+        success(res) {
             if (!append) {
                 $("#productGrid").empty();
                 loadedProductIds.clear();
             }
+            if (res.subcategory_banner_url) {
+        $("#subcategory-banner")
+            .html(`<img src="${res.subcategory_banner_url}" class="img-fluid w-100">`)
+            .show();
+        $("#category-banner").hide();
+    } 
+    else if (res.category_banner_url) {
+        $("#category-banner")
+            .html(`<img src="${res.category_banner_url}" class="img-fluid w-100">`)
+            .show();
+        $("#subcategory-banner").hide();
+    } 
+    else {
+        $("#subcategory-banner, #category-banner").hide();
+    }
+console.log("🔥 AJAX DATA:", data);
 
             res.products.forEach(prod => {
                 if (!loadedProductIds.has(prod.id)) {
@@ -1059,174 +1162,129 @@ function loadProducts(append = false) {
             hasNext = res.has_next;
             if (hasNext) currentPage = res.next_page;
 
-            // Update banners
-            if (res.category_banner_url) $('#category-banner').html(`<img src="${res.category_banner_url}" class="img-fluid">`).show();
-            else $('#category-banner').hide();
-            if (res.subcategory_banner_url) $('#subcategory-banner').html(`<img src="${res.subcategory_banner_url}" class="img-fluid">`).show();
-            else $('#subcategory-banner').hide();
-
+            updateURL();
+            updateSelectedFilters();
             startCountdowns();
-            updateURL(); // ✅ Update URL after loading products
+            if (hasNext && $(document).height() <= $(window).height() + 200) {
+        loadProducts(true);
+    }
         },
-        complete: function(){ loading = false; $("#infiniteLoader").hide(); }
+
+        complete() {
+            loading = false;
+            $("#infiniteLoader").hide();
+        }
     });
 }
 
-/* ------------------------------
+/* ==============================
    RESET FILTERS
------------------------------- */
-function resetFilters() {
+================================ */
+$(document).on(
+    'change',
+    '.categoryFilter, .subcategoryFilter, .sizeFilter, #priceRange',
+    function () {
+
+        // ❌ Do NOT auto-apply while mobile modal is open
+        if (isMobileFilterOpen) return;
+
+        currentPage = 1;
+        hasNext = true;
+        loadedProductIds.clear();
+        loadProducts(false);
+    }
+);
+
+$('#clearAllFilters').on('click', function () {
+    $('.categoryFilter, .subcategoryFilter, .sizeFilter').prop('checked', false);
+    $('#priceRange').val({{ max_price }});
+    $('#priceRangeValue').text({{ max_price }});
     currentPage = 1;
     hasNext = true;
     loadedProductIds.clear();
-    updateSelectedFilters();
     loadProducts(false);
-}
+});
+/* ==============================
+   REMOVE SINGLE FILTER (X BUTTON)
+================================ */
+$(document).on('click', '.remove-filter', function () {
+    const type = $(this).data('type');
+    const id = String($(this).data('id'));
 
-/* ------------------------------
+    if (type === 'category') {
+        $(`.categoryFilter[value="${id}"]`).prop('checked', false);
+    }
+
+    if (type === 'subcategory') {
+        $(`.subcategoryFilter[value="${id}"]`).prop('checked', false);
+    }
+
+    if (type === 'size') {
+        $(`.sizeFilter[value="${id}"]`).prop('checked', false);
+    }
+
+    // 🔄 Reset pagination
+    currentPage = 1;
+    hasNext = true;
+    loadedProductIds.clear();
+
+    // 🔁 Reload products
+    loadProducts(false);
+});
+
+/* ==============================
    COUNTDOWN TIMER
------------------------------- */
+================================ */
 function startCountdowns() {
-  document.querySelectorAll('[id^="countdown-"]').forEach(el => {
-    const endTimeStr = el.getAttribute('data-endtime');
-    if (!endTimeStr) return;
+    document.querySelectorAll('[id^="countdown-"]').forEach(el => {
+        const endTime = new Date(el.dataset.endtime).getTime();
+        if (!endTime) return;
 
-    const endTime = new Date(endTimeStr).getTime();
-    const card = el.closest('.filter-box');
-    if (!card) return;
-
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const dist = endTime - now;
-
-      // ⛔ OFFER EXPIRED
-      if (dist <= 0) {
-        clearInterval(interval);
-
-        // 1️⃣ Remove offer bar
-        const offerBar = card.querySelector('.offer-info-bar');
-        if (offerBar) offerBar.remove();
-
-        // 2️⃣ Replace discounted price with normal price
-        const priceBlock = card.querySelector('.filter-card .d-flex');
-        if (priceBlock) {
-          const minPrice = card.dataset.minPrice;
-          const maxPrice = card.dataset.maxPrice;
-          const minOrig = card.dataset.minOriginal;
-          const maxOrig = card.dataset.maxOriginal;
-
-          priceBlock.innerHTML = `
-            <p class="filter-text fw-bold text-danger">
-              ₹${minPrice} - ₹${maxPrice}
-              <span style="text-decoration:line-through;color:#777;margin-left:5px;">
-                ₹${minOrig} - ₹${maxOrig}
-              </span>
-            </p>`;
-        }
-
-        // 3️⃣ Optional visual cue
-        card.classList.add('offer-expired');
-        return;
-      }
-
-      // ⏳ Update countdown
-      const d = Math.floor(dist / (1000 * 60 * 60 * 24));
-      const h = Math.floor((dist / (1000 * 60 * 60)) % 24);
-      const m = Math.floor((dist / (1000 * 60)) % 60);
-      const s = Math.floor((dist / 1000) % 60);
-
-      el.innerText = `⚡ ${d}d ${h}h ${m}m ${s}s`;
-    }, 1000);
-  });
+        const interval = setInterval(() => {
+            const diff = endTime - Date.now();
+            if (diff <= 0) {
+                clearInterval(interval);
+                el.innerText = "Offer ended";
+                return;
+            }
+            el.innerText = Math.floor(diff / 1000) + "s";
+        }, 1000);
+    });
 }
 
-
-/* ------------------------------
+/* ==============================
    INFINITE SCROLL
------------------------------- */
-$(window).on("scroll", function() {
-    if (loading || !hasNext) return;
-    let $lastProduct = $("#productGrid .product-card").last();
-    if ($lastProduct.length === 0) return;
-    const lastProductBottom = $lastProduct.offset().top + $lastProduct.outerHeight();
-    const scrollBottom = $(window).scrollTop() + $(window).height();
-    if (scrollBottom >= lastProductBottom - 200) {
+================================ */
+$(window).on("scroll", function () {
+    if (!hasNext || loading) return;
+
+    if ($(window).scrollTop() + $(window).height() >= $(document).height() - 300) {
         loadProducts(true);
-        updateURL(); // ✅ Update URL with current page
     }
 });
 
-/* ------------------------------
+/* ==============================
    DOCUMENT READY
------------------------------- */
-$(document).ready(function() {
-    resetFilters();
+================================ */
+$(document).ready(function () {
+    console.log("🔥 DOCUMENT READY");
 
-    // Filter listeners
-    $('.categoryFilter, .subcategoryFilter, .sizeFilter').on('change', function() {
-        resetFilters();
-        updateURL();
-    });
-
-    $('#priceRange, #priceRangeMin').on('input change', function() {
-        $('#priceRangeValue').text($('#priceRange').val());
-        resetFilters();
-        updateURL();
-    });
-
-    // Remove individual filters
-    $(document).on('click', '.remove-filter', function() {
-        const type = $(this).data('type');
-        const id = $(this).data('id');
-        $(`.${type}Filter[value="${id}"]`).prop("checked", false);
-        resetFilters();
-        updateURL();
-    });
-
-    // Clear all filters
-    $("#clearAllFilters").click(function(){
-        $('.categoryFilter, .subcategoryFilter, .sizeFilter').prop("checked", false);
-        $('#priceRange').val(0); $('#priceRangeValue').text(0);
-        resetFilters();
-        updateURL();
-    });
-
-    // Modal toggles
-    $('#categoryDropdownModal').click(() => $('#categoryContentModal').slideToggle(150));
-    $('#brandDropdownModal').click(() => $('#brandContentModal').slideToggle(150));
-    $('#sizeDropdownModal').click(() => $('#sizeContentModal').slideToggle(150));
-    $('#priceRangeModal').on('input', function(){ $('#priceRangeValueModal').text(this.value); });
-
-    // Apply modal filters
-    $('#applyFiltersModal').click(function () {
+    // ✅ Ensure correct active state
+    if (ACTIVE_CATEGORY_ID) {
         $('.categoryFilter').prop('checked', false);
-        $('.categoryFilterModal:checked').each(function() { $('.categoryFilter[value="' + $(this).val() + '"]').prop('checked', true); });
+        $(`.categoryFilter[value="${ACTIVE_CATEGORY_ID}"]`).prop("checked", true);
+    }
 
+    if (ACTIVE_SUBCATEGORY_ID) {
         $('.subcategoryFilter').prop('checked', false);
-        $('.subcategoryFilterModal:checked').each(function() { $('.subcategoryFilter[value="' + $(this).val() + '"]').prop('checked', true); });
+        $(`.subcategoryFilter[value="${ACTIVE_SUBCATEGORY_ID}"]`).prop("checked", true);
+    }
 
-        $('.sizeFilter').prop('checked', false);
-        $('.sizeFilterModal:checked').each(function() { $('.sizeFilter[value="' + $(this).val() + '"]').prop('checked', true); });
-
-        $('#priceRange').val($('#priceRangeModal').val()).trigger("input");
-
-        const modalEl = document.getElementById('filterModal');
-        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-        $(modalEl).one('hidden.bs.modal', function(){
-            resetFilters();
-            $('body').removeClass('modal-open'); $('.modal-backdrop').remove(); $('body').css('overflow', '');
-        });
-        modalInstance.hide();
-    });
-
-    // Highlight dropdowns
-    ["priceDropdown","sizeDropdown","brandDropdown","categoryDropdown","sortByDropdown"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.backgroundColor = "#FBF0EF";
-    });
+    loadProducts(false);
 });
-</script>
 
+
+</script>
 
     <!-- Filter Modal for Mobile/Tablet -->
 <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true" >
@@ -1239,7 +1297,7 @@ $(document).ready(function() {
       <div class="modal-body"  >
         <!-- Category -->
         <div class="mb-3">
-          <button class="btn dropdown-toggle filter-btn w-100" id="categoryDropdownModal">Category</button>
+          <button type="button" class="btn filter-btn w-100" id="categoryDropdownModal">Category</button>
           <div id="categoryContentModal" class="mt-2" style="display:none;">
             <ul class="list-unstyled">
               {% for cat in navbar_categories %}
@@ -1255,7 +1313,7 @@ $(document).ready(function() {
         </div>
         <!-- Brand -->
         <div class="mb-3">
-          <button class="btn dropdown-toggle filter-btn w-100" id="brandDropdownModal">Collections</button>
+          <button type="button" class="btn filter-btn w-100" id="brandDropdownModal">Collections</button>
           <div id="brandContentModal" class="mt-2" style="display:none;">
             <ul class="list-unstyled">
               {% for sub in subcategories %}
@@ -1271,7 +1329,7 @@ $(document).ready(function() {
         </div>
         <!-- Size -->
         <div class="mb-3">
-          <button class="btn dropdown-toggle filter-btn w-100" id="sizeDropdownModal">Size</button>
+          <button type="button" class="btn filter-btn w-100" id="sizeDropdownModal">Size</button>
           <div id="sizeContentModal" class="mt-2" style="display:none;">
             <ul class="list-unstyled">
               {% for size in sizes %}
@@ -1294,11 +1352,92 @@ $(document).ready(function() {
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button class="btn text-white" style="background-color:#981945" id="applyFiltersModal">Apply Filters</button>
+<button type="button"
+        class="btn text-white"
+        style="background-color:#981945"
+        id="applyFiltersModal">
+    Apply Filters
+</button>
       </div>
     </div>
   </div>
 </div>
+<script>
+/* ==============================
+   MOBILE FILTER DROPDOWN TOGGLES
+================================ */
+// CATEGORY
+$(document).on('click', '#categoryDropdownModal', function (e) {
+    e.preventDefault();
+    $('#brandContentModal, #sizeContentModal').slideUp(200);
+    $('#categoryContentModal').slideDown(200);
+});
+
+$(document).on('click', '#brandDropdownModal', function (e) {
+    e.preventDefault();
+    $('#categoryContentModal, #sizeContentModal').slideUp(200);
+    $('#brandContentModal').slideDown(200);
+});
+
+$(document).on('click', '#sizeDropdownModal', function (e) {
+    e.preventDefault();
+    $('#categoryContentModal, #brandContentModal').slideUp(200);
+    $('#sizeContentModal').slideDown(200);
+});
+
+
+
+
+/* ==============================
+   PRICE SLIDER LABEL (MOBILE)
+================================ */
+$(document).on('input', '#priceRangeModal', function () {
+    $('#priceRangeValueModal').text(this.value);
+});
+
+/* ==============================
+   APPLY FILTERS (MOBILE → DESKTOP)
+================================ */
+$('#applyFiltersModal').on('click', function () {
+
+    // 🔄 MOBILE → DESKTOP SYNC
+
+    // CATEGORY
+    $('.categoryFilter').prop('checked', false);
+    $('.categoryFilterModal:checked').each(function () {
+        $(`.categoryFilter[value="${this.value}"]`).prop('checked', true);
+    });
+
+    // SUBCATEGORY
+    $('.subcategoryFilter').prop('checked', false);
+    $('.subcategoryFilterModal:checked').each(function () {
+        $(`.subcategoryFilter[value="${this.value}"]`).prop('checked', true);
+    });
+
+    // SIZE
+    $('.sizeFilter').prop('checked', false);
+    $('.sizeFilterModal:checked').each(function () {
+        $(`.sizeFilter[value="${this.value}"]`).prop('checked', true);
+    });
+
+    // PRICE
+    const price = $('#priceRangeModal').val();
+    $('#priceRange').val(price);
+    $('#priceRangeValue').text(price);
+
+    // 🔁 RESET + LOAD
+    currentPage = 1;
+    hasNext = true;
+    loadedProductIds.clear();
+
+    loadProducts(false);
+
+    // ✅ CLOSE MODAL
+    const modal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
+    modal.hide();
+});
+
+</script>
 
 
 <!-- Bootstrap JS Bundle (for modal functionality) -->
