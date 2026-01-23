@@ -2439,13 +2439,18 @@ def search_suggestions(request):
         products = products.filter(category_id=category_id)
 
     # ---------- LIMIT ----------
+    products = products.filter(category__isnull=False)
     products = products[:RESULT_LIMIT]
 
     # ---------- RESPONSE BUILD ----------
     results = []
+# products = products.filter(category__isnull=False)
 
     for p in products:
-        cat = (p.category.name or "").lower().replace(" ", "").replace("-", "")
+        cat = (
+          p.category.name.lower().replace(" ", "").replace("-", "")
+          if p.category else ""
+    )
 
         # ----- PRICE HANDLING -----
         if cat == "giftsets" and getattr(p, 'gs', None):
