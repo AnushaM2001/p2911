@@ -342,13 +342,19 @@ def strip_seo_suffix(slug):
 
 def filtered_products(request, category_slug=None, subcategory_slug=None):
     start_time = time.time()
+   
 
-    # ================= STRIP SEO SUFFIX =================
     raw_category_slug = category_slug
     raw_subcategory_slug = subcategory_slug
 
     category_slug = strip_seo_suffix(category_slug)
     subcategory_slug = strip_seo_suffix(subcategory_slug)
+    # print("========== CATEGORY DEBUG ==========")
+    # print("CATEGORY SLUG FROM URL:", category_slug)
+    # print("DB SLUGS:", list(Category.objects.values_list("slug", flat=True)))
+    # print("====================================")
+
+    
 
     # ================= FETCH OBJECTS =================
     category = None
@@ -369,15 +375,78 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
             subcategory = get_object_or_404(Subcategory, slug=subcategory_slug)
 
     # ================== CANONICAL SEO REDIRECT ==================
+    # ================== CANONICAL SEO (SAFE) ==================
+    # ================== CANONICAL SEO REDIRECT (FIXED) ==================
     if category or subcategory:
         if subcategory:
-          canonical_url = subcategory.get_absolute_url()
-        elif category:
-           canonical_url = category.get_absolute_url()
+            canonical_url = subcategory.get_absolute_url()
+        else:
+            canonical_url = category.get_absolute_url()
 
-        if canonical_url and request.path != canonical_url and not request.GET:
-           return redirect(canonical_url, permanent=True)
+    # 🔥 Do NOT block JS/AJAX-based filtering
+        if canonical_url and request.path.rstrip("/") != canonical_url.rstrip("/"):
+            return redirect(canonical_url, permanent=True)
 
+
+    active_category_id = category.id if category else None
+    active_subcategory_id = subcategory.id if subcategory else None
+    # 🔥 FALLBACK: inject URL-based filters if GET is empty
+    
+
+    # Banner priority logic
+    category_banner_url = None
+    subcategory_banner_url = None
+
+    if subcategory and subcategory.banner:
+       subcategory_banner_url = subcategory.banner.url
+    elif category and category.banner:
+       category_banner_url = category.banner.url
+
+    # ================== SEO TITLE & META ==================
+    H_TAG = "Perfume Valley Best Perfumes and Attars"
+    DEFAULT_TITLE = "Perfume Valley | Premium Perfumes & Attars"
+    DEFAULT_DESC = (
+    "Buy premium perfumes and attars online in India from Perfume Valley. "
+    "Best prices, authentic fragrances, fast delivery."
+)
+
+    seo_title = DEFAULT_TITLE
+    seo_description = DEFAULT_DESC
+    h_tag= H_TAG
+    if subcategory:
+    # Priority 1: Subcategory SEO
+        seo_title = (
+        subcategory.seo_title
+        if subcategory.seo_title
+        else f"Buy {subcategory.name} Online in India | Perfume Valley"
+    )
+        seo_description = (
+        subcategory.seo_description
+        if subcategory.seo_description
+        else f"Shop {subcategory.name.lower()} online in India. Premium fragrances at Perfume Valley."
+    )
+        h_tag=(
+            subcategory.h_tag if subcategory.h_tag else f"Perfume Valley World {subcategory.name}"
+        )
+
+    elif category:
+    # Priority 2: Category SEO
+        seo_title = (
+        category.seo_title
+        if category.seo_title
+        else f"Buy {category.name} Online in India | Perfume Valley"
+    )
+        seo_description = (
+        category.seo_description
+        if category.seo_description
+        else f"Explore premium {category.name.lower()} online in India at Perfume Valley."
+    )
+        h_tag =(
+            category.h_tag if category.h_tag else f"Perfume Valley World { category.name }"
+        )
+
+    # ================= STRIP SEO SUFFIX =================
+    
 
 
     # ================== CREATE CACHE KEY ==================
@@ -396,24 +465,39 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
         return render(request, 'user_panel/filtered_products.html', cached_context)
 
     # ================== FILTER PARAMETERS ==================
+    # ================== FILTER PARAMETERS (FIXED) ==================
     category_ids = []
+    subcategory_ids = []
+
+# From GET params
     if request.GET.get('categories'):
         try:
             category_ids = [int(i) for i in request.GET.get('categories').split(',') if i]
-        except:
+        except ValueError:
             category_ids = []
 
-    subcategory_ids = []
     if request.GET.get('subcategories'):
         try:
-            subcategory_ids = [int(i) for i in request.GET.get('subcategories').split(',') if i]
-        except:
+           subcategory_ids = [int(i) for i in request.GET.get('subcategories').split(',') if i]
+        except ValueError:
             subcategory_ids = []
+
+# 🔥 FALLBACK FROM URL SLUG (CRITICAL)
+    if not category_ids and category:
+        category_ids = [category.id]
+
+    if not subcategory_ids and subcategory:
+        subcategory_ids = [subcategory.id]
+
 
     # ================== CHECK IF GIFTSET ==================
     is_giftset = False
     if category:
-        is_giftset = any(word in category.name.lower() for word in ['giftset', 'gift set', 'gift-set', 'gift'])
+        is_giftset = (
+    category and
+    not subcategory and
+    'giftsets' in category.slug.lower()
+)
 
     # ================== PROCESS PRODUCTS ==================
     product_list = []
@@ -448,7 +532,7 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
                 'name': product.name,
                 'price': float(giftset.price or 0),
                 'discounted_price': float(discounted_price) if discounted_price else None,
-                'original_price': float(product.original_price or 0),
+                'original_price': float(giftset.original_price or 0),
                 'offer_code': offer_code,
                 'flavours': list(giftset.flavours.values_list('name', flat=True)) if hasattr(giftset, 'flavours') else [],
                 'image': product.image1.url if product.image1 else '',
@@ -462,15 +546,18 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
         # REGULAR PRODUCTS
         base_qs = Product.objects.all()
 
-        if category_ids:
-            base_qs = base_qs.filter(category_id__in=category_ids)
-        elif category:
-            base_qs = base_qs.filter(category=category)
-
+        # if category_ids:
+        #     base_qs = base_qs.filter(category_id__in=category_ids)
         if subcategory_ids:
             base_qs = base_qs.filter(subcategory_id__in=subcategory_ids)
-        elif subcategory:
-            base_qs = base_qs.filter(subcategory=subcategory)
+
+        elif category_ids:
+            base_qs = base_qs.filter(category_id__in=category_ids)
+
+        # if subcategory_ids:
+        #     base_qs = base_qs.filter(subcategory_id__in=subcategory_ids)
+        # if subcategory:
+        #     base_qs = base_qs.filter(subcategory=subcategory)
 
         # Annotate prices & ratings
         products_qs = base_qs.annotate(
@@ -487,10 +574,7 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
         )
 
         for product in products_qs:
-            cheapest_variant = product.variants.filter(
-    price__isnull=False
-).order_by('price').first()
-
+            cheapest_variant = product.variants.order_by('price').first()
             discounted_price = None
             offer_code = None
 
@@ -547,12 +631,18 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
         'min_price': sidebar_data['min_price'],
         'max_price': sidebar_data['max_price'],
         'products': context_products,
-        'category_banner_url': category.banner.url if category and category.banner else None,
-        'subcategory_banner_url': subcategory.banner.url if subcategory and subcategory.banner else None,
+        'category_banner_url': category_banner_url,
+        'subcategory_banner_url': subcategory_banner_url,
+
         'is_giftset': is_giftset,
         'cache_key': cache_key,
         'execution_time': round(time.time() - start_time, 3),
         'cache_hit': False,
+        'seo_title': seo_title,
+        'seo_description':seo_description,
+        'h_tag':h_tag,
+        'active_category_id': active_category_id,
+        'active_subcategory_id': active_subcategory_id,
     }
 
     if is_giftset:
@@ -560,18 +650,26 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
 
     cache.set(cache_key, context, 300)
     return render(request, 'user_panel/filtered_products.html', context)
-
+from django.contrib.auth import logout 
 # ============================================================
 # 2) AJAX API VIEW (ajax_filter_products) - FIXED VERSION
 # ============================================================
 def ajax_filter_products(request):
+    # print("🔥 AJAX GET:", dict(request.GET))
+    # print("🔥 REFERER:", request.META.get("HTTP_REFERER"))
+
     """Optimized AJAX API with caching - FIXED with correct original price calculations"""
     start_time = time.time()
     
     # Create cache key
-    params_str = json.dumps(dict(request.GET), sort_keys=True)
-    user_id = request.user.id if request.user.is_authenticated else 'anon'
-    cache_key = f"api_filter_{hashlib.md5(f'{params_str}_{user_id}'.encode()).hexdigest()}"
+    # params_str = json.dumps(dict(request.GET), sort_keys=True)
+    params_str = json.dumps({
+    "get": dict(request.GET),
+    "path": request.META.get("HTTP_REFERER", "")
+}, sort_keys=True)
+
+    cache_key = f"api_filter_{hashlib.md5(params_str.encode()).hexdigest()}"
+
     
     # Check cache
     cached_response = cache.get(cache_key)
@@ -596,6 +694,40 @@ def ajax_filter_products(request):
     for subcat_id in request.GET.getlist('subcategory[]', []):
         if subcat_id.isdigit():
             subcategory_ids.append(int(subcat_id))
+    # print("AJAX category_ids:", category_ids)
+    # print("AJAX subcategory_ids:", subcategory_ids)
+
+    # ================= URL SLUG FALLBACK =================
+# If AJAX has no filters, infer from referer URL
+    if not category_ids and not subcategory_ids and not request.GET.getlist('category[]') and not request.GET.getlist('subcategory[]'):
+        referer = request.META.get("HTTP_REFERER", "")
+    #     print("URL fallback triggered:", (
+    # not category_ids and
+    # not subcategory_ids and
+    # not request.GET.getlist('category[]') and
+    # not request.GET.getlist('subcategory[]')
+))
+
+    
+        try:
+            path = urlparse(referer).path.strip("/").split("/")
+            # Expected:
+            # ['products', 'category-slug', 'subcategory-slug']
+        
+            if len(path) >= 2 and path[0] == "products":
+                category_slug = strip_seo_suffix(path[1])
+                category = Category.objects.filter(slug=category_slug).first()
+                if category:
+                    category_ids = [category.id]
+
+            if len(path) >= 3:
+                sub_slug = strip_seo_suffix(path[2])
+                subcategory = Subcategory.objects.filter(slug=sub_slug).first()
+                if subcategory:
+                    subcategory_ids = [subcategory.id]
+        except Exception:
+            pass
+
     
     sizes = request.GET.getlist('size[]', [])
     
@@ -638,7 +770,7 @@ def ajax_filter_products(request):
         if cat_obj:
             category_name = cat_obj.name
             category_banner_url = cat_obj.banner.url if cat_obj.banner else ""
-            giftsets_flag = 'giftset' in category_name.lower()
+            giftsets_flag = 'giftsets' in category_name.lower()
     
     if subcategory_ids:
         subcat_obj = Subcategory.objects.filter(id__in=subcategory_ids).first()
@@ -660,16 +792,7 @@ def ajax_filter_products(request):
         cache.set('active_offers_cache', active_offers, 300)
     
     # ========== USER WISHLIST ==========
-    wishlist_product_ids = set()
-    if request.user.is_authenticated:
-        wishlist_cache_key = f'user_wishlist_{request.user.id}'
-        wishlist_product_ids = cache.get(wishlist_cache_key)
-        if wishlist_product_ids is None:
-            wishlist_product_ids = set(
-                Wishlist.objects.filter(user=request.user)
-                .values_list('product_id', flat=True)
-            )
-            cache.set(wishlist_cache_key, wishlist_product_ids, 300)
+    wishlist_product_ids = set(request.session.get("wishlist", []))
     
     # ========== PROCESS PRODUCTS ==========
     combined_products = []
@@ -854,13 +977,11 @@ def ajax_filter_products(request):
         # Start with Product model and filter by category/subcategory
         products_qs = Product.objects.all()
         
-        # Apply category filters
-        if category_ids:
-            products_qs = products_qs.filter(category_id__in=category_ids)
-        
-        # Apply subcategory filters  
-        if subcategory_ids:
-            products_qs = products_qs.filter(subcategory_id__in=subcategory_ids)
+        if subcat_obj:
+            products_qs = products_qs.filter(subcategory=subcat_obj)
+
+        elif cat_obj:
+            products_qs = products_qs.filter(category=cat_obj)
         
         # Get product IDs
         product_ids = list(products_qs.values_list('id', flat=True))
@@ -868,10 +989,8 @@ def ajax_filter_products(request):
         if product_ids:
             # Get variants for these products
             variants_qs = ProductVariant.objects.filter(
-    product_id__in=product_ids,
-    price__isnull=False
-)
-
+                product_id__in=product_ids
+            )
             
             # Apply size filter
             if sizes:
