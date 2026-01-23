@@ -459,10 +459,10 @@ def filtered_products(request, category_slug=None, subcategory_slug=None):
     }
     cache_key = f"html_filter_{hashlib.md5(json.dumps(params_dict, sort_keys=True).encode()).hexdigest()}"
     cached_context = cache.get(cache_key)
-    if cached_context:
-        cached_context['cache_hit'] = True
-        cached_context['execution_time'] = round(time.time() - start_time, 3)
-        return render(request, 'user_panel/filtered_products.html', cached_context)
+    # if cached_context:
+    #     cached_context['cache_hit'] = True
+    #     cached_context['execution_time'] = round(time.time() - start_time, 3)
+    #     return render(request, 'user_panel/filtered_products.html', cached_context)
 
     # ================== FILTER PARAMETERS ==================
     # ================== FILTER PARAMETERS (FIXED) ==================
@@ -655,8 +655,8 @@ from django.contrib.auth import logout
 # 2) AJAX API VIEW (ajax_filter_products) - FIXED VERSION
 # ============================================================
 def ajax_filter_products(request):
-    # print("🔥 AJAX GET:", dict(request.GET))
-    # print("🔥 REFERER:", request.META.get("HTTP_REFERER"))
+    print("🔥 AJAX GET:", dict(request.GET))
+    print("🔥 REFERER:", request.META.get("HTTP_REFERER"))
 
     """Optimized AJAX API with caching - FIXED with correct original price calculations"""
     start_time = time.time()
