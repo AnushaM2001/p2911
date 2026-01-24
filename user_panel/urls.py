@@ -26,8 +26,7 @@ urlpatterns = [
     path('sub_add',views.subscription_add,name='sub_add'),
 
     
-    path('products/<slug:category_slug>/<slug:subcategory_slug>/', views.filtered_products, name='subcategory_products'),
-    path('<slug:category_slug>/', views.filtered_products, name='category_products'),
+   
     # path('products/category/<int:category_id>/subcategory/<int:subcategory_id>/', views.filtered_products, name='category_subcategory_products'),
     path('viewall/<str:section>/', views.viewall_products, name='viewall_products'),
     path("toggle-wishlist/", views.toggle_wishlist, name="toggle_wishlist"),
@@ -96,6 +95,8 @@ urlpatterns = [
    path('api/cart/count/', views.cart_count, name='cart_count'),
 
     path('user/help/<int:query_id>/', views.user_help_chat, name='user_help_chat'),
+    path('products/<slug:category_slug>/<slug:subcategory_slug>/', views.filtered_products, name='subcategory_products'),
+    path('<slug:category_slug>/', views.filtered_products, name='category_products'),
 
 
 
