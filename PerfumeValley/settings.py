@@ -66,6 +66,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+    'django.contrib.sitemaps',
     'django.contrib.humanize',
     "admin_panel",
     "user_panel",
@@ -76,6 +78,7 @@ INSTALLED_APPS = [
     'compressor',
 ]
 
+SITE_ID = 1
 
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
