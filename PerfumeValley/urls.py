@@ -18,10 +18,30 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
+from django.contrib.sitemaps.views import sitemap
+from user_panel.sitemaps import *
+import os
+from django.contrib.sitemaps.views import sitemap
+
+def robots_txt(request):
+    robots_path = os.path.join(settings.BASE_DIR, 'static', 'robots.txt')
+    with open(robots_path, 'r') as f:
+        return HttpResponse(f.read(), content_type="text/plain")
+
+sitemaps = {
+    'static': StaticViewSitemap,
+    'categories': CategorySitemap,
+    'subcategories': SubcategorySitemap,
+    'products': ProductSitemap,
+    'Viewall': ViewAllSitemap
+}
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('admin-panel/', include('admin_panel.urls')),
+    path('robots.txt', robots_txt),
+    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django_sitemap'),
     path('', include('user_panel.urls')),
 ]
 if settings.DEBUG:  # Only serve media files in development
