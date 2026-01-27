@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin-panel/
+
+Sitemap: https://www.perfumevalleyworld.com/sitemap.xml
