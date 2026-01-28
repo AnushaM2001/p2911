@@ -41,7 +41,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('admin-panel/', include('admin_panel.urls')),
     path('robots.txt', robots_txt),
-    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django_sitemap'),
+    path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
+
     path('', include('user_panel.urls')),
 ]
 if settings.DEBUG:  # Only serve media files in development
