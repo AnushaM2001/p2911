@@ -5,16 +5,18 @@ from admin_panel.models import Product, Category, Subcategory
 
 # 1️⃣ Static Pages
 class StaticViewSitemap(Sitemap):
+    protocol='https'
     priority = 1.0
     changefreq = "daily"
 
     def items(self):
-        return ['home', 'all_view','user_profile','privacy_policy','contact','privacy_policy','terms_and_conditions','about','store_locator','view_cart']  # names from urls.py
+        return ['home', 'all_view','user_profile','contact','privacy_policy','terms_and_conditions','about','store_locator','view_cart']  # names from urls.py
 
     def location(self, item):
         return reverse(item)
 
 class ViewAllSitemap(Sitemap):
+    protocol = "https"
     priority = 0.8
     changefreq = "daily"
 
@@ -27,6 +29,7 @@ class ViewAllSitemap(Sitemap):
 
 # 2️⃣ Category Pages
 class CategorySitemap(Sitemap):
+    protocol = "https"
     priority = 0.8
     changefreq = "weekly"
 
@@ -38,6 +41,7 @@ class CategorySitemap(Sitemap):
 
 # 3️⃣ Subcategory Pages
 class SubcategorySitemap(Sitemap):
+    protocol = "https"
     priority = 0.7
     changefreq = "weekly"
 
@@ -49,6 +53,7 @@ class SubcategorySitemap(Sitemap):
 
 # 4️⃣ Product Pages
 class ProductSitemap(Sitemap):
+    protocol = "https"
     priority = 0.9
     changefreq = "daily"
 
