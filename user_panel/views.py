@@ -2361,147 +2361,12 @@ from django.http import JsonResponse
 from django.db.models.functions import Lower, Replace
 from django.db.models import Q, Value, IntegerField, Case, When, Prefetch
 import re
-# @require_GET
-# def search_suggestions(request):
-#     query = request.GET.get('q', '').strip()
-#     category_id = request.GET.get('category', '').strip()
-
-#     RESULT_LIMIT = 20
-
-#     # ---------- Categories ----------
-#     all_categories = list(
-#         Category.objects.only('id', 'name').values('id', 'name')
-#     )
-
-#     # ---------- Base queryset ----------
-#     products = (
-#         Product.objects.only(
-#             'id', 'name', 'image1', 'description', 'category_id'
-#         )
-#         .select_related('category')
-#         .prefetch_related(
-#             Prefetch(
-#                 'gift_sets',
-#                 queryset=GiftSet.objects.only(
-#                     'id', 'product_id',
-#                     'price', 'original_price', 'discounted_price'
-#                 ),
-#                 to_attr='gs'
-#             ),
-#             Prefetch(
-#                 'variants',
-#                 queryset=ProductVariant.objects.only(
-#                     'id', 'product_id',
-#                     'price', 'original_price'
-#                 ),
-#                 to_attr='vars'
-#             ),
-#             Prefetch(
-#                 'reviews',
-#                 queryset=Review.objects.only(
-#                     'id', 'product_id', 'rating'
-#                 ),
-#                 to_attr='revs'
-#             )
-#         )
-#     )
-
-#     # ---------- SEARCH LOGIC ----------
-#     if query:
-#         q = re.sub(r'\s+', ' ', query.lower())
-#         q_clean = q.replace(" ", "")
-
-#         products = (
-#             products.annotate(
-#                 name_clean=Replace(
-#                     Lower('name'),
-#                     Value(' '),
-#                     Value('')
-#                 ),
-#                 relevance=Case(
-#                     When(name__icontains=q, then=3),
-#                     When(name_clean__icontains=q_clean, then=2),
-#                     When(description__icontains=q, then=1),
-#                     default=0,
-#                     output_field=IntegerField(),
-#                 )
-#             )
-#             .filter(
-#                 Q(name__icontains=q) |
-#                 Q(name_clean__icontains=q_clean) |
-#                 Q(description__icontains=q)
-#             )
-#             .order_by('-relevance', 'id')   # 🔥 CRITICAL
-#         )
-
-#     # ---------- CATEGORY FILTER ----------
-#     if category_id:
-#         products = products.filter(category_id=category_id)
-
-#     # ---------- LIMIT ----------
-#     products = products.filter(category__isnull=False)
-#     products = products[:RESULT_LIMIT]
-
-#     # ---------- RESPONSE BUILD ----------
-#     results = []
-# # products = products.filter(category__isnull=False)
-
-#     for p in products:
-#         cat = (
-#           p.category.name.lower().replace(" ", "").replace("-", "")
-#           if p.category else ""
-#     )
-
-#         # ----- PRICE HANDLING -----
-#         if cat == "giftsets" and getattr(p, 'gs', None):
-#             prices = [g.discounted_price or g.price for g in p.gs if g.price]
-#             originals = [g.original_price for g in p.gs if g.original_price]
-#         else:
-#             prices = [v.price for v in getattr(p, 'vars', []) if v.price]
-#             originals = [v.original_price for v in getattr(p, 'vars', []) if v.original_price]
-
-#         # Skip products without price
-#         if not prices:
-#             continue
-
-#         mn, mx = min(prices), max(prices)
-#         price_display = f"₹{mn}" if mn == mx else f"₹{mn} - ₹{mx}"
-
-#         if originals:
-#             om, ox = min(originals), max(originals)
-#             original_price_display = f"₹{om}" if om == ox else f"₹{om} - ₹{ox}"
-#         else:
-#             original_price_display = "N/A"
-
-#         # ----- RATINGS -----
-#         ratings = [r.rating for r in getattr(p, 'revs', []) if r.rating]
-#         avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
-#         rating_percentage = round((avg_rating / 5) * 100, 1)
-
-#         # ----- FINAL OUTPUT -----
-#         results.append({
-#             "id": p.id,
-#             "name": p.name,
-#             "image": p.image1.url if p.image1 else "",
-#             "description": (p.description or "")[:100],
-#             "url": f"/product/{p.id}/",
-#             "price_display": price_display,
-#             "original_price_display": original_price_display,
-#             "average_rating": avg_rating,
-#             "rating_percentage": rating_percentage,
-#         })
-
-#     return JsonResponse({
-#         "results": results,
-#         "categories": all_categories,
-#     })
 @require_GET
 def search_suggestions(request):
     query = request.GET.get('q', '').strip()
     category_id = request.GET.get('category', '').strip()
 
     RESULT_LIMIT = 20
-    MIN_RESULTS = 8   # 👈 fallback threshold
 
     # ---------- Categories ----------
     all_categories = list(
@@ -2539,86 +2404,81 @@ def search_suggestions(request):
                 to_attr='revs'
             )
         )
-        .filter(category__isnull=False)
     )
 
-    # ---------- SEARCH ----------
+    # ---------- SEARCH LOGIC ----------
     if query:
         q = re.sub(r'\s+', ' ', query.lower())
         q_clean = q.replace(" ", "")
 
-        products = products.annotate(
-            name_clean=Replace(Lower('name'), Value(' '), Value('')),
-            relevance=Case(
-                When(name__icontains=q, then=3),
-                When(name_clean__icontains=q_clean, then=2),
-                When(description__icontains=q, then=1),
-                When(category__name__icontains=q, then=1),  # 🔥 added
-                default=0,
-                output_field=IntegerField(),
+        products = (
+            products.annotate(
+                name_clean=Replace(
+                    Lower('name'),
+                    Value(' '),
+                    Value('')
+                ),
+                relevance=Case(
+                    When(name__icontains=q, then=3),
+                    When(name_clean__icontains=q_clean, then=2),
+                    When(description__icontains=q, then=1),
+                    default=0,
+                    output_field=IntegerField(),
+                )
             )
-        ).filter(
-            Q(name__icontains=q) |
-            Q(name_clean__icontains=q_clean) |
-            Q(description__icontains=q) |
-            Q(category__name__icontains=q)
-        ).order_by('-relevance', 'id')
+            .filter(
+                Q(name__icontains=q) |
+                Q(name_clean__icontains=q_clean) |
+                Q(description__icontains=q)
+            )
+            .order_by('-relevance', 'id')   # 🔥 CRITICAL
+        )
 
+    # ---------- CATEGORY FILTER ----------
     if category_id:
         products = products.filter(category_id=category_id)
 
-    products = list(products[:RESULT_LIMIT])
+    # ---------- LIMIT ----------
+    products = products.filter(category__isnull=False)
+    products = products[:RESULT_LIMIT]
 
-    # ---------- FALLBACK ----------
-    if query and len(products) < MIN_RESULTS:
-        fallback = (
-            Product.objects.filter(category__isnull=False)
-            .exclude(id__in=[p.id for p in products])
-            .order_by('-id')[: MIN_RESULTS - len(products)]
-        )
-        products.extend(fallback)
-
-    # ---------- RESPONSE ----------
+    # ---------- RESPONSE BUILD ----------
     results = []
+# products = products.filter(category__isnull=False)
 
     for p in products:
-        cat = re.sub(r'[\s\-]', '', p.category.name.lower())
+        cat = (
+          p.category.name.lower().replace(" ", "").replace("-", "")
+          if p.category else ""
+    )
 
         # ----- PRICE HANDLING -----
         if cat == "giftsets" and getattr(p, 'gs', None):
-            prices = [
-                g.discounted_price or g.price
-                for g in p.gs
-                if g.discounted_price or g.price
-            ]
+            prices = [g.discounted_price or g.price for g in p.gs if g.price]
             originals = [g.original_price for g in p.gs if g.original_price]
         else:
-            prices = [
-                v.price or v.original_price
-                for v in getattr(p, 'vars', [])
-                if v.price or v.original_price
-            ]
+            prices = [v.price for v in getattr(p, 'vars', []) if v.price]
             originals = [v.original_price for v in getattr(p, 'vars', []) if v.original_price]
 
-        # SAFE fallback (🔥 no skip)
+        # Skip products without price
         if not prices:
-            price_display = "Price on request"
-            original_price_display = ""
-        else:
-            mn, mx = min(prices), max(prices)
-            price_display = f"₹{mn}" if mn == mx else f"₹{mn} - ₹{mx}"
+            continue
 
-            if originals:
-                om, ox = min(originals), max(originals)
-                original_price_display = f"₹{om}" if om == ox else f"₹{om} - ₹{ox}"
-            else:
-                original_price_display = ""
+        mn, mx = min(prices), max(prices)
+        price_display = f"₹{mn}" if mn == mx else f"₹{mn} - ₹{mx}"
+
+        if originals:
+            om, ox = min(originals), max(originals)
+            original_price_display = f"₹{om}" if om == ox else f"₹{om} - ₹{ox}"
+        else:
+            original_price_display = "N/A"
 
         # ----- RATINGS -----
         ratings = [r.rating for r in getattr(p, 'revs', []) if r.rating]
         avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
         rating_percentage = round((avg_rating / 5) * 100, 1)
 
+        # ----- FINAL OUTPUT -----
         results.append({
             "id": p.id,
             "name": p.name,
