@@ -189,18 +189,26 @@ def create_shiprocket_order(order, address, order_items):
     # 3️⃣ Items
     items = []
     for item in order_items:
+        base_sku = item.product.sku or f"AUTO-{item.product.id}"
         unit_discount = (
             float(item.discount_amount or 0) / item.quantity
         ) if item.quantity else 0
-
-        items.append({
+        for i in range(item.quantity):
+            items.append({
             "name": item.product.name,
-            "sku": item.product.sku or f"AUTO-{item.product.id}",
-            "units": item.quantity,
+            "sku": f"{base_sku}-{order.order_ref}-{item.id}-{i+1}",
+            "units": 1,
             "selling_price": float(item.price),
             "discount": round(unit_discount, 2),
             "hsn": 441122
         })
+    skus = [item["sku"] for item in items]
+    if len(skus) != len(set(skus)):
+        return {
+        "status": "error",
+        "message": "Duplicate SKU detected before Shiprocket call"
+    }
+
 
     payload = {
         "order_id": order.order_ref,
