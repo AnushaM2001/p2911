@@ -1784,6 +1784,8 @@ def download_invoices_by_date(request):
                 "product": item.product.name,
                 "sku": item.product.sku,
                 "qty": item.quantity,
+                "size": item.product_varaint.size if item.product_varaint.size else "",
+                "bottle_type":item.product_variant.bottle_type if item.product_variant.bootle_type else "-"
                 "unit_price": tax["unit_price"],
                 "taxable_value": tax["taxable_value"],
                 "cgst": tax["cgst"],
