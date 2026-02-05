@@ -1242,15 +1242,27 @@ function startCountdowns() {
 
         const interval = setInterval(() => {
             const diff = endTime - Date.now();
+
             if (diff <= 0) {
                 clearInterval(interval);
                 el.innerText = "Offer ended";
                 return;
             }
-            el.innerText = Math.floor(diff / 1000) + "s";
+
+            const totalSeconds = Math.floor(diff / 1000);
+
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            el.innerText =
+                String(hours).padStart(2, '0') + ":" +
+                String(minutes).padStart(2, '0') + ":" +
+                String(seconds).padStart(2, '0');
         }, 1000);
     });
 }
+
 
 /* ==============================
    INFINITE SCROLL
