@@ -1847,7 +1847,7 @@ def download_invoice(request, order_id):
             "qty": item.quantity,
             "unit_price": tax["unit_price"],
             "size": item.product_varaint.size if item.product_varaint.size else "",
-            "bottle_type":item.product_variant.bottle_type if item.product_variant.bootle_type else "-"
+            "bottle_type":item.product_variant.bottle_type if item.product_variant.bottle_type else "-",
             "bottle_type":tax["bottle_type"],
             "taxable_value": tax["taxable_value"],
             "cgst": tax["cgst"],
