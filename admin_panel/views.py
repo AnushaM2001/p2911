@@ -1789,9 +1789,7 @@ def download_invoices_by_date(request):
     # ✅ OPTIMIZED QUERY (NO N+1 PROBLEM)
     orders = Order.objects.filter(
         created_at__range=(start_datetime, end_datetime),
-        payment_status="Paid"   # safer than shiprocket check
-    ).exclude(
-        status="Cancelled"
+        
     ).prefetch_related(
         Prefetch(
             "items",
