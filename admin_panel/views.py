@@ -1846,9 +1846,12 @@ def download_invoice(request, order_id):
             "sku": item.product.sku,
             "qty": item.quantity,
             "unit_price": tax["unit_price"],
-            "size": item.product_varaint.size if item.product_varaint.size else "",
-            "bottle_type":item.product_variant.bottle_type if item.product_variant.bottle_type else "-",
-            "bottle_type":tax["bottle_type"],
+            "size": "size": variant.size if variant and variant.size else "",
+            "bottle_type": (
+        variant.bottle_type
+        if variant and variant.bottle_type
+        else tax.get("bottle_type", "-")
+    ),
             "taxable_value": tax["taxable_value"],
             "cgst": tax["cgst"],
             "sgst": tax["sgst"],
