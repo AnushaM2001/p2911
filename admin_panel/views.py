@@ -1744,101 +1744,173 @@ from django.contrib.sites.shortcuts import get_current_site
 
 import io
 import zipfile
-from django.contrib.sites.shortcuts import get_current_site
 
+
+import io
+import zipfile
+from datetime import datetime, time
+
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
+from django.utils import timezone
+from django.db.models import Prefetch
+from django.conf import settings
+
+from weasyprint import HTML
+
+
+
+############################################################
+# ✅ BULK INVOICE DOWNLOAD (PRODUCTION VERSION)
+############################################################
 
 def download_invoices_by_date(request):
+
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
 
     if not start_date or not end_date:
         return HttpResponse("Start date and End date required", status=400)
 
-    start_date = datetime.strptime(start_date, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    # ✅ Convert to DATE
+    start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+    end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
 
+    # ✅ TIMEZONE SAFE DATETIME RANGE
+    start_datetime = timezone.make_aware(
+        datetime.combine(start_date, time.min)
+    )
+
+    end_datetime = timezone.make_aware(
+        datetime.combine(end_date, time.max)
+    )
+
+    # ✅ OPTIMIZED QUERY (NO N+1 PROBLEM)
     orders = Order.objects.filter(
-        created_at__date__range=[start_date, end_date],
-        shiprocket_order_id__isnull=False
+        created_at__range=(start_datetime, end_datetime),
+        payment_status="Paid"   # safer than shiprocket check
+    ).exclude(
+        status="Cancelled"
+    ).prefetch_related(
+        Prefetch(
+            "items",
+            queryset=OrderItem.objects.select_related(
+                "product_variant",
+                "product"
+            )
+        )
     )
 
     if not orders.exists():
         return HttpResponse("No invoices found", status=404)
 
     zip_buffer = io.BytesIO()
-    zip_file = zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED)
 
-    domain = get_current_site(request).domain
-    logo_url = "https://www.perfumevalleyworld.com/static/images2/hi1.png"
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
 
-    for order in orders:
-        generate_invoice_number(order)
+        logo_url = "https://perfumevalleyworld.com/static/images2/hi1.png"
 
-        invoice_items = []
-        subtotal = total_tax = 0
+        for order in orders:
 
-        for item in order.items.all():
-            tax = calculate_gst(item, order.address)
+            generate_invoice_number(order)
 
-            invoice_items.append({
-                "product": item.product.name,
-                "sku": item.product.sku,
-                "qty": item.quantity,
-                "size": item.product_varaint.size if item.product_varaint.size else "",
-                "bottle_type":item.product_variant.bottle_type if item.product_variant.bootle_type else "-",
-                "unit_price": tax["unit_price"],
-                "taxable_value": tax["taxable_value"],
-                "cgst": tax["cgst"],
-                "sgst": tax["sgst"],
-                "igst": tax["igst"],
-                "cgst_rate": tax["cgst_rate"],
-                "sgst_rate": tax["sgst_rate"],
-                "igst_rate": tax["igst_rate"],
-                "total": item.quantity * item.price,
+            invoice_items = []
+            subtotal = 0
+            total_tax = 0
+
+            for item in order.items.all():
+
+                variant = getattr(item, "product_variant", None)
+                tax = calculate_gst(item, order.address)
+
+                invoice_items.append({
+                    "product": item.product.name,
+                    "sku": item.product.sku,
+                    "qty": item.quantity,
+                    "unit_price": tax["unit_price"],
+
+                    "bottle_type": variant.bottle_type if variant else "-",
+                    "size": variant.size if variant else "",
+
+                    "taxable_value": tax["taxable_value"],
+                    "cgst": tax["cgst"],
+                    "sgst": tax["sgst"],
+                    "igst": tax["igst"],
+                    "cgst_rate": tax["cgst_rate"],
+                    "sgst_rate": tax["sgst_rate"],
+                    "igst_rate": tax["igst_rate"],
+                    "total": item.quantity * item.price,
+                })
+
+                subtotal += tax["base_amount"]
+                total_tax += tax["cgst"] + tax["sgst"] + tax["igst"]
+
+            html = render_to_string("admin_panel/invoice_pdf.html", {
+                "order": order,
+                "items": invoice_items,
+                "subtotal": subtotal,
+                "total_tax": total_tax,
+                "grand_total": order.total_price,
+                "logo_url": logo_url,
+                "company_name": "Perfume Valley",
+                "company_address": "Hyderabad, Telangana, India",
+                "company_gstin": "36ABCDE1234F1Z5",
             })
 
-            subtotal += tax["base_amount"]
-            total_tax += tax["taxable_value"]
+            pdf = HTML(
+                string=html,
+                base_url=settings.STATIC_ROOT
+            ).write_pdf()
 
-        html = render_to_string("admin_panel/invoice_pdf.html", {
-            "order": order,
-            "items": invoice_items,
-            "subtotal": subtotal,
-            "total_tax": total_tax,
-            "grand_total": order.total_price,
-            "logo_url": logo_url,
-            "company_name": "Perfume Valley",
-            "company_address": "Hyderabad, Telangana, India",
-            "company_gstin": "36ABCDE1234F1Z5",
-        })
+            filename = f"Invoice_{order.invoice_number}.pdf"
+            zip_file.writestr(filename, pdf)
 
-        pdf = HTML(string=html, base_url=settings.STATIC_ROOT).write_pdf()
-
-        filename = f"Invoice_{order.invoice_number}.pdf"
-        zip_file.writestr(filename, pdf)
-
-    zip_file.close()
     zip_buffer.seek(0)
 
     response = HttpResponse(zip_buffer, content_type="application/zip")
     response["Content-Disposition"] = (
-        f'attachment; filename="Invoices_{start_date.date()}_to_{end_date.date()}.zip"'
+        f'attachment; filename="Invoices_{start_date}_to_{end_date}.zip"'
     )
+
     return response
 
 
+############################################################
+# ✅ SINGLE INVOICE DOWNLOAD (PRODUCTION)
+############################################################
+
 def download_invoice(request, order_id):
-    order = get_object_or_404(Order, id=order_id)
+
+    order = get_object_or_404(
+        Order.objects.prefetch_related(
+            Prefetch(
+                "items",
+                queryset=OrderItem.objects.select_related(
+                    "product_variant",
+                    "product"
+                )
+            )
+        ),
+        id=order_id
+    )
+
     generate_invoice_number(order)
 
-    domain = get_current_site(request).domain
-    logo_url = f"https://perfumevalleyworld.com/static/images2/hi1.png"
+    items_qs = order.items.all()
 
-    # GST calculations
+    if not items_qs.exists():
+        return HttpResponse("No items found for this order", status=400)
+
+    logo_url = "https://perfumevalleyworld.com/static/images2/hi1.png"
+
     invoice_items = []
-    subtotal = total_tax = 0
+    subtotal = 0
+    total_tax = 0
 
-    for item in order.items.all():
+    for item in items_qs:
+
+        variant = getattr(item, "product_variant", None)
         tax = calculate_gst(item, order.address)
 
         invoice_items.append({
@@ -1846,12 +1918,10 @@ def download_invoice(request, order_id):
             "sku": item.product.sku,
             "qty": item.quantity,
             "unit_price": tax["unit_price"],
-            "size": "size": variant.size if variant and variant.size else "",
-            "bottle_type": (
-        variant.bottle_type
-        if variant and variant.bottle_type
-        else tax.get("bottle_type", "-")
-    ),
+
+            "bottle_type": variant.bottle_type if variant else "-",
+            "size": variant.size if variant else "",
+
             "taxable_value": tax["taxable_value"],
             "cgst": tax["cgst"],
             "sgst": tax["sgst"],
@@ -1863,27 +1933,30 @@ def download_invoice(request, order_id):
         })
 
         subtotal += tax["base_amount"]
-        total_tax += tax["taxable_value"]
-
-    # Use order.total_price for grand total
-    grand_total = order.total_price
+        total_tax += tax["cgst"] + tax["sgst"] + tax["igst"]
 
     html = render_to_string("admin_panel/invoice_pdf.html", {
         "order": order,
         "items": invoice_items,
         "subtotal": subtotal,
         "total_tax": total_tax,
-        "grand_total": grand_total,
+        "grand_total": order.total_price,
         "logo_url": logo_url,
         "company_name": "Perfume Valley",
         "company_address": "Hyderabad, Telangana, India",
         "company_gstin": "36ABCDE1234F1Z5",
     })
 
-    pdf = HTML(string=html, base_url=settings.STATIC_ROOT).write_pdf()
+    pdf = HTML(
+        string=html,
+        base_url=settings.STATIC_ROOT
+    ).write_pdf()
 
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="Invoice_{order.invoice_number}.pdf"'
+    response["Content-Disposition"] = (
+        f'attachment; filename="Invoice_{order.invoice_number}.pdf"'
+    )
+
     return response
 
 # def download_invoice(request, order_id):
