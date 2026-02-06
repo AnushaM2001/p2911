@@ -3194,27 +3194,29 @@ def subscription_add(request):
             # HTML email
             html_content = f"""
             <html>
-              <body style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
+               <body style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
                 <div style="max-width:600px; margin:auto; background:#fff; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.1); padding:20px;">
-                  <h2 style="color:#d63384; text-align:center;">Welcome to Perfumavalley 🌸</h2>
                   <p>Hi <b>{subscription.name or subscription.email}</b>,</p>
-                  <p>Thank you for subscribing to <span style="color:#d63384;">Perfumavalley</span>! ✨</p>
-                  <p>You'll now receive exclusive updates, special offers, and the latest fragrances straight to your inbox.</p>
-                  <div style="text-align:center; margin:20px 0;">
-                    <a href="https://perfumevalleyworld.com/"
-                       style="background:#d63384; color:#fff; padding:12px 24px; text-decoration:none; font-size:16px; border-radius:6px;">
-                      Explore Collection
-                    </a>
-                  </div>
-                  <p style="font-size:14px; color:#777; text-align:center;">
-                    Stay connected with us 💖<br>
-                    <a href="https://www.instagram.com/perfumevalley.store/" style="color:#d63384; text-decoration:none;">Instagram</a> |
-                    <a href="https://www.facebook.com/Perfumevalley.store/" style="color:#d63384; text-decoration:none;">Facebook</a>
-                  </p>
-                  <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
-                  <p style="font-size:12px; color:#aaa; text-align:center;">
-                    © 2025 Perfumavalley. All rights reserved.
-                  </p>
+
+<p>Welcome to <span style="color:#d63384;">Perfumevalley</span>! 🌸</p>
+
+<p>As a special thank-you for subscribing, we're giving you an exclusive discount on your first purchase.</p>
+
+<div style="background:#fff0f6; border:2px dashed #d63384; padding:15px; text-align:center; border-radius:8px; margin:20px 0;">
+  <p style="margin:0; font-size:16px;">Use Coupon Code</p>
+  <h2 style="margin:5px 0; color:#d63384; letter-spacing:2px;">PREMIUM10</h2>
+  <p style="margin:0; font-size:14px;">Apply this coupon at checkout and enjoy <b>10% OFF</b> on your order.</p>
+</div>
+
+<p>Don't miss out — explore our premium fragrance collection and find your perfect scent today.</p><br>
+<a href="https://www.instagram.com/perfumevalley.store/" 
+   style="color:#d63384; text-decoration:none; font-weight:bold;">
+Instagram
+</a>
+<a href="https://www.facebook.com/PerfumeValleyWorld/" 
+   style="color:#d63384; text-decoration:none; font-weight:bold;">
+Facebook
+</a>
                 </div>
               </body>
             </html>
