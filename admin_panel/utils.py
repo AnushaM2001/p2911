@@ -190,6 +190,11 @@ def create_shiprocket_order(order, address, order_items):
     items = []
     for item in order_items:
         base_sku = item.product.sku or f"AUTO-{item.product.id}"
+        variant_info = f"{item.product_variant.bottle_type or ''} {item.product_variant.size or ''}" if item.product_variant else ""
+        gift_info = f"Gift Set: {item.gift_set.set_name}" if item.gift_set else ""
+        flavours = f"Flavours: {item.selected_flavours}" if item.selected_flavours else ""
+    
+        display_name = " | ".join(filter(None, [item.product.name, variant_info, gift_info, flavours]))
         unit_discount = (
             float(item.discount_amount or 0) / item.quantity
         ) if item.quantity else 0
