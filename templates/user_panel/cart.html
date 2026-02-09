@@ -887,103 +887,87 @@ window.updateOrderSummary = function (prices, meta = {}) {
 <!-- <script src="https://checkout.razorpay.com/v1/checkout.js"></script> -->
 
 <script>
-const hasAddress = {{ address.id|yesno:"true,false" }};
-const redirectUrl = "{% url 'add_address' %}?next={{ request.path }}";
-const keyId = "{{ key_id }}";
-const Amount = "{{ amount_in_paise }}";  // in paise
-const orderId = "{{ razorpay_order_id }}";
-const userName = "{{ address.Name }}";
-const totalPrice = "{{ total_price }}";
-const csrfToken = "{{ csrf_token }}";
-const orderSuccessUrl = "{% url 'order_success' %}";
+  const hasAddress = {{ address.id|yesno:"true,false" }};
+  const redirectUrl = "{% url 'add_address' %}";
+  const keyId = "{{ key_id }}";
+  const Amount = "{{ amount_in_paise }}";  // in paise
+  const orderId = "{{ razorpay_order_id }}";
+  // const userEmail = "{{ address.email }}";
+  const userName = "{{ address.Name }}";
+  const totalPrice = "{{ total_price }}";
+  const csrfToken = "{{ csrf_token }}";
+  const orderSuccessUrl = "{% url 'order_success' %}";
 
-let hasSubmitted = false;
+  let hasSubmitted = false;
 
-document.addEventListener('DOMContentLoaded', function () {
-  const payBtn = document.getElementById('pay-button');
-  const fillAddressBtn = document.getElementById('fill-address-button');
+  document.addEventListener('DOMContentLoaded', function () {
+    const payBtn = document.getElementById('pay-button');
+    const fillAddressBtn = document.getElementById('fill-address-button');
+    
+    const redirectUrl = "{% url 'add_address' %}?next={{ request.path }}";
 
-  if (hasAddress && payBtn) {
-    payBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-
-      if (hasSubmitted) return; // prevent double click
-      hasSubmitted = true;
-
-      // Disable button and show processing
-      payBtn.disabled = true;
-      payBtn.innerText = "Processing...";
-
-      initiatePayment();
-    });
-  }
-
-  if (!hasAddress && fillAddressBtn) {
-    fillAddressBtn.addEventListener('click', function () {
-      alert("Please fill in your address before proceeding to payment.");
-      window.location.href = redirectUrl;
-    });
-  }
-});
-
-function initiatePayment() {
-  const options = {
-    "key": keyId,
-    "amount": Amount,
-    "currency": "INR",
-    "name": "Perfume Valley",
-    "description": "Order Payment",
-    "order_id": orderId,
-    "prefill": {
-      "name": userName,
-      // optionally add email: "email@example.com"
-    },
-    "theme": {
-      "color": "#F37254"
-    },
-    "handler": function (response) {
-      if (!response.razorpay_payment_id || hasSubmitted === false) return;
-
-      // Dynamically create a form to POST to Django
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = orderSuccessUrl;
-
-      const fields = {
-        'csrfmiddlewaretoken': csrfToken,
-        'razorpay_payment_id': response.razorpay_payment_id,
-        'razorpay_order_id': response.razorpay_order_id,
-        'razorpay_signature': response.razorpay_signature,
-        'total_price': totalPrice
-      };
-
-      for (let key in fields) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = fields[key];
-        form.appendChild(input);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-    },
-    "modal": {
-      "ondismiss": function () {
-        // Re-enable the button if user closes the payment modal
-        const payBtn = document.getElementById('pay-button');
-        if (payBtn) {
-          payBtn.disabled = false;
-          payBtn.innerText = "Pay Now";
-          hasSubmitted = false;
-        }
-      }
+    if (hasAddress) {
+      payBtn?.addEventListener('click', function (e) {
+        e.preventDefault();
+        initiatePayment();
+      });
+    } else {
+      fillAddressBtn?.addEventListener('click', function () {
+        alert("Please fill in your address before proceeding to payment.");
+        window.location.href = redirectUrl;
+      });
     }
-  };
+  });
 
-  const rzp = new Razorpay(options);
-  rzp.open();
-}
+  
+function initiatePayment() {
+    const options = {
+      "key": keyId,
+      "amount": Amount,
+      "currency": "INR",
+      "name": "Perfume Valley",
+      "description": "Order Payment",
+      "order_id": orderId,
+      "prefill": {
+        "name": userName,
+        // "email": userEmail
+      },
+      "theme": {
+        "color": "#F37254"
+      },
+      "handler": function (response) {
+        if (hasSubmitted) return;
+        hasSubmitted = true;
+
+        // Create form dynamically to POST to success view
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = orderSuccessUrl;
+
+        const fields = {
+          'csrfmiddlewaretoken': csrfToken,
+          'razorpay_payment_id': response.razorpay_payment_id,
+          'razorpay_order_id': response.razorpay_order_id,
+          'razorpay_signature': response.razorpay_signature,
+          'total_price': totalPrice
+        };
+
+        for (let key in fields) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = fields[key];
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.open();
+  }
 </script>
 
 
