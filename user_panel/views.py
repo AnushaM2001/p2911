@@ -2212,142 +2212,312 @@ def view_cart(request):
 
     return render(request, 'user_panel/cart.html', context)
 
+# @csrf_exempt
+# def order_success(request):
+#     guest_id = get_guest_id(request)
+#     if request.method == "POST":
+        
+#         total_price = float(request.POST.get("total_price", 0))
+#         razorpay_payment_id = request.POST.get("razorpay_payment_id")
+#         razorpay_order_id = request.POST.get("razorpay_order_id")
+#         razorpay_signature = request.POST.get("razorpay_signature")
+#         selected_address_id = request.session.get("selected_address_id")
+
+#         # ✅ Fetch address
+#         address = AddressModel.objects.filter(
+#             id=selected_address_id, guest_id=guest_id
+#         ).first() if selected_address_id else AddressModel.objects.filter(guest_id=guest_id).last()
+
+#         # ✅ Prevent duplicate orders (same user + same price in last 5 mins)
+#         existing_order = Order.objects.filter(
+#             guest_id=guest_id,
+#             total_price=total_price,
+#             status="Completed",
+#             created_at__gte=timezone.now() - timedelta(minutes=5),
+#         ).first()
+
+#         if existing_order:
+#             order = existing_order
+#             print("⚠️ Using existing order to prevent duplicate:", order.id)
+#         else:
+#             try:
+#                 # ✅ Verify Razorpay signature
+#                 client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET))
+#                 client.utility.verify_payment_signature({
+#                     "razorpay_order_id": razorpay_order_id,
+#                     "razorpay_payment_id": razorpay_payment_id,
+#                     "razorpay_signature": razorpay_signature,
+#                 })
+
+#                 with transaction.atomic():
+#                     # ✅ Create order
+#                     order = Order.objects.create(
+#                         guest_id=guest_id,
+#                         address=address,
+#                         total_price=total_price,
+#                         status="Completed",
+#                     )
+
+#                     Payment.objects.create(
+#                         order=order,
+#                         payment_method="Razorpay",
+#                         status="Completed",
+#                         transaction_id=razorpay_payment_id,
+#                         price=total_price,
+#                     )
+
+#                     # ✅ Move cart → order items
+#                     cart_items = Cart.objects.filter(guest_id=guest_id)
+#                     cart_total_before_discount = sum(item.price * item.quantity for item in cart_items)
+
+#                     coupon_discount = Decimal(request.session.get("applied_coupon_discount", 0.00))
+#                     premium_discount_percentage = Decimal(request.session.get("premium_offer_percentage", 0.00))
+
+#                     for item in cart_items:
+#                         quantity = item.quantity
+#                         original_total = item.price * quantity
+#                         discounted_total = item.price * quantity if item.price else original_total
+
+#                         # Discounts
+#                         product_offer_discount = original_total - discounted_total
+#                         coupon_ratio = (original_total / cart_total_before_discount) if cart_total_before_discount > 0 else Decimal("0.00")
+#                         coupon_discount_amount = coupon_discount * coupon_ratio
+#                         premium_discount_amount = (discounted_total * premium_discount_percentage) / Decimal("100") if premium_discount_percentage > 0 else Decimal("0.00")
+
+#                         total_discount = product_offer_discount + coupon_discount_amount + premium_discount_amount
+
+#                         OrderItem.objects.create(
+#                             order=order,
+#                             product=item.product,
+#                             product_variant=item.product_variant,
+#                             quantity=quantity,
+#                             price=item.price,
+#                             gift_wrap=item.gift_wrap,
+#                             gift_set=item.gift_set,
+#                             offer_code=item.offer_code,
+#                             discount_amount=total_discount.quantize(Decimal("0.01")),
+#                             discount_percentage=item.discount_percentage,
+#                             selected_flavours=item.selected_flavours if item.selected_flavours else None,
+#                         )
+
+#                         # ✅ Decrease stock
+#                         if item.product_variant:
+#                             item.product_variant.stock = max(item.product_variant.stock - item.quantity, 0)
+#                             item.product_variant.save()
+#                         elif item.gift_set:
+#                             item.gift_set.stock = max(item.gift_set.stock - item.quantity, 0)
+#                             item.gift_set.save()
+#                         elif item.product:
+#                             item.product.stock = max(item.product.stock - item.quantity, 0)
+#                             item.product.save()
+
+#                     cart_items.delete()
+
+#                     # ✅ Fire Celery tasks *after commit*
+#                     transaction.on_commit(lambda: create_shiprocket_order_task.delay(order.id))
+#                     transaction.on_commit(lambda: send_invoice_email_task.delay(order.id))
+#                     transaction.on_commit(lambda: notify_low_stock_task.delay(order.id))
+
+#             except razorpay.errors.SignatureVerificationError:
+#                 return render(request, "user_panel/payment_failed.html", {"error": "Signature verification failed"})
+
+#         # ✅ Handle coupon usage
+#         coupon_code = request.session.pop("applied_coupon", None)
+#         if coupon_code:
+#             try:
+#                 coupon = Coupon.objects.get(code=coupon_code)
+#                 CouponUsage.objects.create(guest_id=guest_id, coupon=coupon)
+#             except Coupon.DoesNotExist:
+#                 pass
+
+#         # ✅ Handle premium offer usage
+#         premium_offer_code = request.session.pop("premium_offer_code", None)
+#         if premium_offer_code:
+#             offer = PremiumFestiveOffer.objects.filter(code=premium_offer_code).first()
+#             if offer:
+#                 PremiumOfferUsage.objects.create(guest_id=guest_id, offer_code=offer.code)
+#             request.session.pop("premium_offer_percentage", None)
+#             request.session.pop(f"premium_offer_used_{premium_offer_code}", None)
+
+#         # ✅ Clear unused session keys
+#         for key in ["gift_wrap", "razorpay_order_id", "razorpay_cart_hash"]:
+#             request.session.pop(key, None)
+
+#         messages.success(request, "🎉 Your order has been placed successfully!")
+
+#         return render(request, "user_panel/order_success.html", {"order": order})
+
+#     return redirect("view_cart")
+
+def generate_cart_hash(cart_items):
+    """
+    Generate a unique hash for the current cart items to detect duplicates.
+    """
+    cart_list = [
+        {
+            "product_id": str(item.product.id if item.product else ""),
+            "variant_id": str(item.product_variant.id if item.product_variant else ""),
+            "gift_set_id": str(item.gift_set.id if item.gift_set else ""),
+            "quantity": item.quantity
+        }
+        for item in cart_items
+    ]
+    cart_json = json.dumps(cart_list, sort_keys=True)
+    return hashlib.sha256(cart_json.encode()).hexdigest()
+
+
 @csrf_exempt
 def order_success(request):
     guest_id = get_guest_id(request)
-    if request.method == "POST":
-        
-        total_price = float(request.POST.get("total_price", 0))
-        razorpay_payment_id = request.POST.get("razorpay_payment_id")
-        razorpay_order_id = request.POST.get("razorpay_order_id")
-        razorpay_signature = request.POST.get("razorpay_signature")
-        selected_address_id = request.session.get("selected_address_id")
 
-        # ✅ Fetch address
-        address = AddressModel.objects.filter(
-            id=selected_address_id, guest_id=guest_id
-        ).first() if selected_address_id else AddressModel.objects.filter(guest_id=guest_id).last()
+    if request.method != "POST":
+        return redirect("view_cart")
 
-        # ✅ Prevent duplicate orders (same user + same price in last 5 mins)
-        existing_order = Order.objects.filter(
-            guest_id=guest_id,
-            total_price=total_price,
-            status="Completed",
-            created_at__gte=timezone.now() - timedelta(minutes=5),
-        ).first()
+    # Fetch POST data
+    total_price = float(request.POST.get("total_price", 0))
+    razorpay_payment_id = request.POST.get("razorpay_payment_id")
+    razorpay_order_id = request.POST.get("razorpay_order_id")
+    razorpay_signature = request.POST.get("razorpay_signature")
+    selected_address_id = request.session.get("selected_address_id")
 
-        if existing_order:
-            order = existing_order
-            print("⚠️ Using existing order to prevent duplicate:", order.id)
-        else:
-            try:
-                # ✅ Verify Razorpay signature
-                client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET))
-                client.utility.verify_payment_signature({
-                    "razorpay_order_id": razorpay_order_id,
-                    "razorpay_payment_id": razorpay_payment_id,
-                    "razorpay_signature": razorpay_signature,
-                })
+    # Fetch address
+    address = None
+    if selected_address_id:
+        address = AddressModel.objects.filter(id=selected_address_id, guest_id=guest_id).first()
+    if not address:
+        address = AddressModel.objects.filter(guest_id=guest_id).last()
 
-                with transaction.atomic():
-                    # ✅ Create order
-                    order = Order.objects.create(
-                        guest_id=guest_id,
-                        address=address,
-                        total_price=total_price,
-                        status="Completed",
-                    )
+    # ✅ Fetch cart items
+    cart_items = Cart.objects.filter(guest_id=guest_id)
+    if not cart_items.exists():
+        messages.error(request, "Your cart is empty.")
+        return redirect("view_cart")
 
-                    Payment.objects.create(
-                        order=order,
-                        payment_method="Razorpay",
-                        status="Completed",
-                        transaction_id=razorpay_payment_id,
-                        price=total_price,
-                    )
+    # Generate cart hash
+    cart_hash = generate_cart_hash(cart_items)
 
-                    # ✅ Move cart → order items
-                    cart_items = Cart.objects.filter(guest_id=guest_id)
-                    cart_total_before_discount = sum(item.price * item.quantity for item in cart_items)
-
-                    coupon_discount = Decimal(request.session.get("applied_coupon_discount", 0.00))
-                    premium_discount_percentage = Decimal(request.session.get("premium_offer_percentage", 0.00))
-
-                    for item in cart_items:
-                        quantity = item.quantity
-                        original_total = item.price * quantity
-                        discounted_total = item.price * quantity if item.price else original_total
-
-                        # Discounts
-                        product_offer_discount = original_total - discounted_total
-                        coupon_ratio = (original_total / cart_total_before_discount) if cart_total_before_discount > 0 else Decimal("0.00")
-                        coupon_discount_amount = coupon_discount * coupon_ratio
-                        premium_discount_amount = (discounted_total * premium_discount_percentage) / Decimal("100") if premium_discount_percentage > 0 else Decimal("0.00")
-
-                        total_discount = product_offer_discount + coupon_discount_amount + premium_discount_amount
-
-                        OrderItem.objects.create(
-                            order=order,
-                            product=item.product,
-                            product_variant=item.product_variant,
-                            quantity=quantity,
-                            price=item.price,
-                            gift_wrap=item.gift_wrap,
-                            gift_set=item.gift_set,
-                            offer_code=item.offer_code,
-                            discount_amount=total_discount.quantize(Decimal("0.01")),
-                            discount_percentage=item.discount_percentage,
-                            selected_flavours=item.selected_flavours if item.selected_flavours else None,
-                        )
-
-                        # ✅ Decrease stock
-                        if item.product_variant:
-                            item.product_variant.stock = max(item.product_variant.stock - item.quantity, 0)
-                            item.product_variant.save()
-                        elif item.gift_set:
-                            item.gift_set.stock = max(item.gift_set.stock - item.quantity, 0)
-                            item.gift_set.save()
-                        elif item.product:
-                            item.product.stock = max(item.product.stock - item.quantity, 0)
-                            item.product.save()
-
-                    cart_items.delete()
-
-                    # ✅ Fire Celery tasks *after commit*
-                    transaction.on_commit(lambda: create_shiprocket_order_task.delay(order.id))
-                    transaction.on_commit(lambda: send_invoice_email_task.delay(order.id))
-                    transaction.on_commit(lambda: notify_low_stock_task.delay(order.id))
-
-            except razorpay.errors.SignatureVerificationError:
-                return render(request, "user_panel/payment_failed.html", {"error": "Signature verification failed"})
-
-        # ✅ Handle coupon usage
-        coupon_code = request.session.pop("applied_coupon", None)
-        if coupon_code:
-            try:
-                coupon = Coupon.objects.get(code=coupon_code)
-                CouponUsage.objects.create(guest_id=guest_id, coupon=coupon)
-            except Coupon.DoesNotExist:
-                pass
-
-        # ✅ Handle premium offer usage
-        premium_offer_code = request.session.pop("premium_offer_code", None)
-        if premium_offer_code:
-            offer = PremiumFestiveOffer.objects.filter(code=premium_offer_code).first()
-            if offer:
-                PremiumOfferUsage.objects.create(guest_id=guest_id, offer_code=offer.code)
-            request.session.pop("premium_offer_percentage", None)
-            request.session.pop(f"premium_offer_used_{premium_offer_code}", None)
-
-        # ✅ Clear unused session keys
-        for key in ["gift_wrap", "razorpay_order_id", "razorpay_cart_hash"]:
-            request.session.pop(key, None)
-
-        messages.success(request, "🎉 Your order has been placed successfully!")
-
+    # ✅ Prevent duplicate payment by Razorpay payment ID
+    existing_payment = Payment.objects.filter(transaction_id=razorpay_payment_id).select_related('order').first()
+    if existing_payment:
+        order = existing_payment.order
+        messages.info(request, "⚠️ Payment already processed. Showing existing order.")
         return render(request, "user_panel/order_success.html", {"order": order})
 
-    return redirect("view_cart")
+    # ✅ Prevent duplicate order for same guest + same cart hash in last 5 mins
+    five_minutes_ago = timezone.now() - timedelta(minutes=5)
+    recent_order = Order.objects.filter(
+        guest_id=guest_id,
+        cart_hash=cart_hash,
+        created_at__gte=five_minutes_ago
+    ).order_by('-created_at').first()
+    if recent_order:
+        messages.info(request, "⚠️ You already placed this order recently.")
+        return render(request, "user_panel/order_success.html", {"order": recent_order})
+
+    # Verify Razorpay signature
+    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET))
+    try:
+        client.utility.verify_payment_signature({
+            "razorpay_order_id": razorpay_order_id,
+            "razorpay_payment_id": razorpay_payment_id,
+            "razorpay_signature": razorpay_signature,
+        })
+    except razorpay.errors.SignatureVerificationError:
+        return render(request, "user_panel/payment_failed.html", {"error": "Signature verification failed"})
+
+    # ✅ Create order transactionally
+    with transaction.atomic():
+        order = Order.objects.create(
+            guest_id=guest_id,
+            address=address,
+            total_price=total_price,
+            status="Pending",
+            cart_hash=cart_hash  # store cart hash to detect duplicates
+        )
+
+        Payment.objects.create(
+            order=order,
+            payment_method="Razorpay",
+            status="Completed",
+            transaction_id=razorpay_payment_id,
+            price=total_price,
+        )
+
+        cart_total_before_discount = sum(item.price * item.quantity for item in cart_items)
+        coupon_discount = Decimal(request.session.get("applied_coupon_discount", 0.00))
+        premium_discount_percentage = Decimal(request.session.get("premium_offer_percentage", 0.00))
+
+        for item in cart_items:
+            quantity = item.quantity
+            original_total = item.price * quantity
+            discounted_total = original_total
+
+            # Discounts
+            product_offer_discount = original_total - discounted_total
+            coupon_ratio = (original_total / cart_total_before_discount) if cart_total_before_discount > 0 else Decimal("0.00")
+            coupon_discount_amount = coupon_discount * coupon_ratio
+            premium_discount_amount = (discounted_total * premium_discount_percentage) / Decimal("100") if premium_discount_percentage > 0 else Decimal("0.00")
+            total_discount = product_offer_discount + coupon_discount_amount + premium_discount_amount
+
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                product_variant=item.product_variant,
+                quantity=quantity,
+                price=item.price,
+                gift_wrap=item.gift_wrap,
+                gift_set=item.gift_set,
+                offer_code=item.offer_code,
+                discount_amount=total_discount.quantize(Decimal("0.01")),
+                discount_percentage=item.discount_percentage,
+                selected_flavours=item.selected_flavours if item.selected_flavours else None,
+            )
+
+            # Reduce stock safely
+            if item.product_variant:
+                item.product_variant.stock = max(item.product_variant.stock - quantity, 0)
+                item.product_variant.save()
+            elif item.gift_set:
+                item.gift_set.stock = max(item.gift_set.stock - quantity, 0)
+                item.gift_set.save()
+            elif item.product:
+                item.product.stock = max(item.product.stock - quantity, 0)
+                item.product.save()
+
+        # Clear cart
+        cart_items.delete()
+        order.status = "Completed"
+        order.save()
+
+        # Fire Celery tasks after commit
+        transaction.on_commit(lambda: create_shiprocket_order_task.delay(order.id))
+        transaction.on_commit(lambda: send_invoice_email_task.delay(order.id))
+        transaction.on_commit(lambda: notify_low_stock_task.delay(order.id))
+
+    # Handle coupon usage
+    coupon_code = request.session.pop("applied_coupon", None)
+    if coupon_code:
+        try:
+            coupon = Coupon.objects.get(code=coupon_code)
+            CouponUsage.objects.create(guest_id=guest_id, coupon=coupon)
+        except Coupon.DoesNotExist:
+            pass
+
+    # Handle premium offer usage
+    premium_offer_code = request.session.pop("premium_offer_code", None)
+    if premium_offer_code:
+        offer = PremiumFestiveOffer.objects.filter(code=premium_offer_code).first()
+        if offer:
+            PremiumOfferUsage.objects.create(guest_id=guest_id, offer_code=offer.code)
+        request.session.pop("premium_offer_percentage", None)
+        request.session.pop(f"premium_offer_used_{premium_offer_code}", None)
+
+    # Clear temporary session keys
+    for key in ["gift_wrap", "razorpay_order_id", "razorpay_cart_hash"]:
+        request.session.pop(key, None)
+
+    messages.success(request, "🎉 Your order has been placed successfully!")
+    return render(request, "user_panel/order_success.html", {"order": order})
 
 from django.contrib.auth import logout
 def user_logout(request):
