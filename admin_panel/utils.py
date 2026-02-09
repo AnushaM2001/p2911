@@ -190,17 +190,31 @@ def create_shiprocket_order(order, address, order_items):
     items = []
     for item in order_items:
         base_sku = item.product.sku or f"AUTO-{item.product.id}"
-        variant_info = f"{item.product_variant.bottle_type or ''} {item.product_variant.size or ''}" if item.product_variant else ""
-        gift_info = f"Gift Set: {item.gift_set.set_name}" if item.gift_set else ""
-        flavours = f"Flavours: {item.selected_flavours}" if item.selected_flavours else ""
+
+        details = [item.product.name]
+        # Variant info
+        if item.product_variant:
+            variant_info = f"{item.product_variant.bottle_type or ''} {item.product_variant.size or ''}".strip()
+            if variant_info:
+                details.append(variant_info)
+
+         # Gift set info
+        if item.gift_set:
+            gift_info = f"Gift Set: {item.gift_set.set_name}"
+        # Include flavours if any
+            if item.selected_flavours:
+                gift_info += f" (Flavours: {item.selected_flavours})"
+            details.append(gift_info)
+        
+       # Combine into display name
+        display_name = " | ".join(details)
     
-        display_name = " | ".join(filter(None, [item.product.name, variant_info, gift_info, flavours]))
         unit_discount = (
             float(item.discount_amount or 0) / item.quantity
         ) if item.quantity else 0
         for i in range(item.quantity):
             items.append({
-            "name": item.product.name,
+            "name": display_name,
             "sku": f"{base_sku}-{order.order_ref}-{item.id}-{i+1}",
             "units": 1,
             "selling_price": float(item.price),
