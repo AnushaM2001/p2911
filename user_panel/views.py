@@ -3308,35 +3308,55 @@ def download_invoices(request, order_id):
     return JsonResponse(data, status=response.status_code)
 
 
-def send_invoice_email(user, order):
-    token = get_shiprocket_token()
-    url = "https://apiv2.shiprocket.in/v1/external/orders/print/invoice"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "ids": [order.shiprocket_order_id]
-    }
+from django.core.mail import EmailMessage
+import requests
+from django.conf import settings
 
-    response = requests.post(url, json=payload, headers=headers)
-    data = response.json()
+def send_invoice_email(order):
+    """
+    Sends invoice PDF via email to the guest's address email.
+    """
+    recipient_email = getattr(order.address, 'email', None)
 
-    if response.status_code == 200 and data.get("invoice_url"):
-        invoice_url = data["invoice_url"]
+    if not recipient_email:
+        # No email available, skip sending
+        print(f"⚠️ No email found for order {order.id}, invoice not sent.")
+        return
 
-        # Download the invoice PDF
-        invoice_response = requests.get(invoice_url)
-        if invoice_response.status_code == 200:
-            email = EmailMessage(
-                subject='Your Order Invoice',
-                body='Thank you for your order. Please find your invoice attached.',
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[user.email],
-            )
-            email.attach(f'invoice_{order.id}.pdf', invoice_response.content, 'application/pdf')
-            email.send()
+    try:
+        # Get Shiprocket token
+        token = get_shiprocket_token()
+        url = "https://apiv2.shiprocket.in/v1/external/orders/print/invoice"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        payload = {"ids": [order.shiprocket_order_id]}
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
 
+        if response.status_code == 200 and data.get("invoice_url"):
+            invoice_url = data["invoice_url"]
+
+            # Download invoice PDF
+            invoice_response = requests.get(invoice_url)
+            if invoice_response.status_code == 200:
+                email = EmailMessage(
+                    subject='Your Order Invoice',
+                    body='Thank you for your order. Please find your invoice attached.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[recipient_email],
+                )
+                email.attach(f'invoice_{order.id}.pdf', invoice_response.content, 'application/pdf')
+                email.send()
+                print(f"✅ Invoice sent for order {order.id} to {recipient_email}")
+            else:
+                print(f"⚠️ Failed to download invoice PDF for order {order.id}")
+        else:
+            print(f"⚠️ Failed to generate invoice for order {order.id}: {data}")
+
+    except Exception as e:
+        print(f"⚠️ Error sending invoice for order {order.id}: {str(e)}")
 
 from django.core.mail import EmailMultiAlternatives
 from admin_panel.forms import SubscriptionForm
