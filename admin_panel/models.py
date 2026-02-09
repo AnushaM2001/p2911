@@ -306,8 +306,13 @@ class Order(models.Model):
     shiprocket_issue_reason = models.CharField(max_length=50, blank=True, null=True)
     shiprocket_pickup_generated = models.BooleanField(default=False)
     order_ref = models.CharField( max_length=40,unique=True,editable=False,blank=True,null=True)
-       
-        
+    cart_hash = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        db_index=True
+    )   
+    
         
     def save(self, *args, **kwargs):
         if not self.order_ref:
