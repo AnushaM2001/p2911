@@ -214,15 +214,20 @@ def process_order_with_shiprocket(order_id):
     )
     workflow.apply_async()
 
+
+from celery import shared_task
+from celery.exceptions import MaxRetriesExceededError
+import logging
+
 logger = logging.getLogger(__name__)
 
 @shared_task(bind=True, max_retries=5, default_retry_delay=60)
 def send_invoice_email_task(self, order_id=None):
     """
-    Send invoice emails for guest orders.
-    - Sends only once (invoice_sent=False)
+    Celery task to send invoice emails for guest orders.
+    - Sends only if invoice_sent=False and shiprocket AWB exists
     - Uses email from AddressModel
-    - Retries automatically on failure
+    - Retries individual orders on failure
     """
 
     try:
@@ -238,23 +243,19 @@ def send_invoice_email_task(self, order_id=None):
 
         for order in orders:
             try:
-                # ✅ Get email from address
-                email = None
-                if order.address and getattr(order.address, "email", None):
-                    email = order.address.email
-
-                if not email:
-                    logger.warning(f"No email found for order {order.id}")
+                if not order.address or not getattr(order.address, "email", None):
+                    logger.warning(f"No email found for order {order.id}, skipping.")
                     continue
 
                 # ✅ Send invoice
-                send_invoice_email(email=email, order=order)
+                send_invoice_email(order)
 
-                # ✅ Mark as sent
+                # ✅ Mark invoice as sent
                 order.invoice_sent = True
-                safe_save(order, update_fields=["invoice_sent"])
+                order.save(update_fields=["invoice_sent"])
 
                 results.append({"success": f"Invoice sent for order {order.id}"})
+                logger.info(f"Invoice sent for order {order.id}")
 
             except Exception as inner_e:
                 logger.exception(f"Failed to send invoice for order {order.id}, retrying...")
@@ -273,6 +274,7 @@ def send_invoice_email_task(self, order_id=None):
             self.retry(exc=e, countdown=60)
         except MaxRetriesExceededError:
             return {"error": str(e)}
+
 
 
 
