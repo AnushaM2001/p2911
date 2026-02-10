@@ -161,6 +161,8 @@ def fetch_shiprocket_awb_task(self, order_id):
             f"✅ AWB auto-assigned\nOrder #{order.id}\nAWB: {awb}",
             category="orders"
         )
+        # ✅ NOW trigger invoice (THIS IS THE KEY)
+        send_invoice_email_task.delay(order.id)
 
         return {"success": True}
 
@@ -221,60 +223,38 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-@shared_task(bind=True, max_retries=5, default_retry_delay=60)
-def send_invoice_email_task(self, order_id=None):
-    """
-    Celery task to send invoice emails for guest orders.
-    - Sends only if invoice_sent=False and shiprocket AWB exists
-    - Uses email from AddressModel
-    - Retries individual orders on failure
-    """
+@shared_task(bind=True)
+def send_invoice_email_task(self, order_id):
+    order = Order.objects.get(id=order_id)
 
-    try:
-        orders = Order.objects.filter(
-            invoice_sent=False,
-            shiprocket_awb_code__isnull=False
-        ).exclude(shiprocket_awb_code="")
+    if order.invoice_sent:
+        return "Invoice already sent"
 
-        if order_id:
-            orders = orders.filter(id=order_id)
+    if not order.shiprocket_order_id or not order.shiprocket_awb_code:
+        logger.info(f"Order {order.id} not ready for invoice")
+        return
 
-        results = []
+    email = getattr(order.address, "email", None)
+    if not email:
+        raise Exception("Customer email missing")
 
-        for order in orders:
-            try:
-                if not order.address or not getattr(order.address, "email", None):
-                    logger.warning(f"No email found for order {order.id}, skipping.")
-                    continue
+    send_invoice_email(email=email, order=order)
 
-                # ✅ Send invoice
-                send_invoice_email(order)
+    order.invoice_sent = True
+    order.save(update_fields=["invoice_sent"])
 
-                # ✅ Mark invoice as sent
-                order.invoice_sent = True
-                order.save(update_fields=["invoice_sent"])
+    return "Invoice sent"
 
-                results.append({"success": f"Invoice sent for order {order.id}"})
-                logger.info(f"Invoice sent for order {order.id}")
+@shared_task
+def send_pending_invoices():
+    orders = Order.objects.filter(
+        invoice_sent=False,
+        shiprocket_order_id__isnull=False,
+        shiprocket_awb_code__isnull=False
+    )
 
-            except Exception as inner_e:
-                logger.exception(f"Failed to send invoice for order {order.id}, retrying...")
-                try:
-                    self.retry(exc=inner_e, countdown=60)
-                except MaxRetriesExceededError:
-                    results.append({
-                        "error": f"Invoice failed permanently for order {order.id}: {inner_e}"
-                    })
-
-        return results or {"info": "No invoices pending"}
-
-    except Exception as e:
-        logger.exception("Invoice task crashed")
-        try:
-            self.retry(exc=e, countdown=60)
-        except MaxRetriesExceededError:
-            return {"error": str(e)}
-
+    for order in orders:
+        send_invoice_email_task.delay(order.id)
 
 
 
