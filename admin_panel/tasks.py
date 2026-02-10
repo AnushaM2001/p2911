@@ -111,6 +111,27 @@ def create_shiprocket_order_task(self, order_id):
 from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 import re
+@shared_task(bind=True)
+def send_invoice_email_task(self, order_id):
+    order = Order.objects.get(id=order_id)
+
+    if order.invoice_sent:
+        return "Invoice already sent"
+
+    if not order.shiprocket_order_id or not order.shiprocket_awb_code:
+        logger.info(f"Order {order.id} not ready for invoice")
+        return
+
+    email = getattr(order.address, "email", None)
+    if not email:
+        raise Exception("Customer email missing")
+
+    send_invoice_email(email=email, order=order)
+
+    order.invoice_sent = True
+    order.save(update_fields=["invoice_sent"])
+
+    return "Invoice sent"
 
 @shared_task(bind=True, max_retries=10, default_retry_delay=120)
 def fetch_shiprocket_awb_task(self, order_id):
@@ -223,27 +244,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-@shared_task(bind=True)
-def send_invoice_email_task(self, order_id):
-    order = Order.objects.get(id=order_id)
 
-    if order.invoice_sent:
-        return "Invoice already sent"
-
-    if not order.shiprocket_order_id or not order.shiprocket_awb_code:
-        logger.info(f"Order {order.id} not ready for invoice")
-        return
-
-    email = getattr(order.address, "email", None)
-    if not email:
-        raise Exception("Customer email missing")
-
-    send_invoice_email(email=email, order=order)
-
-    order.invoice_sent = True
-    order.save(update_fields=["invoice_sent"])
-
-    return "Invoice sent"
 
 @shared_task
 def send_pending_invoices():
