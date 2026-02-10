@@ -2491,7 +2491,7 @@ def order_success(request):
 
         # Fire Celery tasks after commit
         transaction.on_commit(lambda: create_shiprocket_order_task.delay(order.id))
-        transaction.on_commit(lambda: send_invoice_email_task.delay(order.id))
+        # transaction.on_commit(lambda: send_invoice_email_task.delay(order.id))
         transaction.on_commit(lambda: notify_low_stock_task.delay(order.id))
 
     # Handle coupon usage
