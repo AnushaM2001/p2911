@@ -1003,10 +1003,14 @@ def ajax_filter_products(request):
                 variants_qs = variants_qs.filter(price__lte=max_price)
             
             # Group by product to get cheapest variant
+            # variants_by_product = {}
+            # for var in variants_qs.order_by('product_id', 'price'):
+            #     if var.product_id not in variants_by_product:
+            #         variants_by_product[var.product_id] = var
+
             variants_by_product = {}
-            for var in variants_qs.order_by('product_id', 'price'):
-                if var.product_id not in variants_by_product:
-                    variants_by_product[var.product_id] = var
+            for var in variants_qs:
+                variants_by_product.setdefault(var.product_id, []).append(var)
             
             # Get filtered product IDs
             filtered_product_ids = list(variants_by_product.keys())
@@ -1091,35 +1095,46 @@ def ajax_filter_products(request):
             products_dict = {p.id: p for p in products_qs.filter(id__in=filtered_product_ids)}
             
             # ========== PROCESS VARIANTS ==========
-            for product_id, var in variants_by_product.items():
+            for product_id, var_list in variants_by_product.items():
                 product = products_dict.get(product_id)
                 if not product:
                     continue
                 
+                
                 # Apply offers
-                base_price = float(var.price) if var.price else 0
+                # base_price = float(var.price) if var.price else 0
+                best_variant = None
                 discounted_price = None
                 offer_applied = None
+                cheapest_variant = min(var_list, key=lambda v: v.price if v.price else 999999)
+                for var in var_list:
                 
-                for offer in active_offers:
-                    discounted = offer.apply_offer(var)
-                    if discounted:
-                        discounted_price = float(discounted)
-                        offer_applied = offer
+                    for offer in active_offers:
+                        discounted = offer.apply_offer(var)
+                        if discounted:
+                            best_variant=var
+                            discounted_price = float(discounted)
+                            offer_applied = offer
+                            break
+                    if offer_applied:
                         break
-                
+                if not best_variant:
+                    best_variant = cheapest_variant
+
+                base_price = float(best_variant.price or 0)
                 # ========== GET PRICE RANGES ==========
-                price_info = price_ranges.get(product_id, {})
+                # price_info = price_ranges.get(product_id, {})
                 
                 # Product's original price from Product model
-                product_original = float(product.original_price) if product.original_price else 0
+                # product_original = float(product.original_price) if product.original_price else 0
                 
                 # Variant's original price
                 try:
-                    var_original = float(var.original_price) if var.original_price else 0
+                    var_original = float(best_variant.original_price) if best_variant.original_price else float(product.original_price or 0)
+
                 except (ValueError, TypeError):
-                    var_original = product_original
-                
+                    var_original = float(product.original_price or 0)
+                price_info = price_ranges.get(product_id, {})
                 # ========== GET REVIEW DATA ==========
                 review_info = reviews.get(product_id, {'avg_rating': 0, 'review_count': 0})
                 
@@ -1128,7 +1143,7 @@ def ajax_filter_products(request):
                     "id": product_id,
                     "name": product.name,
                     "price": base_price,
-                    "original_price": product_original,  # From Product model
+                    "original_price": float(product.original_price or 0),  # From Product model
                     "min_price": float(price_info.get('min_price', base_price)),
                     "max_price": float(price_info.get('max_price', base_price)),
                     "min_original_price": float(price_info.get('min_original', var_original)),
@@ -1138,8 +1153,8 @@ def ajax_filter_products(request):
                     "offer_code": offer_applied.code if offer_applied else None,
                     "offer_start_time": offer_applied.start_date if offer_applied else None,
                     "offer_end_time": offer_applied.end_date if offer_applied else None,
-                    "size": var.size,
-                    "stock": var.stock,
+                    "size": best_variant.size,
+                    "stock": best_variant.stock,
                     "image": product.image1.url if product.image1 else "",
                     "image2": product.image2.url if product.image2 else "",
                     "is_active": getattr(product, 'is_active', True),
@@ -1181,7 +1196,6 @@ def ajax_filter_products(request):
     cache.set(cache_key, response_data, 300)
     
     return JsonResponse(response_data, json_dumps_params={'ensure_ascii': False})
-
 def product_detail(request, product_id):
     guest_id=get_guest_id(request)
     product = get_object_or_404(Product, id=product_id)
