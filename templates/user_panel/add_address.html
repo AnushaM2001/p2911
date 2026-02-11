@@ -186,7 +186,7 @@
 <body>
 <div class="container mt-4 mb-4">
    
-<a href="{{ next_url }}" class="back-button">⬅ Back</a>
+<a href="{% url 'view_cart' %}" class="back-button">⬅ Back</a>
 
     <form method="post" id="address-form" autocomplete="off">
         {% csrf_token %}
