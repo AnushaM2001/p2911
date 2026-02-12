@@ -66,7 +66,7 @@ urlpatterns = [
 
     
     path('user-profile/', views.user_profile, name='user_profile'),
-    path('address/add/', views.add_address, name='add_address'),
+    # path('address/add/', views.add_address, name='add_address'),
     path('address/edit/<int:address_id>/', views.edit_address, name='edit_address'),
     path('address/delete/<int:address_id>/', views.delete_address, name='delete_address'),
     path('help/submit/', views.submit_help_query, name='submit_help_query'),
