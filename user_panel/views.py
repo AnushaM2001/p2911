@@ -2825,7 +2825,10 @@ def disclaimer(request):
 
 
 def user_address(request):
-    form=AddressForm()
+    next_url = request.GET.get("next") or request.POST.get("next")
+
+    if not next_url:
+        next_url = "/cart/"  # fallback for guest
     if request.method == "POST":
         form = AddressForm(request.POST)
         if form.is_valid():
@@ -2834,12 +2837,13 @@ def user_address(request):
             if guest_id:
                 address.guest_id = guest_id
             address.save()
-            return redirect(view_cart)
+            return redirect(next_url)
     else:
         form = AddressForm()
 
     return render(request, "user_panel/add_address.html", {
         "form": form,
+        "next_url": next_url
     })
 
 
@@ -2858,7 +2862,8 @@ def update_address(request, address_id):
             form = AddressForm()
         form = AddressForm(request.POST, instance=address)  
         if form.is_valid():
-            form.save()  
+            form.save()
+            
             request.session['selected_address_id'] = address.id  # or updated_address.id
             messages.success(request, "Address updated successfully!")
 
@@ -3107,7 +3112,7 @@ def add_address(request):
     else:
         form = AddressForm()
     return render(request, 'user_panel/add_address.html', {'form': form})
-
+    
 def edit_address(request, address_id):
     address = get_object_or_404(AddressModel, id=address_id, guest_id=get_guest_id(request))
     if request.method == 'POST':
