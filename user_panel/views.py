@@ -2825,10 +2825,7 @@ def disclaimer(request):
 
 
 def user_address(request):
-    next_url = request.GET.get("next") or request.POST.get("next")
-
-    if not next_url:
-        next_url = "/cart/"  # fallback for guest
+    form=AddressForm()
     if request.method == "POST":
         form = AddressForm(request.POST)
         if form.is_valid():
@@ -2837,13 +2834,12 @@ def user_address(request):
             if guest_id:
                 address.guest_id = guest_id
             address.save()
-            return redirect(next_url)
+            return redirect(view_cart)
     else:
         form = AddressForm()
 
     return render(request, "user_panel/add_address.html", {
         "form": form,
-        "next_url": next_url
     })
 
 
