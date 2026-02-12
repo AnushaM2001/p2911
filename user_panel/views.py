@@ -2003,6 +2003,16 @@ def view_cart(request):
         print("address",address)
     else:
         address = AddressModel.objects.filter(guest_id=guest_id).last()
+        if not address:
+            request.session.pop('selected_address_id', None)
+            address = AddressModel.objects.filter(
+                guest_id=guest_id
+            ).order_by('-id').first()
+        else:
+            address = AddressModel.objects.filter(
+            guest_id=guest_id
+        ).order_by('-id').first()
+        print("address", address)
 
 
     if not cart_items.exists():
@@ -2825,55 +2835,51 @@ def disclaimer(request):
 
 
 def user_address(request):
-    next_url = request.GET.get("next") or request.POST.get("next")
+    guest_id = get_guest_id(request)
 
-    if not next_url:
-        next_url = "/cart/"  # fallback for guest
     if request.method == "POST":
         form = AddressForm(request.POST)
         if form.is_valid():
             address = form.save(commit=False)
-            guest_id = request.session.get("guest_id")
-            if guest_id:
-                address.guest_id = guest_id
+            address.guest_id = guest_id   # 🔥 ALWAYS
             address.save()
-            return redirect(next_url)
+
+            request.session["selected_address_id"] = address.id
+            return redirect(request.POST.get("next") or "view_cart")
+        else:
+            print("FORM ERRORS:", form.errors)
     else:
         form = AddressForm()
 
-    return render(request, "user_panel/add_address.html", {
-        "form": form,
-        "next_url": next_url
-    })
+    return render(request, "user_panel/add_address.html", {"form": form})
 
 
 def update_address(request, address_id):
-    # item_id = request.GET.get('item_id')
-    guest_id=get_guest_id(request)  
+    guest_id = get_guest_id(request)
 
-    try:
-        address = AddressModel.objects.get(id=address_id, guest_id=guest_id)  # Get the address to update
-    except AddressModel.DoesNotExist:
-        # Handle case where address doesn't exist
-        return HttpResponse('No Adreess Found')  
-    
-    if request.method == 'POST':
-        if 'reset' in request.POST:
-            form = AddressForm()
-        form = AddressForm(request.POST, instance=address)  
+    address = AddressModel.objects.filter(
+        id=address_id,
+        guest_id=guest_id
+    ).first()
+
+    if not address:
+        return HttpResponse("Address not found")
+
+    if request.method == "POST":
+        form = AddressForm(request.POST, instance=address)
         if form.is_valid():
-            form.save()
-            
-            request.session['selected_address_id'] = address.id  # or updated_address.id
-            messages.success(request, "Address updated successfully!")
+            updated = form.save(commit=False)
+            updated.guest_id = guest_id   # 🔥 FORCE IT AGAIN
+            updated.save()
 
-            return redirect('view_cart')  # Redirect back to the cart page
+            request.session["selected_address_id"] = updated.id
+            return redirect("view_cart")
         else:
             print(form.errors)
     else:
-        form = AddressForm(instance=address)  
+        form = AddressForm(instance=address)
 
-    return render(request, 'user_panel/add_address.html', {'form': form,})
+    return render(request, "user_panel/add_address.html", {"form": form})
 
     
     
@@ -3097,21 +3103,6 @@ def user_profile(request):
 
 
 
-def add_address(request):
-    if request.method == 'POST':
-        form = AddressForm(request.POST)
-        if form.is_valid():
-            address = form.save(commit=False)
-            address.guest_id = get_guest_id(request)
-            address.save()
-            messages.success(request, "Address added successfully!")
-            next_url = request.POST.get('next')
-            if next_url:
-                return redirect(next_url) 
-            return redirect('view_cart')
-    else:
-        form = AddressForm()
-    return render(request, 'user_panel/add_address.html', {'form': form})
     
 def edit_address(request, address_id):
     address = get_object_or_404(AddressModel, id=address_id, guest_id=get_guest_id(request))
