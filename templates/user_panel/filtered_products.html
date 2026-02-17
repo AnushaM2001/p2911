@@ -790,6 +790,7 @@ html, body {
                         <div class="row g-4 mb-5 mt-2" id="productGrid">   
     </div>
     <div id="infiniteLoader" style="display:none; text-align:center; margin:20px 0;">
+
     <div class="loader"></div>
 </div>
 
@@ -884,7 +885,9 @@ html, body {
 </script>
 
 <script>
-   
+   let requestInProgress = false;
+let observer = null;
+
     let isMobileFilterOpen = false;
 
 $('#filterModal').on('show.bs.modal', function () {
@@ -1087,8 +1090,10 @@ ${prod.is_offer_active ? `
 function loadProducts(append = false) {
 
     console.log("🔥 loadProducts called", append);
-    if (loading || (!hasNext && append)) return;
+     if (requestInProgress) return;
+    if (!hasNext && append) return;
 
+    requestInProgress = true;
     loading = true;
     $("#infiniteLoader").show();
 
@@ -1158,6 +1163,10 @@ console.log("🔥 AJAX DATA:", data);
                     loadedProductIds.add(prod.id);
                 }
             });
+            // ⭐ IMPORTANT — MOVE TRIGGER TO BOTTOM
+$("#scrollTrigger").remove();
+$("#productGrid").append('<div id="scrollTrigger" style="height:1px;"></div>');
+
 
             hasNext = res.has_next;
             if (hasNext) currentPage = res.next_page;
@@ -1165,15 +1174,23 @@ console.log("🔥 AJAX DATA:", data);
             updateURL();
             updateSelectedFilters();
             startCountdowns();
-            if (hasNext && $(document).height() <= $(window).height() + 200) {
+           // If screen still not filled → auto load next page
+setTimeout(() => {
+    if ($(document).height() <= $(window).height() + 100 && hasNext) {
         loadProducts(true);
     }
+}, 200);
         },
 
-        complete() {
-            loading = false;
-            $("#infiniteLoader").hide();
-        }
+       complete() {
+    loading = false;
+    requestInProgress = false;
+    $("#infiniteLoader").hide();
+
+    // 🔥 Re-attach observer after DOM update
+    setTimeout(initInfiniteObserver, 200);
+}
+
     });
 }
 
@@ -1192,6 +1209,7 @@ $(document).on(
         hasNext = true;
         loadedProductIds.clear();
         loadProducts(false);
+        setTimeout(initInfiniteObserver, 300);
     }
 );
 
@@ -1203,6 +1221,7 @@ $('#clearAllFilters').on('click', function () {
     hasNext = true;
     loadedProductIds.clear();
     loadProducts(false);
+    setTimeout(initInfiniteObserver, 300);
 });
 /* ==============================
    REMOVE SINGLE FILTER (X BUTTON)
@@ -1230,6 +1249,8 @@ $(document).on('click', '.remove-filter', function () {
 
     // 🔁 Reload products
     loadProducts(false);
+    setTimeout(initInfiniteObserver, 300);
+
 });
 
 /* ==============================
@@ -1265,23 +1286,12 @@ function startCountdowns() {
 
 
 /* ==============================
-   INFINITE SCROLL
-================================ */
-$(window).on("scroll", function () {
-    if (!hasNext || loading) return;
-
-    if ($(window).scrollTop() + $(window).height() >= $(document).height() - 300) {
-        loadProducts(true);
-    }
-});
-
-/* ==============================
    DOCUMENT READY
 ================================ */
 $(document).ready(function () {
+
     console.log("🔥 DOCUMENT READY");
 
-    // ✅ Ensure correct active state
     if (ACTIVE_CATEGORY_ID) {
         $('.categoryFilter').prop('checked', false);
         $(`.categoryFilter[value="${ACTIVE_CATEGORY_ID}"]`).prop("checked", true);
@@ -1293,7 +1303,34 @@ $(document).ready(function () {
     }
 
     loadProducts(false);
+    setTimeout(initInfiniteObserver, 400);
 });
+
+function initInfiniteObserver() {
+
+    if (observer) observer.disconnect();
+
+    const trigger = document.querySelector("#scrollTrigger");
+    if (!trigger) return;
+
+    observer = new IntersectionObserver((entries) => {
+
+        const entry = entries[0];
+
+        if (entry.isIntersecting && hasNext && !loading && !requestInProgress) {
+            console.log("📦 Loading next page...");
+            loadProducts(true);
+        }
+
+    }, {
+        root: null,
+        rootMargin: "1200px 0px",
+// preload before reaching bottom
+        threshold: 0
+    });
+
+    observer.observe(trigger);
+}
 
 
 </script>
