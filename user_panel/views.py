@@ -965,8 +965,8 @@ def ajax_filter_products(request):
                 combined_products.append({
                     "id": product_id,
                     "name": gs.product.name,
-                    "price": safe_float(base_price),
-    "original_price": safe_float(product_original),
+                    "price": base_price,
+   
 
     "min_price": real_min_price,
 "max_price": real_max_price,
