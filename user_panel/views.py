@@ -3347,12 +3347,12 @@ def subscription_add(request):
             subscription = form.save()
             
             # --------------- Send Welcome Email ---------------
-            subject = "Welcome to Perfumavalley! 🌸"
+            subject = "Welcome to Perfume Valley! 🌸"
             
             # Plain text fallback
             text_content = (
                 f"Hi {subscription.name or subscription.email},\n\n"
-                "Thank you for subscribing to Perfumavalley! 🌸✨\n"
+                "Thank you for subscribing to Perfume Valley! 🌸✨\n"
                 "You'll receive exclusive offers and updates.\n\n"
                 "Stay fragrant,\nTeam Perfumavalley"
             )
@@ -3364,7 +3364,7 @@ def subscription_add(request):
                 <div style="max-width:600px; margin:auto; background:#fff; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.1); padding:20px;">
                   <p>Hi <b>{subscription.name or subscription.email}</b>,</p>
 
-<p>Welcome to <span style="color:#d63384;">Perfumevalley</span>! 🌸</p>
+<p>Welcome to <span style="color:#d63384;">Perfume Valley</span>! 🌸</p>
 
 <p>As a special thank-you for subscribing, we're giving you an exclusive discount on your first purchase.</p>
 
