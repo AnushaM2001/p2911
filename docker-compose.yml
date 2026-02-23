@@ -6,7 +6,7 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --requirepass X9#kL2!qP7$mR8@t
+      --requirepass X9#kL2!qP7$$mR8@t
       --replicaof no one
     restart: always
     volumes:
