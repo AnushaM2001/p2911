@@ -12,7 +12,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "X9#kL2!qP7$mR8@t", "ping"]
+      test: ["CMD", "redis-cli", "-a", "X9#kL2!qP7$$mR8@t", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -30,8 +30,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - CELERY_BROKER_URL=redis://:X9#kL2!qP7$mR8@t@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:X9#kL2!qP7$mR8@t@redis:6379/0
+      - CELERY_BROKER_URL=redis://:X9#kL2!qP7$$mR8@t@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:X9#kL2!qP7$$mR8@t@redis:6379/0
       - DJANGO_SETTINGS_MODULE=PerfumeValley.settings
     restart: always
 
@@ -45,8 +45,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - CELERY_BROKER_URL=redis://:X9#kL2!qP7$mR8@t@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:X9#kL2!qP7$mR8@t@redis:6379/0
+      - CELERY_BROKER_URL=redis://:X9#kL2!qP7$$mR8@t@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:X9#kL2!qP7$$mR8@t@redis:6379/0
       - DJANGO_SETTINGS_MODULE=PerfumeValley.settings
     restart: always
 
@@ -60,8 +60,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - CELERY_BROKER_URL=redis://:X9#kL2!qP7$mR8@t@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:X9#kL2!qP7$mR8@t@redis:6379/0
+      - CELERY_BROKER_URL=redis://:X9#kL2!qP7$$mR8@t@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:X9#kL2!qP7$$mR8@t@redis:6379/0
       - DJANGO_SETTINGS_MODULE=PerfumeValley.settings
     restart: always
 
