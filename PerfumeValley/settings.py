@@ -307,7 +307,7 @@ REDIS_DB = 0
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://:X9#kL2!qP7$$mR8@tredis:6379/1",
+        "LOCATION": "redis://:Z8kL2Qp7mR8tSecure@redis:6379/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
