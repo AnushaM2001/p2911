@@ -1277,14 +1277,34 @@ document.addEventListener("DOMContentLoaded", function () {
 }
 
    
+.product-img-wrapper{
+    position: relative;
+}
 
+.offer-badge{
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: #036821;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 15px;
+    z-index: 5;
+}
+
+.product-image{
+    width: 100%;
+    border-radius: 8px;
+}
 
 
 
 </style>
 
                     <!-- Search Modal -->
-                  <style>
+    <style>
 .searchCon {
     display: none;
     z-index: 1100; /* Higher than navbar */
@@ -1331,7 +1351,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     
-
+<script>
+window.globalOffers = [
+{% for offer in GLOBAL_ACTIVE_OFFERS %}
+{
+percentage: {{ offer.percentage|floatformat:0 }},
+categories: {{ offer.categories|safe }},
+subcategories: {{ offer.subcategories|safe }}
+},
+{% endfor %}
+];
+</script>
 
 
 
@@ -1381,11 +1411,33 @@ function renderResults(products) {
     products.slice(0, 12).forEach(item => {
         const col = document.createElement("div");
         col.className = "col-6 col-md-4 col-lg-3";
+        let offerTag = "";
+
+(window.globalOffers || []).forEach(offer => {
+
+    const categoryMatch =
+        offer.categories.map(Number).includes(Number(item.category_id));
+
+    const subcategoryMatch =
+        offer.subcategories.map(Number).includes(Number(item.subcategory_id));
+
+    if (categoryMatch || subcategoryMatch) {
+        offerTag = `<span class="offer-badge">${offer.percentage}% OFF</span>`;
+    }
+
+});
 
         col.innerHTML = `
             <a href="${item.url}" class="text-decoration-none text-dark">
-                <div class="card border-0 shadow-sm rounded-3">
-                    <img src="${item.image}" class="card-img-top" alt="${item.name}">
+                   <div class="card border-0 shadow-sm rounded-3">
+
+    <div class="product-img-wrapper">
+
+        <img src="${item.image}" class="card-img-top product-image" alt="${item.name}">
+
+        ${offerTag}
+
+    </div>
                     <div class="card-body p-2">
                         <h6 class="product-title">${item.name}</h6>
                         <p class="product-desc">${item.description}</p>
