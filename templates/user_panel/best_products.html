@@ -426,7 +426,20 @@
       <div class="product-card {% if entry.product.stock_status == 'Out of Stock' %}out-of-stock{% endif %} position-relative">
 
         <!-- BADGES: Always visible -->
-        <div class="badge-container position-absolute">
+         <div class="badge-container position-absolute">
+          {% for offer in GLOBAL_ACTIVE_OFFERS %}
+    {% if entry.product.category in offer.categories or entry.product.subcategory in offer.subcategories %}
+       <span style="
+            background-color:#087221;
+            color:white;
+            font-size:13px;
+            font-weight:600;
+            padding:5px 15px;
+            border-radius:15px;">
+{{ offer.percentage|floatformat:0 }}% OFF
+        </span>
+    {% endif %}
+    {% endfor %}
           {% if entry.product.is_trending %}
             <span class="badge badge-trending">⚡Trending</span>
           {% endif %}
@@ -435,6 +448,9 @@
           {% endif %}
           {% if entry.product.is_new_arrival %}
             <span class="badge badge-new">⚡New Arrivals</span>
+          {% endif %}
+            {% if entry.product.is_shop_by_occassion %}
+            <span class="badge badge-new">⚡ShopByOccasion</span>
           {% endif %}
         </div>
 
