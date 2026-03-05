@@ -101,7 +101,34 @@ def festival_offer_context(request):
         }
     return {}  # No offer found
 
+def active_offers(request):
+    """
+    Sends active offers to all templates.
+    """
 
+    now = timezone.now()
+
+    offers = PremiumFestiveOffer.objects.filter(
+        is_active=True
+    ).prefetch_related("category", "subcategory")
+
+    active_offers = []
+
+    for offer in offers:
+        if offer.offer_active_now():
+            active_offers.append({
+                "id": offer.id,
+                "name": offer.offer_name,
+                "percentage": offer.percentage,
+                "size": offer.size,
+                "categories": offer.cached_categories,
+                "subcategories": offer.cached_subcategories,
+                "type": offer.premium_festival,
+            })
+
+    return {
+        "GLOBAL_ACTIVE_OFFERS": active_offers
+    }
 
 # user_panel/context_processors.py
 from django.urls import reverse
