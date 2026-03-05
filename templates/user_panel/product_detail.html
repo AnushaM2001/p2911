@@ -1946,7 +1946,8 @@ function updateCartSidebar(items, summary) {
     <!-- Badges -->
     <div class="badge-container">
       {% for offer in GLOBAL_ACTIVE_OFFERS %}
-        {% if product.category in offer.categories or product.subcategory in offer.subcategories %}
+      {% if product.category in offer.cached_categories or product.subcategory in offer.cached_subcategories %}
+
         
         <span style="
             background-color:#087221;
