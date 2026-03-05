@@ -2649,6 +2649,8 @@ def search_suggestions(request):
             "image": p.image1.url if p.image1 else "",
             "description": (p.description or "")[:100],
             "url": f"/product/{p.id}/",
+            "category_id": p.category_id,
+            "subcategory_id": p.subcategory_id,
             "price_display": price_display,
             "original_price_display": original_price_display,
             "average_rating": avg_rating,
