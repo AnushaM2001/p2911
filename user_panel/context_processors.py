@@ -121,8 +121,10 @@ def active_offers(request):
                 "name": offer.offer_name,
                 "percentage": offer.percentage,
                 "size": offer.size,
-                "categories": offer.cached_categories,
-                "subcategories": offer.cached_subcategories,
+                "categories": [c.id for c in offer.category.all()],
+                "subcategories": [s.id for s in offer.subcategory.all()],
+                "cached_categories": offer.cached_categories,
+                "cached_subcategories": offer.cached_subcategories,
                 "type": offer.premium_festival,
             })
 
