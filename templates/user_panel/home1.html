@@ -2449,6 +2449,22 @@ document.addEventListener('DOMContentLoaded', function () {
             <!-- Trending Products Badge -->
             <div class="badge-container position-absolute" style="top: 10px; left: 10px; z-index: 2;">
                 <span style="background-color: #981945; color: white; font-size: 14px; font-family: Jomolhari; font-weight: 600; padding: 5px 10px; border-radius: 5px;"> ⚡Best Selling</span>
+             {% for offer in GLOBAL_ACTIVE_OFFERS %}
+        {% if product.category in offer.categories or product.subcategory in offer.subcategories %}
+        
+        <span style="
+            background-color:#087221;
+            color:white;
+            font-size:13px;
+            font-weight:600;
+            padding:5px 10px;
+            margin-left: 15px;
+            border-radius:15px;">
+{{ offer.percentage|floatformat:0 }}% OFF
+        </span>
+
+        {% endif %}
+    {% endfor %}
             </div>
 
             <!-- Out of Stock Badge -->
@@ -2696,6 +2712,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     <!-- producting Products Badge -->
                     <div class="badge-container position-absolute" style="top: 10px; left: 10px; z-index: 2;">
                         <span style="background-color: #981945; color: white; font-size: 14px; font-family: Jomolhari; font-weight: 600; padding: 5px 10px; border-radius: 5px;">⚡New Arrivals</span>
+                     {% for offer in GLOBAL_ACTIVE_OFFERS %}
+        {% if i.category in offer.categories or i.subcategory in offer.subcategories %}
+        
+        <span style="
+            background-color:#087221;
+            color:white;
+            font-size:13px;
+            font-weight:600;
+            padding:5px 10px;
+            margin-left: 15px;
+            border-radius:15px;">
+{{ offer.percentage|floatformat:0 }}% OFF
+        </span>
+
+        {% endif %}
+    {% endfor %}
                     </div>
 
                     <!-- Out of Stock Badge -->
@@ -2967,6 +2999,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     <!-- Trending Products Badge -->
                     <div class="badge-container position-absolute" style="top: 10px; left: 10px; z-index: 2;">
                         <span style="background-color: #981945; color: white; font-size: 14px; font-family: Jomolhari; font-weight: 600; padding: 5px 10px; border-radius: 5px;">⚡Trending</span>
+                     {% for offer in GLOBAL_ACTIVE_OFFERS %}
+        {% if trend.category in offer.categories or trend.subcategory in offer.subcategories %}
+        
+        <span style="
+            background-color:#087221;
+            color:white;
+            font-size:13px;
+            font-weight:600;
+            padding:5px 10px;
+            margin-left: 15px;
+            border-radius:15px;">
+{{ offer.percentage|floatformat:0 }}% OFF
+        </span>
+
+        {% endif %}
+    {% endfor %}
                     </div>
 
                     <!-- Out of Stock Badge -->
