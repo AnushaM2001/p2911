@@ -1945,6 +1945,22 @@ function updateCartSidebar(items, summary) {
     <div class="product-card">
     <!-- Badges -->
     <div class="badge-container">
+      {% for offer in GLOBAL_ACTIVE_OFFERS %}
+        {% if product.category in offer.categories or product.subcategory in offer.subcategories %}
+        
+        <span style="
+            background-color:#087221;
+            color:white;
+            font-size:13px;
+            font-weight:600;
+            padding:5px 10px;
+            margin-left: 150px;
+            border-radius:15px;">
+{{ offer.percentage|floatformat:0 }}% OFF
+        </span>
+
+        {% endif %}
+    {% endfor %}
         {% if item.product.is_trending %}
         <span class="badge badge-trending"> ⚡Trending</span>
         {% endif %}
