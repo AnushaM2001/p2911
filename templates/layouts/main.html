@@ -73,6 +73,48 @@ f.parentNode.insertBefore(j,f);
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+.msg-wrapper{
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  z-index: 9999;
+}
+
+.msg-float img{
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  animation: msg-blink 1.2s infinite;
+}
+
+.msg-float img:hover{
+  animation: none;
+}
+
+.contact-label{
+  background:#28a745;
+  color:white;
+  padding:8px 12px;
+  margin-right:10px;
+  margin-bottom: 20px;
+  border-radius:5px;
+  font-size:19px;
+
+  opacity:0;
+  transform:translateX(10px);
+  transition:0.3s;
+}
+.msg-wrapper:hover .contact-label{
+  opacity:1;
+  transform:translateX(0);
+}
+
+@keyframes msg-blink{
+  0%,100%{opacity:1;}
+  50%{opacity:0.4;}
+}
+
 
 
     </style>
@@ -710,6 +752,15 @@ document.addEventListener("DOMContentLoaded", function () {
 <a href="https://wa.me/919059069188" target="_blank" class="whatsapp-float">
   <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" width="70" height="70">
 </a>
+    <div class="msg-wrapper">
+
+<span class="contact-label">Contact</span>
+
+<a href="tel:+919059069188" class="msg-float">
+<img src="https://previews.123rf.com/images/imagevectors/imagevectors1601/imagevectors160100533/50599796-flat-green-phone-icon-and-green-circle.avif" width="70" height="70">
+</a>
+
+</div>
 
 
 
