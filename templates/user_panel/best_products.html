@@ -429,15 +429,16 @@
          <div class="badge-container position-absolute">
           {% for offer in GLOBAL_ACTIVE_OFFERS %}
     {% if entry.product.category in offer.cached_categories or entry.product.subcategory in offer.cached_subcategories %}
-       <span style="
-            background-color:#087221;
-            color:white;
-            font-size:13px;
-            font-weight:600;
-            padding:5px 15px;
-            border-radius:15px;">
-{{ offer.percentage|floatformat:0 }}% OFF
-        </span>
+      <div class="offer-box"
+     data-start="{{ offer.start_date|date:'c' }}"
+     data-end="{{ offer.end_date |date:'c' }}">
+    
+    <span class="badge">
+        {{ offer.percentage|floatformat:0 }}% OFF
+    </span>
+
+    <span class="countdown"></span>
+</div>
     {% endif %}
     {% endfor %}
           {% if entry.product.is_trending %}
