@@ -46,6 +46,7 @@ f.parentNode.insertBefore(j,f);
 
 <!-- ✅ SITE FAVICON -->
 <link rel="icon" type="image/png" href="{% static 'images2/hi1.png' %}" alt="jj">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <!-- ✅ LOTTIE PLAYER (deferred) -->
 <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js" defer></script>
@@ -82,21 +83,45 @@ f.parentNode.insertBefore(j,f);
   z-index: 9999;
 }
 
-.msg-float img{
+.msg-float {
+  background: #25D366;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  animation: msg-blink 1.2s infinite;
+  box-shadow: 5px #333;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
 }
 
-.msg-float img:hover{
-  animation: none;
+.msg-float i {
+  color: white;
+  font-size: 27px; 
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+  animation: whatsap-blink 1.2s infinite;
 }
+.msg-float i:hover {
+  transform: scale(1.1);
+  animation: none; /* Stop blinking on hover */
+}
+@keyframes whatsap-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 
 .contact-label{
   background:#28a745;
   color:white;
   padding:8px 12px;
-  margin-right:10px;
+  margin-right:70px;
   margin-bottom: 20px;
   border-radius:5px;
   font-size:19px;
@@ -814,7 +839,7 @@ document.addEventListener("DOMContentLoaded", function () {
 <span class="contact-label">Contact</span>
 
 <a href="tel:+919059069188" class="msg-float">
-<img src="https://previews.123rf.com/images/imagevectors/imagevectors1601/imagevectors160100533/50599796-flat-green-phone-icon-and-green-circle.avif" width="70" height="70">
+  <i class="fa fa-phone"></i>
 </a>
 
 </div>
