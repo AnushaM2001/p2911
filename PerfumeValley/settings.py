@@ -267,20 +267,37 @@ WHITENOISE_MAX_AGE = 31536000
 
 # settings.py
 
-# S3 Storage settings
-AWS_STORAGE_BUCKET_NAME = 'perfumevalleyworld'
-AWS_S3_REGION_NAME = 'eu-north-1'
-AWS_S3_SIGNATURE_VERSION = 's3v4'
-#AWS_S3_FILE_OVERWRITE = False
+# S3 CONFIG
+AWS_STORAGE_BUCKET_NAME = "worldstaore"
+AWS_S3_REGION_NAME = "ap-south-1"
+
+AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
-AWS_S3_VERIFY = True
 AWS_QUERYSTRING_AUTH = False
-# Build the custom domain URL for media
-AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
+# CloudFront
+AWS_S3_CUSTOM_DOMAIN = "duxlcpbq8wajw.cloudfront.net"  # 👈 replace with your CloudFront URL
+
+# Media files
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
-# Tell Django to use S3 for media files
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+# Static (optional - if using S3 for static)
+STATIC_URL = "/static/"
+
+# S3 Storage settings
+# AWS_STORAGE_BUCKET_NAME = 'perfumevalleyworld'
+# AWS_S3_REGION_NAME = 'eu-north-1'
+# AWS_S3_SIGNATURE_VERSION = 's3v4'
+# #AWS_S3_FILE_OVERWRITE = False
+# AWS_DEFAULT_ACL = None
+# AWS_S3_VERIFY = True
+# AWS_QUERYSTRING_AUTH = False
+# # Build the custom domain URL for media
+# AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
+# MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+
+# # Tell Django to use S3 for media files
+# DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 LOGIN_URL = '/login/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
