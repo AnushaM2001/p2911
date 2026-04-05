@@ -173,15 +173,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'perfume',
-        'USER': 'admin',
+        'USER': 'perfume_user',
         'PASSWORD': 'Perfumevalley12345',
-        'HOST': 'database-2.cr4y64o0iohu.eu-north-1.rds.amazonaws.com',
+        'HOST': 'host.docker.internal',
         'PORT': '3306',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'use_unicode': True,
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
     }
 }
 
@@ -237,11 +232,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # -----------------------------
 STATIC_URL = '/static/'
 # STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATIC_ROOT = "/home/ec2-user/finalcode/staticfiles/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # Django Compressor
 COMPRESS_ENABLED = True
@@ -268,7 +263,7 @@ WHITENOISE_MAX_AGE = 31536000
 # settings.py
 
 # S3 CONFIG
-AWS_STORAGE_BUCKET_NAME = "worldstaore"
+AWS_STORAGE_BUCKET_NAME = "worldstoreperfume"
 AWS_S3_REGION_NAME = "ap-south-1"
 
 AWS_S3_FILE_OVERWRITE = False
